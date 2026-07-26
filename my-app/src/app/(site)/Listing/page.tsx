@@ -1,6 +1,6 @@
 'use client'
 
-import { Houselisting } from "../../../../public/SiteData";
+import { Houselisting } from "@/components/Listing";
 
 
 

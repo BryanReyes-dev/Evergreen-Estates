@@ -1,5 +1,6 @@
 
 import { Filters } from "@/components/Filters";
+import { Suspense } from "react";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -26,8 +27,9 @@ const Search = () => {
    
     return (
         <div className="bg-[#141616]">
-            <Filters/>
-            
+            <Suspense fallback={<div>Loading filters...</div>}>
+                <Filters/>
+            </Suspense>
         </div>
     );
 };
