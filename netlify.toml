@@ -1,4 +1,3 @@
 [build]
   base = "my-app"
-  publish = "out"
   command = "npm run build"
