@@ -72,7 +72,6 @@ Evergreen estates is a fictional real estate web application designed to demonst
 2. Navigate into the project:
 ```bash
    cd evergreen-estates
-   cd my-app
 ```
 
 3. Install dependencies:

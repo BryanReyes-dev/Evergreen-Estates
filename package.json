@@ -1,5 +1,5 @@
 {
-  "name": "my-app",
+  "name": "Evergreen Estates",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -27,7 +27,6 @@
     "use-debounce": "^10.1.1"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "^5.15.12",
     "@svgr/webpack": "^8.1.0",
     "@types/node": "^20",
     "@types/react": "^19",
