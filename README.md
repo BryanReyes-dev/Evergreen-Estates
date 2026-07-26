@@ -82,7 +82,7 @@ Built with Next.js, TypeScript, React, Tailwind CSS, Supabase, and shadcn/ui.
 The application follows a separation between UI components, database logic, and utility functions.
 
 Example structure:
-
+```
 src/
 ├── app/
 │ ├── (site)/
@@ -99,7 +99,7 @@ src/
 │
 └── lib/
 └── shared utilities
-
+```
 
 Database-related logic is isolated inside the `db` directory to keep database operations separate from presentation components.
 
