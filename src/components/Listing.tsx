@@ -47,6 +47,7 @@ const Listing =  ({listing}: ListingProps) => {
             alt={listing.title}
             fill
             className=" w-full object-cover"
+            unoptimized
           />
         </div>
 
