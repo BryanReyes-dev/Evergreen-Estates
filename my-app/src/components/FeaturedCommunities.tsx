@@ -28,6 +28,7 @@ const FeaturedCommunities = ({ listings }: FeaturedCommunitiesProps) => {
                 alt="Evergreen Estates Logo"
                 width={50}
                 height={50}
+                unoptimized
                 />
                 <span className="items-center xs:text-[2rem] mt-1 md:text-4xl  text-2xl font-bold">
                     Featured Communities
