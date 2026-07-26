@@ -1,6 +1,6 @@
 "use client";
 import React, { SetStateAction, useState,  Dispatch, useEffect } from "react";
-import { filters } from "../(site)/search/page";
+import { filters } from "../app/(site)/search/page";
 
 interface CheckBoxProps {
   text: string;

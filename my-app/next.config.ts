@@ -4,7 +4,14 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
 
   
-  output: 'export',
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "vcsotaclvwvbpqiljkuk.supabase.co",
+      },
+    ],
+  },
 
   serverExternalPackages: [],
   turbopack: {},

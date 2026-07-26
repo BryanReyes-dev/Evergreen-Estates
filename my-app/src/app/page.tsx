@@ -1,8 +1,9 @@
-'use client'
-import { getListings, Houselisting } from "../../public/SiteData";
-import { useState, useEffect} from "react";
-import FeaturedCommunities from "./componenets/FeaturedCommunities"
-import Hero from "./componenets/Hero"
+
+import { Houselisting } from "../components/Listing";
+import {  getListingById } from "../db/supabase/util/GetListingById";
+import FeaturedCommunities from "../components/FeaturedCommunities"
+import Hero from "../components/Hero"
+
 
 
 
@@ -21,37 +22,16 @@ const initialFilters: filters = {
     search: "",
 };
 
-const Home = () => {
+const Home = async () => {
 
   
 
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [listings, setListings] = useState<Houselisting[]>([]); 
-
-  useEffect(() => { // Fetch listings when the component mounts
-    const fetchListings = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            
-
-            const data = await getListings();
-            setListings(data) 
-
-        
-
-        } catch (err) {
-        setError("Failed to fetch listings");
-        } finally {
-        setLoading(false);
-        }}
-    fetchListings();
-    
-  },[]);
-
-  
+  const featuredCommunities_id = ["2efe7c1c-2988-4cbb-8d61-0feced59b0b0", "3843291e-e94b-4ec1-b26e-b191455c8e53", "8fca3710-cda9-4ed4-8dba-113cb686dcaf", "abc12623-5fe6-471e-9683-160b9b4f3fcd", "bfc338aa-93c5-474d-a9dd-d45859a601f5", "dd90c583-f2d0-4276-8e5d-fa424592cdf3"  ]
+  const featuredListings = (
+  await Promise.all(
+    featuredCommunities_id.map((id) => getListingById(id))
+  )).filter((listing): listing is Houselisting => listing !== null);
 
 
 
@@ -59,11 +39,13 @@ const Home = () => {
     <>
 
       <Hero/>
-      <FeaturedCommunities 
-      listings={listings} 
-      error={error} 
-      loading={loading} 
-    />
+      
+      <div className="flex justify-center w-screen bg-[#141616]">
+        <FeaturedCommunities listings={featuredListings}/>
+        
+      </div>
+      
+    
     </>
 
 

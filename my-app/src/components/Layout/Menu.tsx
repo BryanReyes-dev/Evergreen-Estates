@@ -135,11 +135,11 @@ const Menu = () => {
                                     
                                         <svg viewBox="0 0 24 24" fill="none" className="text-[#228100] w-20" xmlns="http://www.w3.org/2000/svg">
                                             <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-                                            <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                                            <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
                                             <g id="SVGRepo_iconCarrier"> 
                                             <circle cx="12" cy="9" r="3"  strokeWidth="1" stroke="currentcolor" ></circle> 
                                             <circle cx="12" cy="12" r="10"  strokeWidth="1" stroke="currentcolor" ></circle> 
-                                            <path stroke="currentcolor"  d="M17.9691 20C17.81 17.1085 16.9247 15 11.9999 15C7.07521 15 6.18991 17.1085 6.03076 20" stroke-width="1" stroke-linecap="round"></path> </g>
+                                            <path stroke="currentcolor"  d="M17.9691 20C17.81 17.1085 16.9247 15 11.9999 15C7.07521 15 6.18991 17.1085 6.03076 20" strokeWidth="1" strokeLinecap="round"></path> </g>
                                         </svg>
                                         <div className="flex items-center  justify-center  m-auto">
 
@@ -154,8 +154,8 @@ const Menu = () => {
                         </nav>
 
                         <div className=' absolute top-5 right-5' onClick={toggleOverlay}>
-                            <svg className="w-10 h-10" fill="#228100" height="200px" width="200px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460.775 460.775"  stroke="#228100"><g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                                <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                            <svg className="w-10 h-10" fill="#228100" height="200px" width="200px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460.775 460.775"  stroke="#228100"><g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
+                                <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
                                 <g id="SVGRepo_iconCarrier"> 
                                 <path d="M285.08,230.397L456.218,59.27c6.076-6.077,6.076-15.911,0-21.986L423.511,4.565c-2.913-2.911-6.866-4.55-10.992-4.55 c-4.127,0-8.08,1.639-10.993,4.55l-171.138,171.14L59.25,4.565c-2.913-2.911-6.866-4.55-10.993-4.55 c-4.126,0-8.08,1.639-10.992,4.55L4.558,37.284c-6.077,6.075-6.077,15.909,0,21.986l171.138,171.128L4.575,401.505 c-6.074,6.077-6.074,15.911,0,21.986l32.709,32.719c2.911,2.911,6.865,4.55,10.992,4.55c4.127,0,8.08-1.639,10.994-4.55 l171.117-171.12l171.118,171.12c2.913,2.911,6.866,4.55,10.993,4.55c4.128,0,8.081-1.639,10.992-4.55l32.709-32.719 c6.074-6.075,6.074-15.909,0-21.986L285.08,230.397z"></path> </g>
                             </svg>

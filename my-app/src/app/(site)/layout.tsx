@@ -1,6 +1,6 @@
 
-import Footer from "../componenets/Layout/Footer";
-import Header from "../componenets/Layout/Header";
+import Footer from "../../components/Layout/Footer";
+import Header from "../../components/Layout/Header";
 
 export default function SiteLayout({
   children,

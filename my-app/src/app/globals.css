@@ -1,28 +1,8 @@
+
+@import "shadcn/tailwind.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
 
-input[type="checkbox"].appearance-none:checked::after {
-  content: "✓";
-  color: white;
-  position: absolute;
-  top: -2px;
-  left: 1px;
-  font-size: 18px;
-  font-weight: bold;
-}
-
-input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #228000;
-  border-radius: 4px;
-  background-color: #141616;
-  position: relative;
-  cursor: pointer;
-}
