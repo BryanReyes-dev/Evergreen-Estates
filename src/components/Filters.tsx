@@ -2,7 +2,7 @@
 import { useDebouncedCallback } from 'use-debounce';
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox"
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
@@ -34,24 +34,36 @@ const tags = [
 
 export const Filters =() => {
 
-    const [checked, setChecked] = useState(false)
+    
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const { replace } = useRouter();
     const currentSearchQuery = searchParams.get('query');
+    const selectedTags = searchParams.getAll("tags");
+    const [search, setSearch] = useState(currentSearchQuery ?? "");
+
+
+
+    useEffect(() => {
+  setSearch(currentSearchQuery ?? "");
+}, [currentSearchQuery]);
 
     
 
-    const handleSearch = useDebouncedCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-            const term = e.target.value;
+    const handleSearch = useDebouncedCallback(
+        (term: string) => {
             const params = new URLSearchParams(searchParams);
+
             if (term) {
-                params.set('query', term);
+            params.set("query", term);
             } else {
-                params.delete('query');
+            params.delete("query");
             }
+
             replace(`${pathname}?${params.toString()}`);
-    }, 300);
+        },
+        300
+        );
 
     const handleTagToggle = (tagText: string, isChecked: boolean) => {
             const params = new URLSearchParams(searchParams.toString());
@@ -65,8 +77,8 @@ export const Filters =() => {
             } else {
                 params.delete('tags');
                 currentUrlTags
-                    .filter((t) => t !== normalizedTag)
-                    .forEach((t) => params.append('tags', t));
+                .filter((t) => t !== normalizedTag)
+                .forEach((t) => params.append('tags', t));
             }
 
             replace(`${pathname}?${params.toString()}`);
@@ -83,7 +95,12 @@ export const Filters =() => {
                 <form  className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-5 p-3 text-[.9rem]">
                     {tags.map(tag => ( 
                         <div key={tag} className="flex items-center gap-2" >
-                            <Checkbox className="w-5 h-5" onCheckedChange={(checked) => {handleTagToggle(tag, checked === true )}} id={tag}/> 
+                            <Checkbox 
+                            className="w-5 h-5" 
+                            checked={selectedTags.includes(tag.toLowerCase())}
+                            
+                            onCheckedChange={(checked) => {handleTagToggle(tag, checked === true )}}
+                             id={tag}/> 
                             <FieldLabel htmlFor={tag} >
                                 {tag}
                             </FieldLabel>
@@ -104,7 +121,10 @@ export const Filters =() => {
                         <Input
                         type='search'
                         placeholder="Search homes..."
-                        onChange={handleSearch}
+                        onChange={(e) => {
+                        setSearch(e.target.value);
+                        handleSearch(e.target.value);
+                        }}
 
 
 
@@ -115,4 +135,6 @@ export const Filters =() => {
             </div>
   )
 }
+
+
 
