@@ -5,14 +5,14 @@ const getImageUrl = async (id: string, images?: string[]) => {
 
   if (!images) {
     const { data, error } = await supabase.storage
-      .from("Property Images")
+      .from("property-images")
       .list(folderPath);
 
     if (error) throw error;
 
     return data.map((file) =>
       supabase.storage
-        .from("Property Images")
+        .from("property-images")
         .getPublicUrl(`${folderPath}/${file.name}`)
         .data.publicUrl
     );
@@ -20,7 +20,7 @@ const getImageUrl = async (id: string, images?: string[]) => {
 
   return images.map((image) =>
     supabase.storage
-      .from("Property Images")
+      .from("property-images")
       .getPublicUrl(`${folderPath}/${image}`)
       .data.publicUrl
   );

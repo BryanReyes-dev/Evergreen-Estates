@@ -15,7 +15,7 @@ if (!supabaseUrl || !serviceRoleKey) {
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-const BUCKET = "Property Images";
+const BUCKET = "property-images";
 
 async function main() {
   const { data: listings, error } = await supabase
