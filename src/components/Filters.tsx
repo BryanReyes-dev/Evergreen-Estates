@@ -5,16 +5,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useEffect } from 'react'
 import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
 
 
 
-interface filters {
-    minPrice: number | null
-    maxPrice: number | null
-    tags: string[] | null
-    search: string | null
 
-}
+
 
 const tags = [
 "Swimming Pool",
@@ -37,22 +34,49 @@ export const Filters =() => {
     
     const searchParams = useSearchParams();
     const pathname = usePathname();
-    const { replace } = useRouter();
+    
     const currentSearchQuery = searchParams.get('query');
-    const selectedTags = searchParams.getAll("tags");
+    const selectedTags = searchParams.getAll("tag");
     const [search, setSearch] = useState(currentSearchQuery ?? "");
+    const router = useRouter();
 
+
+
+    const [value, setValue] = useState([100000, 5000000])
 
 
     useEffect(() => {
-  setSearch(currentSearchQuery ?? "");
-}, [currentSearchQuery]);
+        if (currentSearchQuery !== null) {
+            setSearch(currentSearchQuery);
+        }
+    }, [currentSearchQuery]);
 
-    
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+    }).format(price);};
+
+   const handlePriceChange = (newValue: number[]) => {
+    setValue(newValue);
+    updatePriceURL(newValue);
+    };
+   
+    const updatePriceURL = useDebouncedCallback(
+  (newValue: number[]) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    params.set("price", `${newValue[0]}-${newValue[1]}`);
+
+    router.replace(`${pathname}?${params.toString()}`);
+  },
+  300
+);
 
     const handleSearch = useDebouncedCallback(
         (term: string) => {
-            const params = new URLSearchParams(searchParams);
+            const params = new URLSearchParams(searchParams.toString());
 
             if (term) {
             params.set("query", term);
@@ -60,28 +84,28 @@ export const Filters =() => {
             params.delete("query");
             }
 
-            replace(`${pathname}?${params.toString()}`);
+            router.replace(`${pathname}?${params.toString()}`);
         },
         300
-        );
+    );
 
     const handleTagToggle = (tagText: string, isChecked: boolean) => {
             const params = new URLSearchParams(searchParams.toString());
             const normalizedTag = tagText.toLowerCase();
-            const currentUrlTags = params.getAll('tags');
+            const currentUrlTags = params.getAll('tag');
 
             if (isChecked) {
                 if (!currentUrlTags.includes(normalizedTag)) {
-                    params.append('tags', normalizedTag);
+                    params.append('tag', normalizedTag);
                 }
             } else {
-                params.delete('tags');
+                params.delete('tag');
                 currentUrlTags
                 .filter((t) => t !== normalizedTag)
-                .forEach((t) => params.append('tags', t));
+                .forEach((t) => params.append('tag', t));
             }
 
-            replace(`${pathname}?${params.toString()}`);
+            router.replace(`${pathname}?${params.toString()}`);
     };
 
 
@@ -99,7 +123,7 @@ export const Filters =() => {
                             className="w-5 h-5" 
                             checked={selectedTags.includes(tag.toLowerCase())}
                             
-                            onCheckedChange={(checked) => {handleTagToggle(tag, checked === true )}}
+                            onCheckedChange={(checked) => {handleTagToggle(tag, checked as boolean)}}
                              id={tag}/> 
                             <FieldLabel htmlFor={tag} >
                                 {tag}
@@ -119,8 +143,10 @@ export const Filters =() => {
 
                     <div className="col-span-2 xs:col-span-3 sm:col-span-4 mt-2">
                         <Input
+                        className="w-full border-[4px] rounded-lg text-white bg-transparent border-[#228000]   "
                         type='search'
                         placeholder="Search homes..."
+                          value={search}
                         onChange={(e) => {
                         setSearch(e.target.value);
                         handleSearch(e.target.value);
@@ -130,6 +156,26 @@ export const Filters =() => {
 
                         />
                     </div>
+
+
+                    <div className="grid w-full  gap-4 mb-3 mt-0 col-span-2 xs:col-span-3 sm:col-span-4">
+                        <div className="flex items-center justify-between gap-2">
+                            <Label htmlFor="price-channel">Price Range :</Label>
+                            <span className="text-sm text-muted-foreground">
+                            {formatPrice(value[0])} - {formatPrice(value[1])}
+                            </span>
+                        </div>
+                        <Slider
+                            className="text-[#228000] w-full"
+                            id="price-channel"
+                            value={value}
+                            onValueChange={(value) => handlePriceChange(value as number[])}
+                            min={100000}
+                            max={5000000}
+                            step={10000}
+                        />
+                        </div>
+                    
                 </form>
                     
             </div>

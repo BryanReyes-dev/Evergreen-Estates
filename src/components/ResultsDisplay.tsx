@@ -1,5 +1,6 @@
 
-const ResultsDisplay = () => {
+
+const ResultsDisplay = (  ) => {
 
     
 

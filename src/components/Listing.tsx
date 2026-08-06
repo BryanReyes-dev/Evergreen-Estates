@@ -1,7 +1,6 @@
 
 
 import Link from "next/link";
-import { getListingById } from "../db/supabase/util/GetListingById";
 import Image from "next/image";
 
 interface ListingProps {
@@ -60,7 +59,7 @@ const Listing =  ({listing}: ListingProps) => {
             ${listing.price.toLocaleString()}
           </span>
 
-          <p className="text-sm text-black">
+          <p className="text-sm text-white">
             {listing.description}
           </p>
         </div>
