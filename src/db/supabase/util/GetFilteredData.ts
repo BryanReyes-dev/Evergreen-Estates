@@ -1,12 +1,7 @@
 import { supabase } from '@/db/supabase/server';
 import getImageUrl from '@/db/supabase/util/GetImageUrl';
 import { Houselisting } from './GetListingById'; // Adjust this import path based on where Houselisting is defined
-
-interface Filters {
-    price: [number, number];
-    tags: string[];
-    search: string;
-}
+import { filters as Filters } from '@/components/types/filters'; // Adjust this import path based on where filters is defined
 
 export const getFilteredListings = async (filters: Filters): Promise<Houselisting[]> => {
     try {
@@ -16,17 +11,19 @@ export const getFilteredListings = async (filters: Filters): Promise<Houselistin
             .select('*');
 
         // 2. Apply Price Range Filter
-        const [minPrice, maxPrice] = filters.price;
-        query = query.gte('price', minPrice).lte('price', maxPrice);
+        if (filters.price !== null) {
+            const [minPrice, maxPrice] = filters.price;
+            query = query.gte('price', minPrice).lte('price', maxPrice);
+        }
 
         // 3. Apply Text Search (Searches both title and description using an OR condition)
-        if (filters.search && filters.search.trim() !== '') {
+        if (filters.search !== null && filters.search.trim() !== '') {
             const cleanSearch = filters.search.trim();
             query = query.or(`title.ilike.%${cleanSearch}%,description.ilike.%${cleanSearch}%`);
         }
 
         // 4. Apply Tags Filter (Matches rows containing ALL requested tags)
-        if (filters.tags && filters.tags.length > 0) {
+        if (filters.tags !== null && filters.tags.length > 0) {
             query = query.contains('tags', filters.tags);
         }
 

@@ -1,12 +1,11 @@
 "use client";
 import React, { SetStateAction, useState,  Dispatch, useEffect } from "react";
-import { filters } from "../app/(site)/search/page";
+import { filters } from "@/components/types/filters";
 
 interface CheckBoxProps {
-  text: string;
-  filter?:Partial<filters>;
-  onChange: (checked: boolean) => void;
-  
+    text: string;
+    filter?: Partial<filters>;
+    onChange: (checked: boolean) => void;
 }
 
 

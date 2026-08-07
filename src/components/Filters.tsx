@@ -29,6 +29,9 @@ const tags = [
 
 
 
+
+
+
 export const Filters =() => {
 
     
@@ -42,7 +45,7 @@ export const Filters =() => {
 
 
 
-    const [value, setValue] = useState([100000, 5000000])
+    const [value, setValue] = useState([10000, 3000000])
 
 
     useEffect(() => {
@@ -170,8 +173,8 @@ export const Filters =() => {
                             id="price-channel"
                             value={value}
                             onValueChange={(value) => handlePriceChange(value as number[])}
-                            min={100000}
-                            max={5000000}
+                            min={10000}
+                            max={3000000}
                             step={10000}
                         />
                         </div>

@@ -2,7 +2,7 @@ import { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-
+ 
   
   images: {
     
@@ -19,7 +19,10 @@ const nextConfig: NextConfig = {
   },
 
   serverExternalPackages: [],
-  turbopack: {},
+  turbopack: {
+    root:  process.cwd()
+  },
+  
 };
 
 export default nextConfig;

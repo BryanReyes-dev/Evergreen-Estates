@@ -1,14 +1,10 @@
 
 import { getFilteredListings } from '@/db/supabase/util/GetFilteredData';
-
+import { filters } from '@/components/types/filters';
 import Listing from './Listing';
 
 
-interface filters {
-    price: [number, number]
-    tags: string[];
-    search: string;
-}
+
 
  interface SearchParams {
         query?: string;

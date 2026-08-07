@@ -22,10 +22,8 @@ const Search = async ({searchParams}: {searchParams: Promise<SearchParams>;}) =>
         <div className="bg-[#141616]"> 
         
          <Filters/>
-            <Suspense fallback={<div>Loading page...</div>}>
-              
+            <Suspense fallback={<div>Loading results...</div>}>
                 <ResultsDisplay searchParams={params} />
-                
             </Suspense>
         </div>
     );
