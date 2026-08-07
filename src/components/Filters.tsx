@@ -7,6 +7,7 @@ import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
+import { Button, buttonVariants } from './ui/button';
 
 
 
@@ -111,11 +112,29 @@ export const Filters =() => {
             router.replace(`${pathname}?${params.toString()}`);
     };
 
+    const handleClearFilters = () => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('tag');
+        params.delete('price');
+        params.delete('query');
+        router.replace(`${pathname}?${params.toString()}`);
+        setValue([10000, 3000000]);
+        setSearch("");
+    }
+
 
   return (
     <div className="text-[#228000] m-2 mt-3 rounded-2xl bg-[#202324] text-base">
-                <span className="ml-3">Tags and Filters</span>
-
+            <div className="flex items-center justify-between  border-b border-[#228000]">
+                <div className="flex mx-3  justify-center items-center w-full gap-2">
+                    <span className="  m-0 text-white px-2   py-2  text-[.9rem]">
+                        Tags and Filters
+                    </span>
+                </div>
+                <Button onClick={handleClearFilters} className="bg-[#228000] m-0 h-10 border border-[#228000] text-white px-2 py-2 rounded-tr-2xl text-[.9rem]"  >
+                    Clear Filters
+                </Button>
+            </div>
 
                 
 
@@ -149,7 +168,7 @@ export const Filters =() => {
                         className="w-full border-[4px] rounded-lg text-white bg-transparent border-[#228000]   "
                         type='search'
                         placeholder="Search homes..."
-                          value={search}
+                        value={search}
                         onChange={(e) => {
                         setSearch(e.target.value);
                         handleSearch(e.target.value);

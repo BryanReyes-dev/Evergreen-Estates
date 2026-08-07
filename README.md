@@ -2,9 +2,13 @@
 
 ## Overview
 
-Evergreen Estates is a fictional real estate web application built to demonstrate a modern full-stack Next.js application architecture. The project focuses on creating a responsive, mobile-first experience for browsing property listings while implementing real-world concepts such as database integration, cloud storage, dynamic routing, filtering systems, and component-driven UI development.
 
-Built with Next.js, TypeScript, React, Tailwind CSS, Supabase, and shadcn/ui.
+EverGreen Estates is a full-stack real estate web application built with Next.js, TypeScript, Supabase, Tailwind CSS, and shadcn/ui.
+
+The project demonstrates a modern Next.js App Router architecture using Server Components for data fetching and rendering, while isolating interactive behavior into small Client Components where browser functionality is required.
+
+The application allows users to browse property listings, view property details, search listings, and filter properties using URL-based search parameters connected to server-side Supabase queries.
+
 
 ## Live Demo Link
 
@@ -19,23 +23,19 @@ Built with Next.js, TypeScript, React, Tailwind CSS, Supabase, and shadcn/ui.
 
 - Responsive mobile-first design
 - Property browsing and listing pages
-- Dynamic property detail routes
-- Property image galleries using Supabase Storage
-- Search and filtering system using URL search parameters
+- Property image galleries using Supabase Storage with next.js optimization
+- Server side Search and client side filtering system using URL search parameters
 - Shareable filtered URLs
+- Clear Filter button that pushes to url and ui
 - Featured property listings
-- Favorites / saved properties system
-- User profile interface
-- Authentication UI flow
-- Booking / viewing request UI simulation
-- Loading, error, and empty states
+- Loading, error, and data components
+- layout folder structure
 - Form validation and accessibility considerations
-- SEO-friendly page structure
+- SEO optimization 
 - Reusable component-based architecture
-- Database-backed property data using Supabase
-- Cloud image storage management
+- Cloud image storage management with security implementations
 - Server-side data fetching with async Server Components
-- Client-side interactive components where required
+- Client-side interactive filter ui using search params
 - Component styling using Tailwind CSS and shadcn/ui
 
 
@@ -74,7 +74,7 @@ Built with Next.js, TypeScript, React, Tailwind CSS, Supabase, and shadcn/ui.
 
 # Repository
 
-[View Repository](https://github.com/Dimethyl-tryptamine/Portfolio-Website)
+[View Repository](https://github.com/BryanReyes-dev/Portfolio-Website)
 
 
 # Project Architecture
@@ -86,38 +86,32 @@ Example structure:
 src/
 ├── app/
 │ ├── (site)/
-│ ├── api/
-│ └── globals.css
+├ └── page.tsx
 │
 ├── components/
 │ ├── ui/
-│ └── reusable components
+│ ├── Layout/
+│ ├── Filters.tsx
+│ ├── CheckBox.tsx
+│ └── listing components...
 │
 ├── db/
-│ ├── supabase/
-│ └── database utilities
+│ └── supabase/
+│ ├── queries
+│ ├── utilities
+│ └── database helpers...
 │
 └── lib/
-└── shared utilities
+└── shared utilities...
 ```
+The application separates:
+
+- UI components
+- Database operations
+- Shared utility functions
+- Server-side data fetching
 
 Database-related logic is isolated inside the `db` directory to keep database operations separate from presentation components.
-
-
-# Future Improvements
-
-- Implement real authentication with persistent sessions
-- Add protected routes
-- Build admin dashboard for managing listings
-- Add property management CRUD operations
-- Add map integration for property locations
-- Implement booking workflow with backend persistence
-- Add payment simulation using Stripe-style architecture
-- Improve caching strategies
-- Add automated testing
-- Add performance monitoring and optimization
-- Improve image optimization strategy with production CDN configuration
-- Add analytics and user behavior tracking
 
 
 # Installation Steps
@@ -125,7 +119,7 @@ Database-related logic is isolated inside the `db` directory to keep database op
 Clone the repository:
 
 ```bash
-git clone https://github.com/Dimethyl-tryptamine/evergreen-estates.git
+git clone https://github.com/BryanReyes-dev/evergreen-estates.git
 ```
 Navigate into the project:
 ```bash
@@ -152,17 +146,51 @@ Open:
 ```bash
 http://localhost:3000
 ```
+# Next.js Architecture
+
+EverGreen Estates uses the Next.js App Router architecture.
+
+## Server Components
+
+Server Components are used by default throughout the application.
+
+They are responsible for:
+
+- Fetching property data
+- Calling Supabase queries
+- Rendering listing results
+- Handling server-side search parameters
+- Reducing unnecessary client-side JavaScript
+
+The search page uses async Server Components to receive URL parameters and request filtered data from Supabase.
+
+Example flow:
+```
+User changes filters
+|
+v
+Filters Client Component updates URL parameters
+|
+v
+Search page receives updated parameters
+|
+v
+Server Component queries Supabase
+|
+v
+Filtered listings are rendered
+```
 
 # Challenges & Lessons Learned
 
 - Understanding Next.js data fetching strategies and when to use Server Components versus Client Components
 - Learning how async Server Components simplify data fetching compared to traditional client-side fetching patterns
+- Minimizing Client Components by delegating interactive behavior into isolated Client Components while keeping data fetching and rendering responsibilities inside Server Components
 - Structuring a full-stack Next.js application with separation between UI components, database logic, and utility functions
 - Integrating Supabase as a backend solution, including database tables, storage buckets, file paths, and production data management
-- Migrating from mock data to real database-backed data
 - Understanding the tradeoffs between client-side filtering, server-side filtering, and database queries
-- Managing state and data flow between components while avoiding unnecessary prop drilling
-- Learning how URL search parameters can create persistent and shareable filtering systems
+- Managing state and data flow between components while avoiding unnecessary prop drilling 
+- Learning how URL search parameters can create persistent and shareable filtering systems 
 - Designing reusable components and understanding how component libraries like shadcn/ui are structured
 - Learning when components require `"use client"` and when they can remain server-rendered
 - Debugging TypeScript issues across database queries, components, and application logic
@@ -173,7 +201,6 @@ http://localhost:3000
 - Understanding how hosting environments can affect framework features such as Next.js image optimization and runtime behavior
 - Learning how deployment configurations differ between local development and production environments
 - Debugging Netlify deployment issues involving publish directories, build configuration, and framework plugins
-- Understanding how environment variables need to be configured for production deployments
 - Improving responsive layouts and UI consistency using Tailwind CSS
 - Learning how component libraries like shadcn/ui improve development speed while maintaining customization
 - Understanding production considerations such as caching, performance optimization, scalability, and deployment configuration
@@ -182,155 +209,77 @@ http://localhost:3000
 
 # Client Components
 
-By default, Next.js renders components on the server to improve initial page performance, SEO, and reduce unnecessary client-side JavaScript.
+The application intentionally minimizes Client Components.
 
-The following components require `"use client"` because they depend on browser interactions, React state, or event handling.
+By default, components remain Server Components unless they require:
 
+- Browser APIs
+- React state
+- Event handlers
+- Client-side navigation hooks
+- Interactive UI behavior
 
-## `Menu.tsx`
+The following components require `"use client"`:
 
-Uses `"use client"` because it manages interactive mobile navigation state.
-
-The component uses `useState` to control whether the mobile navigation overlay is open or closed.
-
-It also uses Framer Motion's `AnimatePresence` to animate the menu entering and leaving the page.
-
-These features require client-side JavaScript because they depend on user interaction and browser events.
 
 
 ## `Filters.tsx`
 
-Uses `"use client"` because it contains interactive filtering controls that respond to user input.
+Location: ```src/components/Filters.tsx```
 
-The component listens for user interactions and updates URL search parameters when filters change. This allows filter selections to persist in the URL, making search results shareable and allowing users to return to the same filtered view.
+`Filters.tsx` requires `"use client"` because it contains interactive filtering controls.
 
-The filtering interface runs on the client because it relies on browser events and user interaction. The search page can then use the updated search parameters inside a Server Component to fetch and render the appropriate listings.
+It uses:
 
-This approach avoids unnecessary global state while keeping the application aligned with Next.js server-first architecture.
+- `useState`
+- `useEffect`
+- `useRouter`
+- `usePathname`
+- `useSearchParams`
 
+The component handles:
 
-# Search & Filtering System
+- Search input updates
+- Price slider changes
+- Tag selection
+- Updating URL search parameters
 
-Evergreen Estates includes a property filtering system powered by URL search parameters.
+The component does not fetch property data directly.
 
-## Features
+Instead, it updates the URL and allows the Server Component layer to perform the database query.
 
-- Filter properties by minimum and maximum price
-- Filter properties by features and tags
-- Search through property listings
-- Persist filter selections through URL parameters
-- Create shareable filtered search pages
+This keeps filtering logic server-driven while maintaining a responsive user interface.
 
+---
 
-## How It Works
+## `Layout/Menu.tsx`
 
-1. The user interacts with the filter controls.
-2. `Filters.tsx` updates the URL search parameters.
-3. The search page receives the updated parameters.
-4. Server Components use those parameters to determine what listings should be fetched.
-5. Supabase queries return the matching property data.
-6. The page renders the filtered results server-side.
+Location:```src/components/Layout/Menu.tsx```
 
+`Menu.tsx` requires `"use client"` because mobile navigation depends on interactive browser behavior.
 
-This approach allows filtering state to persist without requiring complex client-side state management while taking advantage of Next.js Server Components.
+It uses:
 
+- React state for opening and closing the menu
+- User click events
+- Framer Motion animations
 
-# Database Architecture
+The rest of the layout remains server-rendered.
 
-Evergreen Estates separates database-related logic from UI components.
+---
 
-Database functionality is organized inside the `db` directory to keep data operations isolated from presentation logic.
+# shadcn/ui Client Components
 
-Example:
-
+The following UI components include `"use client"`:
 ```
-src/
-├── db/
-│   └── supabase/
-│       ├── queries/
-│       ├── util/
-│       └── client configuration
+src/components/ui/checkbox.tsx
+src/components/ui/field.tsx
+src/components/ui/label.tsx
+src/components/ui/separator.tsx
 ```
 
-The database layer is responsible for:
-
-- Fetching property listings
-- Retrieving individual listings
-- Handling Supabase interactions
-- Managing database-related utility functions
-- Keeping data access logic separate from components
 
 
-This separation improves maintainability and makes it easier to change database providers or expand backend functionality in the future.
-
-
-# Supabase Integration
-
-Supabase is used as the backend platform for Evergreen Estates.
-
-The application uses:
-
-- PostgreSQL database for property listing data
-- Supabase Storage for property images
-- Supabase client libraries for database communication
-
-
-The project moved from static mock data to real database-backed data, requiring consideration of:
-
-- Database structure
-- Query organization
-- Storage bucket organization
-- Public asset URLs
-- Environment variable management
-- Production deployment configuration
-
-
-# Image Storage & Optimization
-
-Property images are stored using Supabase Storage instead of being bundled with the application.
-
-The application retrieves image URLs from Supabase Storage and uses them when rendering property listings.
-
-During deployment, image optimization required additional investigation because Next.js image optimization and Netlify's image handling interact differently than local development.
-
-This introduced lessons around:
-
-- CDN image delivery
-- Runtime image processing
-- Hosting provider limitations
-- Performance tradeoffs
-- Optimized versus unoptimized image delivery
-
-
-# Deployment Lessons
-
-Deploying Evergreen Estates introduced several production-specific challenges.
-
-Key lessons included:
-
-- Configuring Netlify correctly for a Next.js App Router application
-- Understanding how Next.js build output is handled during deployment
-- Configuring publish directories correctly
-- Managing environment variables between local and production environments
-- Debugging production-only build errors
-- Understanding Netlify plugins and framework integrations
-- Investigating differences between local development behavior and deployed behavior
-
-
-# Future Improvements
-
-- Implement real authentication with persistent sessions
-- Add protected routes
-- Build an admin dashboard for managing property listings
-- Add full CRUD functionality for listings
-- Add property management tools
-- Implement booking requests with database persistence
-- Add map integration for property locations
-- Improve caching strategies
-- Add automated testing
-- Add performance monitoring using tools such as Lighthouse and Web Vitals
-- Improve image optimization and delivery strategies
-- Add analytics and user behavior tracking
 
 
 # Author
