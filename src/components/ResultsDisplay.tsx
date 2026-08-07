@@ -1,12 +1,62 @@
 
+import { getFilteredListings } from '@/db/supabase/util/GetFilteredData';
 
-const ResultsDisplay = (  ) => {
+import Listing from './Listing';
 
-    
+
+interface filters {
+    price: [number, number]
+    tags: string[];
+    search: string;
+}
+
+ interface SearchParams {
+        query?: string;
+        price?: string;
+        tag?: string | string[];
+    };
+
+    interface ResultsDisplayProps {
+    searchParams: SearchParams;
+}
+
+export const ResultsDisplay = async ({
+    searchParams,
+}: ResultsDisplayProps) => {
+
+    const filters: filters = {
+        price: searchParams.price
+            ? searchParams.price.split('-').map(Number) as [number, number]
+            : [100000, 5000000],
+
+        tags: Array.isArray(searchParams.tag)
+        ? searchParams.tag
+        : searchParams.tag
+        ? [searchParams.tag]
+        : [],
+
+        search: searchParams.query || ''
+    };
+
+
+    const listings = await  getFilteredListings(filters);{
+        if (listings.length === 0) {
+            return <div>No listings found.</div>;
+        }
+ 
+    }
+ 
 
     return (
-        <div>
-            <h1>Results Display</h1>
+        <div className="grid grid-cols-3 gap-6">
+
+            {listings.map(listing => (
+                <Listing
+                    key={listing.id}
+                    listing={listing}
+                />
+            ))}
+
         </div>
     )
 }

@@ -2,34 +2,29 @@
 import { Filters } from "@/components/Filters";
 import Listing from "@/components/Listing";
 import { Suspense } from "react";
+import react from "react";
+import {ResultsDisplay} from "@/components/ResultsDisplay";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export interface filters {
-    minPrice: number | null;
-    maxPrice: number | null;
-    tags: string[];
-    search: string;
+interface SearchParams {
+    query?: string;
+    price?: string;
+    tag?: string[];
 }
 
-const initialFilters: filters = {
-    minPrice: null,
-    maxPrice: null,
-    tags: [],
-    search: "",
-};
+const Search = async ({searchParams}: {searchParams: Promise<SearchParams>;}) => {
 
-const Search = () => {
-    
+    const params = await searchParams;
 
-    
-
-    
-   
+    console.log("PAGE PARAMS:", params);
     return (
-        <div className="bg-[#141616]">
-            <Suspense fallback={<div>Loading filters...</div>}>
-                <Filters/>
+        <div className="bg-[#141616]"> 
+        
+         <Filters/>
+            <Suspense fallback={<div>Loading page...</div>}>
+              
+                <ResultsDisplay searchParams={params} />
                 
             </Suspense>
         </div>
