@@ -19,9 +19,11 @@ const Search = async ({searchParams}: {searchParams: Promise<SearchParams>;}) =>
 
     console.log("PAGE PARAMS:", params);
     return (
-        <div className="bg-[#141616]"> 
+        <div className=""> 
+
+            <Filters/>
+            
         
-         <Filters/>
             <Suspense fallback={<div>Loading results...</div>}>
                 <ResultsDisplay searchParams={params} />
             </Suspense>
