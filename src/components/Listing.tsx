@@ -2,36 +2,22 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import  Houselisting  from "@/lib/types";
 
-interface ListingProps {
-  listing: Houselisting | null;
+export interface ListingProps {
+  listing: Pick<
+    Houselisting,
+    "id" | "images" | "title" | "price" | "description"
+  >;
 }
-export interface Houselisting {
-  id: string;
-  images: string[];
-  tags: string[];
-  title: string;
-  price: number;
-  stars: number;
-  beds: number;
-  baths: number;
-  sqft: number;
-  address: string;
-  description: string;
-  seller: string;
-};
 
 
 const Listing =  ({listing}: ListingProps) => {
 
   
 
-  if (!listing) {
-    return <div>No listing details found.</div>;
-  } 
-  if (!listing.images || listing.images.length === 0) {
-    return <div>No images available for this property.</div>;
-  }
+  
+  
 
 
   return (

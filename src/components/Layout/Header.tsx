@@ -1,5 +1,6 @@
 import React from 'react'
 import Menu from './Menu'
+import Nav from './Nav'
 
 type Props = {}
 
@@ -21,6 +22,7 @@ const Header = (props: Props) => {
             <div className="xs:hidden">
                 <Menu/>
             </div>
+            <Nav/>
 
 
             

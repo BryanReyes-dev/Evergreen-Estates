@@ -6,13 +6,14 @@ import Listing from './Listing';
 
 
 
- interface SearchParams {
-        query?: string;
-        price?: string;
-        tag?: string | string[];
-    };
+interface SearchParams {
+    query?: string;
+    price?: string;
+    tag?: string | string[];
+};
 
-    interface ResultsDisplayProps {
+
+interface ResultsDisplayProps {
     searchParams: SearchParams;
 }
 
