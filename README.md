@@ -2,13 +2,9 @@
 
 ## Overview
 
+EverGreen Estates is a full-stack real estate web application built with Next.js, TypeScript, Supabase, Tailwind CSS, shadcn/ui, and Framer Motion.
 
-EverGreen Estates is a full-stack real estate web application built with Next.js, TypeScript, Supabase, Tailwind CSS, and shadcn/ui.
-
-The project demonstrates a modern Next.js App Router architecture using Server Components for data fetching and rendering, while isolating interactive behavior into small Client Components where browser functionality is required.
-
-The application allows users to browse property listings, view property details, search listings, and filter properties using URL-based search parameters connected to server-side Supabase queries.
-
+The project uses the Next.js App Router, Server Components for data fetching and rendering, and focused Client Components for browser interactivity. Users can browse property listings, view property details, search listings, and filter properties through URL-based search parameters connected to server-side Supabase queries.
 
 ## Live Demo Link
 
@@ -18,30 +14,28 @@ The application allows users to browse property listings, view property details,
 
 ![Async UI State Pattern (Loading, Error, Empty, Success)](./dev-images/Screenshot%202026-06-28%20132230.png)
 
-
-# Features
+## Features
 
 - Responsive mobile-first design
 - Property browsing and listing pages
-- Property image galleries using Supabase Storage with next.js optimization
-- Server side Search and client side filtering system using URL search parameters
+- Property image galleries using Supabase Storage with Next.js optimization
+- Server-side search and client-side filtering using URL search parameters
 - Shareable filtered URLs
-- Clear Filter button that pushes to url and ui
+- Clear Filter button that pushes to URL and UI
 - Featured property listings
 - Loading, error, and data components
-- layout folder structure
+- Layout folder structure
 - Form validation and accessibility considerations
-- SEO optimization 
+- SEO optimization
 - Reusable component-based architecture
 - Cloud image storage management with security implementations
 - Server-side data fetching with async Server Components
-- Client-side interactive filter ui using search params
+- Client-side interactive filter UI using search params
 - Component styling using Tailwind CSS and shadcn/ui
 
+## Technologies Used
 
-# Technologies Used
-
-## Frontend
+### Frontend
 
 - Next.js (App Router)
 - React
@@ -50,20 +44,19 @@ The application allows users to browse property listings, view property details,
 - shadcn/ui
 - Framer Motion
 
-## Backend / Database
+### Backend / Database
 
 - Supabase
   - PostgreSQL database
   - Storage buckets for property images
   - Supabase client integration
 
-## Deployment
+### Deployment
 
 - Netlify
 - Next.js Runtime
 
-
-# Development Tools
+## Development Tools
 
 - Git
 - GitHub
@@ -71,219 +64,90 @@ The application allows users to browse property listings, view property details,
 - ESLint
 - npm
 
+## Repository
 
-# Repository
+[View Repository](https://github.com/BryanReyes-dev/evergreen-estates)
 
-[View Repository](https://github.com/BryanReyes-dev/Portfolio-Website)
+## Agent Files
 
+The `agent-files/` directory contains documentation for AI coding agents and is separate from this human-facing README and the application source. `AGENTS.md` contains agent instructions, `ARCHITECTURE.md` records finalized architecture, `Agents_Context.md` stores short-term working context, and `CLAUDE.md` provides the Claude entry point.
 
-# Project Architecture
+## Project Architecture
 
-The application follows a separation between UI components, database logic, and utility functions.
+The application separates UI components, database logic, and shared utilities. Database-related logic is isolated in `src/db`, while the Next.js App Router provides the route and rendering layer. Server Components handle data fetching and rendering by default; Client Components are used where browser state, event handlers, navigation hooks, or other interactive behavior is required.
 
-Example structure:
-```
-src/
-├── app/
-│ ├── (site)/
-├ └── page.tsx
-│
-├── components/
-│ ├── ui/
-│ ├── Layout/
-│ ├── Filters.tsx
-│ ├── CheckBox.tsx
-│ └── listing components...
-│
-├── db/
-│ └── supabase/
-│ ├── queries
-│ ├── utilities
-│ └── database helpers...
-│
-└── lib/
-└── shared utilities...
-```
-The application separates:
-
-- UI components
-- Database operations
-- Shared utility functions
-- Server-side data fetching
-
-Database-related logic is isolated inside the `db` directory to keep database operations separate from presentation components.
-
-
-# Installation Steps
+## Installation Steps
 
 Clone the repository:
 
 ```bash
 git clone https://github.com/BryanReyes-dev/evergreen-estates.git
 ```
+
 Navigate into the project:
+
 ```bash
 cd evergreen-estates
 ```
+
 Install dependencies:
+
 ```bash
 npm install
 ```
 
 Create environment variables:
 
+```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
 
 Run the development server:
 
 ```bash
-
 npm run dev
 ```
 
-Open:
-```bash
-http://localhost:3000
-```
-# Next.js Architecture
+Open the development URL reported by Next.js.
 
-EverGreen Estates uses the Next.js App Router architecture.
-
-## Server Components
-
-Server Components are used by default throughout the application.
-
-They are responsible for:
-
-- Fetching property data
-- Calling Supabase queries
-- Rendering listing results
-- Handling server-side search parameters
-- Reducing unnecessary client-side JavaScript
-
-The search page uses async Server Components to receive URL parameters and request filtered data from Supabase.
-
-Example flow:
-```
-User changes filters
-|
-v
-Filters Client Component updates URL parameters
-|
-v
-Search page receives updated parameters
-|
-v
-Server Component queries Supabase
-|
-v
-Filtered listings are rendered
-```
-
-# Challenges & Lessons Learned
+## Challenges & Lessons Learned
 
 - Understanding Next.js data fetching strategies and when to use Server Components versus Client Components
-- Learning how async Server Components simplify data fetching compared to traditional client-side fetching patterns
-- Minimizing Client Components by delegating interactive behavior into isolated Client Components while keeping data fetching and rendering responsibilities inside Server Components
 - Structuring a full-stack Next.js application with separation between UI components, database logic, and utility functions
 - Integrating Supabase as a backend solution, including database tables, storage buckets, file paths, and production data management
-- Understanding the tradeoffs between client-side filtering, server-side filtering, and database queries
-- Managing state and data flow between components while avoiding unnecessary prop drilling 
-- Learning how URL search parameters can create persistent and shareable filtering systems 
-- Designing reusable components and understanding how component libraries like shadcn/ui are structured
-- Learning when components require `"use client"` and when they can remain server-rendered
-- Debugging TypeScript issues across database queries, components, and application logic
-- Understanding environment variables and how they differ between local development and production deployments
-- Learning how cloud storage systems work, including bucket structure, file paths, and public asset delivery
-- Migrating property images from local assets to Supabase Storage and understanding cloud-based image delivery
-- Troubleshooting Next.js image optimization issues when deploying to a hosting provider
-- Understanding how hosting environments can affect framework features such as Next.js image optimization and runtime behavior
-- Learning how deployment configurations differ between local development and production environments
-- Debugging Netlify deployment issues involving publish directories, build configuration, and framework plugins
-- Improving responsive layouts and UI consistency using Tailwind CSS
-- Learning how component libraries like shadcn/ui improve development speed while maintaining customization
-- Understanding production considerations such as caching, performance optimization, scalability, and deployment configuration
-- Learning the importance of testing application behavior in production environments rather than relying only on local development
+- Understanding URL search parameters as persistent and shareable filtering systems
+- Designing reusable components with Tailwind CSS and shadcn/ui
+- Debugging TypeScript, environment variable, image optimization, and deployment issues
+- Understanding production considerations such as caching, performance, scalability, and hosting configuration
 
+## Client Components
 
-# Client Components
+The application intentionally minimizes Client Components. Components remain Server Components unless they require browser APIs, React state, event handlers, client-side navigation hooks, or other interactive browser behavior.
 
-The application intentionally minimizes Client Components.
+### `Filters.tsx`
 
-By default, components remain Server Components unless they require:
+Location: `src/components/Filters.tsx`
 
-- Browser APIs
-- React state
-- Event handlers
-- Client-side navigation hooks
-- Interactive UI behavior
+`Filters.tsx` is a Client Component because it contains interactive filtering controls and updates URL search parameters. It does not fetch property data directly; the Server Component layer performs the database query after the URL changes.
 
-The following components require `"use client"`:
+### `Layout/Menu.tsx`
 
+Location: `src/components/Layout/Menu.tsx`
 
+`Menu.tsx` is a Client Component because mobile navigation uses React state, click events, and Framer Motion animations.
 
-## `Filters.tsx`
-
-Location: ```src/components/Filters.tsx```
-
-`Filters.tsx` requires `"use client"` because it contains interactive filtering controls.
-
-It uses:
-
-- `useState`
-- `useEffect`
-- `useRouter`
-- `usePathname`
-- `useSearchParams`
-
-The component handles:
-
-- Search input updates
-- Price slider changes
-- Tag selection
-- Updating URL search parameters
-
-The component does not fetch property data directly.
-
-Instead, it updates the URL and allows the Server Component layer to perform the database query.
-
-This keeps filtering logic server-driven while maintaining a responsive user interface.
-
----
-
-## `Layout/Menu.tsx`
-
-Location:```src/components/Layout/Menu.tsx```
-
-`Menu.tsx` requires `"use client"` because mobile navigation depends on interactive browser behavior.
-
-It uses:
-
-- React state for opening and closing the menu
-- User click events
-- Framer Motion animations
-
-The rest of the layout remains server-rendered.
-
----
-
-# shadcn/ui Client Components
+## shadcn/ui Client Components
 
 The following UI components include `"use client"`:
-```
+
+```text
 src/components/ui/checkbox.tsx
 src/components/ui/field.tsx
 src/components/ui/label.tsx
 src/components/ui/separator.tsx
 ```
 
-
-
-
-
-# Author
+## Author
 
 Bryan Reyes
-
-
