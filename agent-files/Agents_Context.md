@@ -35,7 +35,7 @@ Prefer editing, consolidating, replacing, or removing stale context over appendi
 
 ### Context Metrics
 
-- **Last measured:** 2026-08-25
+- **Last measured:** 2026-08-31
 - **Approximate token count:** intentionally kept compact
 - **Preferred range:** 5,000–10,000 tokens
 - **Hard ceiling:** 15,000 tokens
@@ -156,7 +156,7 @@ A component should remain a Server Component unless it requires browser-specific
 - client navigation hooks
 - interactive animation behavior
 
-Known interactive areas include the filtering UI and mobile navigation. shadcn/ui components may also require Client Components where their implementation requires browser interaction.
+Known interactive areas include the filtering UI, mobile navigation, and future media-carousel behavior. shadcn/ui components may also require Client Components where their implementation requires browser interaction.
 
 Do not add `"use client"` to an entire subtree when only a small interactive component requires it.
 
@@ -176,33 +176,129 @@ Environment variables are required for local development and deployment. Secrets
 
 ---
 
-# 7. Current Work / Implementation Notes
+# 7. UI, Icons, Fonts, and Reusable Components
+
+## Icon convention
+
+EverGreen Estates uses **Hugeicons** as its project icon system. `components.json` is configured with `"iconLibrary": "hugeicons"`.
+
+Do not introduce Lucide icons into UI code merely because shadcn examples commonly use Lucide. shadcn/ui is the UI-component system; Hugeicons is the project's icon system.
+
+Use the existing Hugeicons React pattern:
+
+```tsx
+import { HugeiconsIcon } from "@hugeicons/react";
+import { HeartIcon } from "@hugeicons/core-free-icons";
+
+<HugeiconsIcon icon={HeartIcon} size={24} />
+```
+
+Prefer the `size` prop for fixed icon sizes and Tailwind sizing classes when responsive icon dimensions are needed. Avoid mixing icon libraries for equivalent UI actions.
+
+A `lucide-react` dependency was recently added during listing-page work, but the current project convention remains Hugeicons. Do not use the dependency for new UI unless Bryan explicitly decides to standardize on Lucide instead.
+
+## Typography convention
+
+Figtree is the primary project/UI font.
+
+Maitree, Lato, and Kanit have been added to the current work as additional available font families for intentional use. They should have clear roles rather than being mixed arbitrarily throughout the interface.
+
+The project currently uses the traditional Tailwind configuration (`tailwind.config.js`) for custom font-family utilities. Do not migrate the project's CSS to a different Tailwind setup just to add a font.
+
+Current intended Tailwind font utilities:
+
+```text
+font-sans    → Figtree
+font-maitree → Maitree
+font-lato    → Lato
+font-kanit   → Kanit
+```
+
+Use secondary fonts deliberately, especially on property-detail content, titles, branding, or other areas where their visual character is useful. Figtree remains the default UI typeface unless the design calls for another font.
+
+## Listing-detail work in progress
+
+Individual listing pages are being built from the existing listing data. The current page direction includes displaying the property's title, price, address, description, and a favorite/heart action. The goal is to continue expanding this page using reusable components rather than duplicating listing UI.
+
+The next planned reusable UI pieces are:
+
+1. **Listing media carousel**
+2. **Listing star rating display**
+
+### Listing media carousel
+
+The carousel should behave as a slideshow and support:
+
+- normal images
+- animated GIFs
+- videos
+- previous/next navigation
+- swipe/drag interaction where appropriate
+- autoplay/slideshow behavior
+- responsive presentation
+
+The preferred implementation direction is to use **Embla Carousel for carousel mechanics**, with its autoplay plugin, while keeping media rendering under Evergreen's control. Each slide can render the appropriate media element (`Image`, `<img>`, or `<video>`) based on media type. Do not build carousel mechanics from scratch unless there is a concrete requirement Embla cannot satisfy.
+
+A future media model should distinguish media types instead of assuming every listing media item is an image. The existing `Houselisting.images` field may need to evolve when this is implemented.
+
+### Listing star ratings
+
+Listing ratings are mock/read-only review ratings for the current listing UI. The value is on a **1–5 scale** and must support fractional values such as `1.5`, `2.5`, `3.5`, or `4.5`.
+
+Bryan prefers using the **React Stars library** for this rather than implementing a custom star-rating component with Hugeicons. Prefer a mature library for this small, generic interaction/presentation requirement if it provides the required fractional/read-only display cleanly.
+
+The desired usage should remain simple at the listing level, conceptually:
+
+```tsx
+<ReactStars value={listing.stars} edit={false} half />
+```
+
+The exact package/API must be verified against the installed/current dependency before implementation. Do not assume an API without checking the package version.
+
+Hugeicons should still be used for other Evergreen UI icons; React Stars is an intentional exception for the star-rating visualization.
+
+---
+
+# 8. Current Work / Implementation Notes
 
 Use this section for discoveries that another agent needs to know while active work is in progress.
 
 ### Current thoughts
 
-_Add only genuinely new observations._
+- Finish the individual listing-detail experience after the reusable media carousel and rating pieces are established.
+- Prefer existing libraries for non-unique, interaction-heavy behavior when they reduce implementation complexity and fit the current stack.
+- Keep reusable UI components focused and composable rather than putting all listing-page behavior into one large component.
 
 ### Repository observations
 
-_Add useful implementation discoveries here._
+- Recent listing-detail work added title, price, address, description, and a Hugeicons heart action.
+- Recent typography work added Maitree, Lato, and Kanit as available fonts through `next/font/google` and Tailwind font-family definitions.
+- The repository's shadcn configuration explicitly uses Hugeicons.
+- The project recently added `lucide-react`, but this does not change the intended icon convention unless Bryan explicitly approves that change.
 
 ### Concerns / risks
 
-_Add concerns here. If a concern becomes a finalized architectural decision, ask Bryan before moving it into `ARCHITECTURE.md`._
+- Do not accidentally introduce a second icon system when installing or configuring shadcn components.
+- Do not migrate Tailwind configuration casually; the current repository uses a traditional `tailwind.config.js` setup and working CSS directives.
+- Media carousel implementation must account for video behavior and autoplay interaction rather than treating every asset as a static image.
+- Fractional ratings must render accurately and remain read-only for the current mock-review use case.
+- Keep Client Components isolated to the carousel/interactivity rather than converting the entire listing page to a Client Component.
 
 ### Future thoughts
 
-_Add ideas worth discussing before implementation._
+- Consider a typed listing-media model (`image`, `gif`, `video`) when carousel work begins.
+- Consider thumbnails or pagination indicators for the property media carousel after the core slideshow works.
+- Consider pausing carousel autoplay when a video is playing or when the user interacts, depending on the final UX.
 
 ---
 
-# 8. Agent Communication
+# 9. Agent Communication
 
 ## ChatGPT
 
 Use this section for concise handoff information that another agent needs. Do not repeat the architecture document here.
+
+Current handoff: Listing-detail work is active. Before finishing the page, establish the reusable media slideshow and fractional read-only rating components. Preferred media solution: Embla Carousel + autoplay. Preferred rating solution: React Stars. Project icon convention: Hugeicons. Primary font: Figtree, with Maitree/Lato/Kanit available for deliberate secondary use.
 
 ## Codex
 
@@ -210,7 +306,7 @@ Use this section for implementation discoveries, test results, and repository ob
 
 ---
 
-# 9. Maintenance Reminder for Future Agents
+# 10. Maintenance Reminder for Future Agents
 
 **Do not let this file become a second architecture document.**
 
