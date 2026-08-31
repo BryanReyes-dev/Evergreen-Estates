@@ -3,7 +3,7 @@ import { Geist, Geist_Mono, Figtree } from "next/font/google";
 import "@/app/globals.css";
 import { cn } from "@/lib/utils";
 
-const figtree = Figtree({subsets:['latin'],variable:'--font-sans'});
+const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" });
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +21,6 @@ export const metadata: Metadata = {
   icons: {
     icon: "/images/logo/favicon.png",
   },
-  
 };
 
 export default function RootLayout({
@@ -31,7 +30,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cn("font-sans", figtree.variable)}>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#141616] text-[#228100]`}>
+      <head>
+        {/* Evergreen Estates already provides its own dark theme. Prevent browser extensions from rewriting the DOM before hydration. */}
+        <meta name="darkreader-lock" />
+      </head>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#141616] text-[#228100]`}
+      >
         {children}
       </body>
     </html>
