@@ -11,6 +11,12 @@ module.exports = {
         xlrg: "1280px",
         
       },
+      fontFamily: {
+        sans: ["var(--font-figtree)"],
+        maitree: ["var(--font-maitree)"],
+        lato: ["var(--font-lato)"],
+        kanit: ["var(--font-kanit)"],
+      },
     },
   },
   plugins: [],

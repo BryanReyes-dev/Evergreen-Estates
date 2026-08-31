@@ -1,10 +1,29 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Figtree } from "next/font/google";
+import { Geist, Geist_Mono, Figtree, Maitree, Lato, Kanit } from "next/font/google";
 import "@/app/globals.css";
 import { cn } from "@/lib/utils";
+const figtree = Figtree({
+  subsets: ["latin"],
+  variable: "--font-figtree",
+});
 
-const figtree = Figtree({subsets:['latin'],variable:'--font-sans'});
+const kanit = Kanit({
+  weight: ["300", "400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-kanit",
+});
 
+const lato = Lato({
+  weight: ["300", "400", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-lato",
+});
+
+const maitree = Maitree({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-maitree",
+});
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -30,7 +49,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("font-sans", figtree.variable)}>
+    <html lang="en" 
+        className={cn(
+        figtree.variable,
+        maitree.variable,
+        lato.variable,
+        kanit.variable
+      )}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#141616] text-[#228100]`}>
         {children}
       </body>
