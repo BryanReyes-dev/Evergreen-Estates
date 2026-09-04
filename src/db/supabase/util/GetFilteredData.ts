@@ -1,7 +1,7 @@
 import { supabase } from '@/db/supabase/server';
 import getImageUrl from '@/db/supabase/util/GetImageUrl';
-import { Houselisting } from './GetListingById'; // Adjust this import path based on where Houselisting is defined
-import { filters as Filters } from '@/components/types/filters'; // Adjust this import path based on where filters is defined
+import Houselisting from '@/lib/types'; // Adjust this import path based on where Houselisting is defined
+import { filters as Filters } from '@/app/types'; // Adjust this import path based on where filters is defined
 
 export const getFilteredListings = async (filters: Filters): Promise<Houselisting[]> => {
     try {

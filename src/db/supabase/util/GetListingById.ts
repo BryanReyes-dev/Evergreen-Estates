@@ -1,20 +1,7 @@
 import { supabase } from '@/db/supabase/server';
 import getImageUrl from '@/db/supabase/util/GetImageUrl'
+import {Houselisting} from '@/app/types'
 
-export interface Houselisting {
-  id: string;
-  images: string[];
-  tags: string[];
-  title: string;
-  price: number;
-  stars: number;
-  beds: number;
-  baths: number;
-  sqft: number;
-  address: string;
-  description: string;
-  seller: string;
-}
 
 export async function getListingById(id:string): Promise<Houselisting|null> {
   const { data, error } = await supabase

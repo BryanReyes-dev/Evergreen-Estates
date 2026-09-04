@@ -1,35 +1,27 @@
 
 import { getFilteredListings } from '@/db/supabase/util/GetFilteredData';
-import { filters } from '@/components/types/filters';
+import { filters, SearchParams } from '@/app/types';
 import Listing from './Listing';
 
 
 
 
-interface SearchParams {
-    query?: string;
-    price?: string;
-    tag?: string | string[];
-};
 
 
-interface ResultsDisplayProps {
-    searchParams: SearchParams;
-}
 
 export const ResultsDisplay = async ({
     searchParams,
-}: ResultsDisplayProps) => {
+}: { searchParams: SearchParams }) => {
 
     const filters: filters = {
         price: searchParams.price
             ? searchParams.price.split('-').map(Number) as [number, number]
-            : [100000, 5000000],
+            : [100000, 5000000], // nim to max number range for price filter
 
         tags: Array.isArray(searchParams.tag)
         ? searchParams.tag
         : searchParams.tag
-        ? [searchParams.tag]
+        ? [searchParams.tag]  //tag is an array of strings, if it's a single string, convert it to an array with one element
         : [],
 
         search: searchParams.query || ''
