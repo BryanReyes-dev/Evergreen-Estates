@@ -1,4 +1,4 @@
-import { getListingById, Houselisting } from "../db/supabase/util/GetListingById";
+import { Houselisting } from "@/app/types";
 import Listing from "./Listing";
 import Nav from "./Layout/Nav";
 import Image from "next/image";
