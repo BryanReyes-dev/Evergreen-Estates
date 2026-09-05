@@ -2,7 +2,7 @@ import { getListingById } from "@/db/supabase/util/GetListingById";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { HeartIcon } from "@hugeicons/core-free-icons";
-import ListingMediaCarousel from "@/components/ListingMediaCarousel";
+import { ListingMediaCarousel } from "@/components/ListingMediaCarousel";
 import { getMediaType } from "@/db/supabase/util/MediaType";
 
 

@@ -1,7 +1,10 @@
 "use client";
-
+import { motion } from "framer-motion";
+import { Liquid } from "liquid-gooey";
 import useEmblaCarousel from "embla-carousel-react";
+import { CircleIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+
 import {
   ArrowBigLeftDashIcon,
   ArrowBigRightDashIcon,
@@ -9,11 +12,56 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ListingMediaCarouselProps } from "@/app/types";
 import Image from "next/image";
+import { useEffect, useState, useRef } from "react";
 
-const EmblaCarousel = (props: ListingMediaCarouselProps) => {
+export const ListingMediaCarousel = (props: ListingMediaCarouselProps) => {
   const { media, options } = props;
-
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [indicatorX, setIndicatorX] = useState(0);
   const [emblaRef, emblaApi] = useEmblaCarousel(options);
+  const paginationContainerRef = useRef<HTMLDivElement | null>(null);
+  const paginationRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const liquidRef = useRef<HTMLDivElement | null>(null);
+  const ui_size = 20; // Size of the pagination buttons
+  const indicatorSize = ui_size - 7;
+  const arrowSize = ui_size + 9; // Size of the arrow buttons
+  
+  const onSelect = () => {
+  if (!emblaApi) return;
+
+    setSelectedIndex(emblaApi.selectedScrollSnap());
+  };
+
+  useEffect(() => {
+    const selectedButton = paginationRefs.current[selectedIndex];
+    const paginationContainer = paginationContainerRef.current;
+
+    if (!selectedButton || !paginationContainer) return;
+
+    const buttonRect = selectedButton.getBoundingClientRect();
+    const containerRect = paginationContainer.getBoundingClientRect();
+
+    const x =
+      buttonRect.left -
+      containerRect.left +
+      buttonRect.width / 2 -
+      indicatorSize / 2;
+
+    setIndicatorX(x);
+  }, [selectedIndex]);
+
+
+  useEffect(() => {
+      if (!emblaApi) return;
+
+      onSelect();
+      emblaApi.on("select", onSelect);
+
+      return () => {
+        emblaApi.off("select", onSelect);
+      };
+  }, [emblaApi]);
+ 
 
   return (
     <div className="relative">
@@ -77,23 +125,79 @@ const EmblaCarousel = (props: ListingMediaCarouselProps) => {
       
       </div>
 
-      <Button type="button" onClick={() => emblaApi?.scrollPrev()}>
 
-        <HugeiconsIcon
-          icon={ArrowBigLeftDashIcon}
-          size={24}
-        />
+      <div className= " flex justify-between " >
+        <Button type="button" onClick={() => emblaApi?.scrollPrev()}>
 
-      </Button>
+          <HugeiconsIcon
+            icon={ArrowBigLeftDashIcon}
+            size={arrowSize}
+          />
 
-      <Button type="button" onClick={() => emblaApi?.scrollNext()}>
-        <HugeiconsIcon
-          icon={ArrowBigRightDashIcon}
-          size={24}
-        />
-      </Button>
+        </Button>
+
+    
+        <div  ref={paginationContainerRef} className=" relative flex items-center  ">
+          
+          {media.map((_, index) => (
+            <Button 
+              key={index} 
+              ref={(element) => {
+                paginationRefs.current[index] = element;
+              }}
+              type="button"
+              onClick={() => emblaApi?.scrollTo(index)
+              }>
+              <HugeiconsIcon
+                icon={CircleIcon}
+                size={ui_size}
+                className={selectedIndex === index ? "text-blue-500" : "text-gray-300"}
+              />
+            </Button>
+          ))}
+        
+
+
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute inset-0 flex items-center">
+              <Liquid ref={liquidRef}>
+                <Liquid.Item
+                  effect="move"
+                  move={{
+                    springiness: .7,
+                    wobble: 2,
+                    stretch: 5,
+                    trail: 4,
+                  }}
+                >
+                  <motion.div
+                    className=" rounded-full bg-white"
+                    animate={{ x: indicatorX }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 100,
+                      damping: 10,
+                    }}
+                    style={{ height: `${indicatorSize}px`, width: `${indicatorSize}px` }}
+                  />
+                </Liquid.Item>
+              </Liquid>
+            </div>
+          </div>
+
+
+        </div>
+          
+        <Button type="button" onClick={() => emblaApi?.scrollNext()}>
+          <HugeiconsIcon
+            icon={ArrowBigRightDashIcon}
+            size={arrowSize}
+          />
+        </Button>
+      </div>
+
+      
     </div>
   );
 };
 
-export default EmblaCarousel;

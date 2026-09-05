@@ -1,6 +1,6 @@
 import { supabase } from "@/db/supabase/server";
 
-const getImageUrl = async (id: string, images: string[] = []) => {
+const getMediaUrl = async (id: string, images: string[] = []) => {
   const folderPath = `listings/${id}`;
 
   const { data: files, error: listError } = await supabase.storage
@@ -56,4 +56,4 @@ const getImageUrl = async (id: string, images: string[] = []) => {
   );
 };
 
-export default getImageUrl;
+export default getMediaUrl;

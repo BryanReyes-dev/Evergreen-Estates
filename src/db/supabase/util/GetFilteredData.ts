@@ -1,5 +1,5 @@
 import { supabase } from '@/db/supabase/server';
-import getImageUrl from '@/db/supabase/util/GetImageUrl';
+import getImageUrl from '@/db/supabase/util/GetMediaUrls';
 import Houselisting from '@/lib/types'; // Adjust this import path based on where Houselisting is defined
 import { filters as Filters } from '@/app/types'; // Adjust this import path based on where filters is defined
 

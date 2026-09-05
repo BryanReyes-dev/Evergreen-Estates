@@ -1,5 +1,5 @@
 import { supabase } from '@/db/supabase/server';
-import getImageUrl from '@/db/supabase/util/GetImageUrl'
+import getImageUrl from '@/db/supabase/util/GetMediaUrls'
 import {Houselisting} from '@/app/types'
 
 
