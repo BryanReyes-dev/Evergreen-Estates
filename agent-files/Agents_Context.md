@@ -4,7 +4,7 @@
 >
 > This file is intentionally non-secret and may be committed to the public repository.
 >
-> **Important:** This is a living workspace for current context, implementation discoveries, hypotheses, open questions, and agent-to-agent communication. It is **not the authoritative architecture document**.
+> This is a living workspace for current context, implementation discoveries, hypotheses, open questions, and agent-to-agent communication. It is **not the authoritative architecture document**.
 >
 > Finalized architectural decisions belong in `agent-files/ARCHITECTURE.md` after Bryan explicitly approves them.
 
@@ -12,40 +12,17 @@
 
 # 0. Context Budget & Maintenance Policy
 
-This file is short-term working memory. Keep it high-signal and avoid turning it into a second architecture document.
-
-## Hard rule: do not repeat context unnecessarily
-
-Before adding a note, ask:
-
-- Is this information actually new?
-- Is it already documented elsewhere?
-- Can an existing note be updated instead of adding another copy?
-- Is it still relevant?
-- Does it belong in `ARCHITECTURE.md` instead?
-
-Prefer editing, consolidating, replacing, or removing stale context over appending another explanation of the same thing.
-
-### Current policy
+Keep this file high-signal and compact. Prefer editing, consolidating, replacing, or removing stale context over appending duplicate explanations.
 
 - Preferred working size: approximately **5,000–10,000 tokens**.
 - Warning zone: **10,000–15,000 tokens**.
 - Hard ceiling: **15,000 tokens** unless Bryan explicitly changes this policy.
-- After a material edit, refresh the Context Metrics below.
-
-### Context Metrics
-
-- **Last measured:** 2026-08-31
-- **Approximate token count:** intentionally kept compact
-- **Preferred range:** 5,000–10,000 tokens
-- **Hard ceiling:** 15,000 tokens
-- **Status:** Healthy
+- Last measured: 2026-09-05
+- Status: Healthy
 
 ---
 
 # 1. How Agents Should Use This File
-
-Agents working on EverGreen Estates should read this file when beginning substantial work.
 
 Clearly distinguish:
 
@@ -66,13 +43,7 @@ Do not silently turn a hypothesis into a requirement or architectural decision.
 
 **Agents must ask Bryan for explicit permission before modifying `ARCHITECTURE.md`.**
 
-If Bryan approves an architectural decision:
-
-1. Record the finalized decision in `ARCHITECTURE.md`.
-2. Remove or reduce the corresponding architectural material from this file.
-3. Keep only the short-term context needed for current work.
-
-Never silently promote working context into architecture.
+If Bryan approves an architectural decision, record the finalized decision there and reduce the corresponding temporary material in this file.
 
 ---
 
@@ -80,14 +51,14 @@ Never silently promote working context into architecture.
 
 EverGreen Estates is a full-stack real estate web application built with Next.js, TypeScript, Supabase, Tailwind CSS, shadcn/ui, and Framer Motion.
 
-The current application focuses on:
+The application focuses on:
 
 - browsing property listings
 - property detail pages
 - search and filtering
 - URL-based shareable filters
 - Supabase-backed property data
-- Supabase Storage property images
+- Supabase Storage property media
 - responsive, accessible UI
 
 The application uses the Next.js App Router and intentionally keeps most components as Server Components unless browser interactivity requires a Client Component.
@@ -96,7 +67,7 @@ The application uses the Next.js App Router and intentionally keeps most compone
 
 # 3. Current Implementation
 
-The repository currently uses this broad separation:
+Broad separation:
 
 ```text
 Next.js App Router
@@ -105,7 +76,7 @@ Next.js App Router
        │      └── data fetching / rendering
        │
        ├── Client Components
-       │      └── browser interaction / navigation
+       │      └── browser interaction / navigation / animation
        │
        ├── db/
        │      └── Supabase queries and database helpers
@@ -115,6 +86,8 @@ Next.js App Router
 ```
 
 The `src/db` directory is the database boundary. UI components should not contain duplicated database-query logic when an appropriate database helper already exists.
+
+Property media currently flows from the listing's `images` array through a storage URL resolver and into the reusable listing media carousel.
 
 ---
 
@@ -156,7 +129,7 @@ A component should remain a Server Component unless it requires browser-specific
 - client navigation hooks
 - interactive animation behavior
 
-Known interactive areas include the filtering UI, mobile navigation, and future media-carousel behavior. shadcn/ui components may also require Client Components where their implementation requires browser interaction.
+The listing media carousel is intentionally a Client Component because Embla and interactive media controls require browser-side behavior.
 
 Do not add `"use client"` to an entire subtree when only a small interactive component requires it.
 
@@ -167,10 +140,20 @@ Do not add `"use client"` to an entire subtree when only a small interactive com
 Supabase currently provides:
 
 - PostgreSQL property data
-- property image storage
-- the application database client integration
+- property media storage
+- application database integration
 
-Property images are stored in Supabase Storage and served through the application's image pipeline.
+The `property-images` bucket currently supports:
+
+- `image/jpeg`
+- `image/png`
+- `image/webp`
+- `image/avif`
+- `image/gif`
+- `video/mp4`
+- `video/webm`
+
+Listing media is currently served through Supabase signed URLs. Signed URLs may contain query parameters, so media-type detection must strip the query/hash before checking the file extension.
 
 Environment variables are required for local development and deployment. Secrets must never be committed to the repository.
 
@@ -182,7 +165,7 @@ Environment variables are required for local development and deployment. Secrets
 
 EverGreen Estates uses **Hugeicons** as its project icon system. `components.json` is configured with `"iconLibrary": "hugeicons"`.
 
-Do not introduce Lucide icons into UI code merely because shadcn examples commonly use Lucide. shadcn/ui is the UI-component system; Hugeicons is the project's icon system.
+Do not introduce Lucide icons into new UI merely because shadcn examples commonly use Lucide. shadcn/ui is the UI-component system; Hugeicons is the project's icon system.
 
 Use the existing Hugeicons React pattern:
 
@@ -193,19 +176,17 @@ import { HeartIcon } from "@hugeicons/core-free-icons";
 <HugeiconsIcon icon={HeartIcon} size={24} />
 ```
 
-Prefer the `size` prop for fixed icon sizes and Tailwind sizing classes when responsive icon dimensions are needed. Avoid mixing icon libraries for equivalent UI actions.
-
-A `lucide-react` dependency was recently added during listing-page work, but the current project convention remains Hugeicons. Do not use the dependency for new UI unless Bryan explicitly decides to standardize on Lucide instead.
+A `lucide-react` dependency exists from earlier listing-page work, but the project convention remains Hugeicons unless Bryan explicitly changes it.
 
 ## Typography convention
 
 Figtree is the primary project/UI font.
 
-Maitree, Lato, and Kanit have been added to the current work as additional available font families for intentional use. They should have clear roles rather than being mixed arbitrarily throughout the interface.
+Maitree, Lato, and Kanit are available for deliberate secondary use.
 
-The project currently uses the traditional Tailwind configuration (`tailwind.config.js`) for custom font-family utilities. Do not migrate the project's CSS to a different Tailwind setup just to add a font.
+The project uses the traditional Tailwind configuration (`tailwind.config.js`). Do not migrate Tailwind configuration casually.
 
-Current intended Tailwind font utilities:
+Current intended font utilities:
 
 ```text
 font-sans    → Figtree
@@ -214,91 +195,150 @@ font-lato    → Lato
 font-kanit   → Kanit
 ```
 
-Use secondary fonts deliberately, especially on property-detail content, titles, branding, or other areas where their visual character is useful. Figtree remains the default UI typeface unless the design calls for another font.
+---
 
-## Listing-detail work in progress
+# 8. Listing Detail and Media Carousel
 
-Individual listing pages are being built from the existing listing data. The current page direction includes displaying the property's title, price, address, description, and a favorite/heart action. The goal is to continue expanding this page using reusable components rather than duplicating listing UI.
+Individual listing pages currently display listing information including title, price, address, description, a favorite/heart action, and listing media.
 
-The next planned reusable UI pieces are:
+## Listing media model
 
-1. **Listing media carousel**
-2. **Listing star rating display**
+The reusable media carousel uses:
 
-### Listing media carousel
-
-The carousel should behave as a slideshow and support:
-
-- normal images
-- animated GIFs
-- videos
-- previous/next navigation
-- swipe/drag interaction where appropriate
-- autoplay/slideshow behavior
-- responsive presentation
-
-The preferred implementation direction is to use **Embla Carousel for carousel mechanics**, with its autoplay plugin, while keeping media rendering under Evergreen's control. Each slide can render the appropriate media element (`Image`, `<img>`, or `<video>`) based on media type. Do not build carousel mechanics from scratch unless there is a concrete requirement Embla cannot satisfy.
-
-A future media model should distinguish media types instead of assuming every listing media item is an image. The existing `Houselisting.images` field may need to evolve when this is implemented.
-
-### Listing star ratings
-
-Listing ratings are mock/read-only review ratings for the current listing UI. The value is on a **1–5 scale** and must support fractional values such as `1.5`, `2.5`, `3.5`, or `4.5`.
-
-Bryan prefers using the **React Stars library** for this rather than implementing a custom star-rating component with Hugeicons. Prefer a mature library for this small, generic interaction/presentation requirement if it provides the required fractional/read-only display cleanly.
-
-The desired usage should remain simple at the listing level, conceptually:
-
-```tsx
-<ReactStars value={listing.stars} edit={false} half />
+```ts
+type ListingMedia = {
+  type: "image" | "gif" | "video";
+  src: string;
+  alt?: string;
+};
 ```
 
-The exact package/API must be verified against the installed/current dependency before implementation. Do not assume an API without checking the package version.
+`listing.images` remains the current source of truth for media order. The existing storage helper preserves database-listed media order and appends storage files not yet present in the database array.
 
-Hugeicons should still be used for other Evergreen UI icons; React Stars is an intentional exception for the star-rating visualization.
+Supported rendering:
+
+- `image` → Next.js `Image`
+- `gif` → native `<img>`
+- `video` → native `<video>`
+
+Videos currently use autoplay, muted playback, looping, `playsInline`, native controls, metadata preload, and disabled Picture-in-Picture/remote playback.
+
+GIFs are intentionally supported as GIFs for now. Media normalization to MP4/WebM may be considered later but is not current work.
+
+## Carousel implementation
+
+The reusable `ListingMediaCarousel` currently uses **Embla Carousel** for carousel mechanics.
+
+Implemented core behavior:
+
+- multiple media slides
+- image/GIF/video rendering
+- previous/next navigation
+- swipe/drag behavior through Embla
+- loop option
+- video autoplay
+
+The listing-detail hero image remains separate from the carousel. Do not automatically replace the hero with the carousel unless Bryan explicitly requests that change.
+
+### Current next task: pagination dots
+
+The immediate carousel task is **pagination dots only**. UI spacing, visual polish, carousel layout, and custom video controls are intentionally deferred until after authentication.
+
+The intended pagination behavior is:
+
+- one pagination position per media item
+- Embla's selected snap/index determines the active position
+- clicking a pagination position should navigate to that slide
+- inactive positions can be simple dots
+- the active indicator should eventually be a **single animated white droplet/indicator that moves between positions**, rather than separate active dots appearing/disappearing
+
+The current implementation should first establish correct selected-index synchronization with Embla before adding the animation.
+
+### Droplet animation direction
+
+Bryan wants the active white pagination indicator to visually travel from one position to another with a **dropping/physics-like motion**, resembling a small liquid droplet transferring between pagination positions rather than a normal dot transition.
+
+Framer Motion is already installed and should be evaluated first for this. Its spring-based animation can provide physical motion without necessarily requiring a full physics engine.
+
+A separate physics library is **not currently an architectural requirement**. A full engine such as Matter.js would likely be excessive for a small UI indicator unless later testing shows that spring animation cannot produce the desired droplet behavior. If true fluid deformation/physics is required, investigate a focused physics or spring library only after the simpler Framer Motion approach is prototyped.
+
+The droplet should be treated as one moving visual element positioned relative to the pagination track; do not create a separate animated active dot for every pagination item.
+
+### Deferred carousel work
+
+Do not work on these until Bryan says to:
+
+- final carousel spacing
+- final carousel dimensions/layout
+- pagination visual polish beyond the functional indicator
+- thumbnail UI
+- custom video controls
+- click-to-pause/play video behavior
+- double-click/tap seeking
+- custom progress bar
+- playback-speed UI
+- advanced autoplay/video interaction rules
 
 ---
 
-# 8. Current Work / Implementation Notes
+# 9. Reviews and Authentication Direction
 
-Use this section for discoveries that another agent needs to know while active work is in progress.
+The next broader product work is expected to establish a reviews system before authentication, followed by authentication.
 
-### Current thoughts
+The conceptual review model is:
 
-- Finish the individual listing-detail experience after the reusable media carousel and rating pieces are established.
-- Prefer existing libraries for non-unique, interaction-heavy behavior when they reduce implementation complexity and fit the current stack.
-- Keep reusable UI components focused and composable rather than putting all listing-page behavior into one large component.
+```text
+Review
+  listing_id
+  user_id
+  rating
+  comment
+  created_at
+```
+
+Once real reviews exist, listing rating/count should be derived from review data rather than treating a separate `stars` field as the long-term source of truth.
+
+Authentication will later provide the identity needed for saved listings, reviews, profiles, and other user-specific behavior.
+
+Current intended sequence:
+
+1. Finish carousel pagination/droplet behavior.
+2. Build reviews system.
+3. Build authentication.
+4. Return to carousel UI/spacing/layout and later custom video controls.
+
+Do not redesign the entire data model around authentication before the reviews work is actually underway.
+
+---
+
+# 10. Current Work / Implementation Notes
 
 ### Repository observations
 
-- Recent listing-detail work added title, price, address, description, and a Hugeicons heart action.
-- Recent typography work added Maitree, Lato, and Kanit as available fonts through `next/font/google` and Tailwind font-family definitions.
-- The repository's shadcn configuration explicitly uses Hugeicons.
-- The project recently added `lucide-react`, but this does not change the intended icon convention unless Bryan explicitly approves that change.
+- Listing-detail page is actively being developed.
+- `ListingMediaCarousel.tsx` is currently the primary interactive media component.
+- `MediaType.ts` correctly strips `?query` and `#hash` before identifying extensions, which is required for Supabase signed media URLs.
+- `GetImageUrl.ts` now effectively resolves listing media URLs rather than only image URLs; a future rename to something such as `GetMediaUrls.ts` or `GetListingMedia.ts` can be considered, but is not current work.
+- The current `Houselisting.images` field remains the source of truth for media order.
+- The project intentionally minimizes Client Components.
 
-### Concerns / risks
+### Working principles
 
-- Do not accidentally introduce a second icon system when installing or configuring shadcn components.
-- Do not migrate Tailwind configuration casually; the current repository uses a traditional `tailwind.config.js` setup and working CSS directives.
-- Media carousel implementation must account for video behavior and autoplay interaction rather than treating every asset as a static image.
-- Fractional ratings must render accurately and remain read-only for the current mock-review use case.
-- Keep Client Components isolated to the carousel/interactivity rather than converting the entire listing page to a Client Component.
-
-### Future thoughts
-
-- Consider a typed listing-media model (`image`, `gif`, `video`) when carousel work begins.
-- Consider thumbnails or pagination indicators for the property media carousel after the core slideshow works.
-- Consider pausing carousel autoplay when a video is playing or when the user interacts, depending on the final UX.
+- Work on **one concrete feature at a time**.
+- Do not mix carousel pagination work with later UI polish.
+- Prefer existing libraries for interaction-heavy behavior when they fit the requirement.
+- Do not add a dependency simply because an effect sounds like it needs one; prototype with the existing Framer Motion capability first.
+- Keep temporary implementation discoveries here rather than promoting them to architecture without Bryan's approval.
 
 ---
 
-# 9. Agent Communication
+# 11. Agent Communication
 
 ## ChatGPT
 
-Use this section for concise handoff information that another agent needs. Do not repeat the architecture document here.
+Current handoff: Core listing media carousel is implemented with Embla and supports image, GIF, and video media. The immediate task is pagination dots. Bryan wants the active indicator to eventually behave like a physically moving white droplet that transfers between pagination positions. Framer Motion is already available; investigate spring/physics-like animation with it before considering a dedicated physics engine.
 
-Current handoff: Listing-detail work is active. Before finishing the page, establish the reusable media slideshow and fractional read-only rating components. Preferred media solution: Embla Carousel + autoplay. Preferred rating solution: React Stars. Project icon convention: Hugeicons. Primary font: Figtree, with Maitree/Lato/Kanit available for deliberate secondary use.
+After pagination is complete, the planned product sequence is reviews → authentication → carousel UI/layout polish → advanced custom video controls.
 
 ## Codex
 
@@ -306,10 +346,10 @@ Use this section for implementation discoveries, test results, and repository ob
 
 ---
 
-# 10. Maintenance Reminder for Future Agents
+# 12. Maintenance Reminder
 
 **Do not let this file become a second architecture document.**
 
-When a concept is finalized, move the authoritative architectural decision to `ARCHITECTURE.md` after Bryan's approval and reduce the duplicate context here.
+When a concept is finalized, move the authoritative architectural decision to `ARCHITECTURE.md` after Bryan's approval and reduce duplicate context here.
 
-Prefer replacement over accumulation. If an implementation detail changes, update the old note instead of adding a conflicting note underneath it.
+Prefer replacement over accumulation. If an implementation detail changes, update the existing note instead of adding a conflicting note underneath it.
