@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import  Houselisting  from "@/lib/types";
+import  {Houselisting } from "@/lib/types";
 
 export interface ListingProps {
   listing: Pick<
     Houselisting,
-    "id" | "images" | "title" | "price" | "description"
+    "id" | "media" | "title" | "price" | "description"
   >;
 }
 
@@ -28,7 +28,7 @@ const Listing =  ({listing}: ListingProps) => {
         key={listing.id} href={`/listings/${listing.id}`} className="bg-[#202324] block max-w-[25rem]  rounded-lg shadow-md overflow-hidden m-4">
         <div className=" relative w-full aspect-[4/3]">
           <Image
-            src={listing.images[0]}
+            src={listing.media[0]}
             alt={listing.title}
             fill
             className=" w-full object-cover"

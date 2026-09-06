@@ -1,8 +1,14 @@
 import { EmblaOptionsType } from "embla-carousel";
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface Houselisting {
   id: string;
-  images: string[];
+  media: string[];
   tags: string[];
   title: string;
   price: number;
@@ -12,7 +18,19 @@ export interface Houselisting {
   sqft: number;
   address: string;
   description: string;
+  created_at: string;
   seller: string;
+  reviews: Review[];
+}
+
+export interface Review {
+  id: string;
+  listing_id: string;
+  user_id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+  user: User;
 }
 
 export interface FeaturedCommunitiesProps {

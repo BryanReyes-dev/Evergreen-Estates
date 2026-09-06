@@ -1,14 +1,12 @@
 import { supabase } from '@/db/supabase/server';
-import getImageUrl from '@/db/supabase/util/GetMediaUrls';
-import Houselisting from '@/lib/types'; // Adjust this import path based on where Houselisting is defined
+import getMediaUrls from '@/db/supabase/util/GetMediaUrls';
+import {Houselisting} from '@/app/types'; // Adjust this import path based on where Houselisting is defined
 import { filters as Filters } from '@/app/types'; // Adjust this import path based on where filters is defined
 
 export const getFilteredListings = async (filters: Filters): Promise<Houselisting[]> => {
     try {
         // 1. Initialize the base query targeting your 'listings' table
-        let query = supabase
-            .from('listings')
-            .select('*');
+        let query = supabase.from('listings').select('*');
 
         // 2. Apply Price Range Filter
         if (filters.price !== null) {
@@ -40,17 +38,17 @@ export const getFilteredListings = async (filters: Filters): Promise<Houselistin
         }
 
         // 6. Map over all listings and fetch their corresponding image URLs concurrently
-        const listingsWithImages: Houselisting[] = await Promise.all(
+        const listingsWithMedia: Houselisting[] = await Promise.all(
             data.map(async (item) => {
-                const updatedImages = await getImageUrl(item.id, item.images);
+                const updatedMedia = await getMediaUrls(item.id, item.media);
                 return {
                     ...item,
-                    images: updatedImages
+                    media: updatedMedia
                 } as Houselisting;
             })
         );
 
-        return listingsWithImages;
+    return listingsWithMedia;
 
     } catch (error) {
         console.error('Unhandled exception in getFilteredListings:', error);

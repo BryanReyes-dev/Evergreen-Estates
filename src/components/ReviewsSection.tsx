@@ -1,28 +1,22 @@
-import {Review} from "./Review";
-
+import { Review } from "./Review";
+import type { Review as ReviewType } from "@/app/types";
 
 interface ReviewsSectionProps {
-  listingId: string;
+  reviews: ReviewType[];
 }
 
-export const ReviewsSection = ({ listingId }: ReviewsSectionProps) => {
-  // Get reviews for this listing
-  const reviews = [
-    { id: "1", user_id: "user1" },
-    { id: "2", user_id: "user2" },
-    { id: "3", user_id: "user3" },
-  ];
-
+export const ReviewsSection = ({ reviews }: ReviewsSectionProps) => {
   return (
     <section>
       {/* review summary */}
-      {reviews.map((review) => (
-          <Review user_id={review.user_id} key={review.id} />
-        ))}
 
       {/* reviews */}
-      
-       
+      {reviews.map((review) => (
+        <Review
+          key={review.id}
+          review={review}
+        />
+      ))}
     </section>
   );
 };

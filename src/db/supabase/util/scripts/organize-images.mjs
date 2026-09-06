@@ -1,4 +1,4 @@
-// src/db/supabase/util/scripts/organize-images.mjs
+// src/db/supabase/util/scripts/organize-media.mjs
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 
@@ -15,12 +15,12 @@ if (!supabaseUrl || !serviceRoleKey) {
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-const BUCKET = "property-images";
+const BUCKET = "property-media";
 
 async function main() {
   const { data: listings, error } = await supabase
     .from("listings")
-    .select("id, images");
+    .select("id, media");
 
   if (error) {
     console.error("Failed to fetch listings:", error);
@@ -30,7 +30,7 @@ async function main() {
   for (const listing of listings) {
     const newImagePaths = [];
 
-    for (const oldPath of listing.images) {
+    for (const oldPath of listing.media) {
       const filename = oldPath.split("/").pop();
       const newPath = `listings/${listing.id}/${filename}`;
 
@@ -49,7 +49,7 @@ async function main() {
 
     const { error: updateError } = await supabase
       .from("listings")
-      .update({ images: newImagePaths })
+      .update({ media: newImagePaths })
       .eq("id", listing.id);
 
     if (updateError) {

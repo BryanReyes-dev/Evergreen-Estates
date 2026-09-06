@@ -1,5 +1,5 @@
 
-import  Houselisting  from "../lib/types";
+import  {Houselisting}  from "@/app/types";
 import {  getListingById } from "../db/supabase/util/GetListingById";
 import FeaturedCommunities from "../components/FeaturedCommunities"
 import Hero from "../components/Hero"
