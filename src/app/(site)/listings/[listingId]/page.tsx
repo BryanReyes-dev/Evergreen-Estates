@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { HeartIcon } from "@hugeicons/core-free-icons";
 import { ListingMediaCarousel } from "@/components/ListingMediaCarousel";
 import { getMediaType } from "@/db/supabase/util/MediaType";
-
+import {ReviewsSection} from "@/components/ReviewsSection";
 
 
 const listingDetails = async ({params}: {params: Promise<{ listingId: string }>;}) => {
@@ -51,6 +51,8 @@ const listingDetails = async ({params}: {params: Promise<{ listingId: string }>;
       }))}
     />
     )}
+
+    <ReviewsSection listingId={listing.id} />
       
     
     </div>
