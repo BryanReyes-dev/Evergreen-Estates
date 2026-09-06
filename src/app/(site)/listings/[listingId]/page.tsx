@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { HeartIcon } from "@hugeicons/core-free-icons";
 import { ListingMediaCarousel } from "@/components/ListingMediaCarousel";
 import { getMediaType } from "@/db/supabase/util/MediaType";
-
+import {ReviewsSection} from "@/components/ReviewsSection";
 
 
 const listingDetails = async ({params}: {params: Promise<{ listingId: string }>;}) => {
@@ -14,15 +14,16 @@ const listingDetails = async ({params}: {params: Promise<{ listingId: string }>;
   if (!listing) {
     return <div>No listing details found.</div>;
   }
+  const averageRating = listing.reviews.length > 0 ? listing.reviews.reduce((sum, review) => sum + review.rating, 0) / listing.reviews.length: 0;
 
 
   
    
   return (
     <div>
-      {listing.images.length > 0 ? (
+      {listing.media.length > 0 ? (
   <Image
-    src={listing.images[0]}
+    src={listing.media[0]}
     width={1200}
     height={800}
     alt={`${listing.title} Image`}
@@ -33,24 +34,33 @@ const listingDetails = async ({params}: {params: Promise<{ listingId: string }>;
       <div className="flex justify-between items-center">
         <HugeiconsIcon size={35}  icon={HeartIcon} />
         <h1 className="text-[1.7rem] font-light flex justify-end text-white ml-2 font-lato bg-inherit">${listing.price.toLocaleString()}</h1>
+        
+        
+        
       </div>
+      <span className="text-white flex justify-end font-kanit text-sm">
+          
+          {averageRating.toFixed(1)}★ 
+        </span>
       <h1 className="text-[1.7rem] text-white ml-2 font-maitree bg-inherit">{listing.title}</h1>
       <h1 className="text-[1rem] text-[#474848] ml-2 font-kanit bg-inherit">{listing.address}</h1>
       <p className="text-white p-2">{listing.description}</p>
 
     </div>
 
-    {listing.images.length > 0 && (
+    {listing.media.length > 0 && (
       
-    <ListingMediaCarousel
-      options={{ loop: true }}
-      media={listing.images.map((src) => ({
-        
-        type: getMediaType(src),
-        src
+      <ListingMediaCarousel
+        options={{ loop: true }}
+        media={listing.media.map((src) => ({
+          
+          type: getMediaType(src),
+          src
       }))}
-    />
+      />
     )}
+
+    <ReviewsSection reviews={listing.reviews} />
       
     
     </div>

@@ -73,7 +73,7 @@ export const ListingMediaCarousel = (props: ListingMediaCarouselProps) => {
           {media.map((item, index) => (
             <div className="min-w-0 flex-[0_0_100%]" key={index}>
               {(() => {
-                console.log("MEDIA ITEM:", item);
+                
                 switch (item.type) {
                   case "image":
                     return (
