@@ -8,7 +8,7 @@ The project uses the Next.js App Router, Server Components for data fetching and
 
 ## Live Demo Link
 
-[Visit site]([https://evergreenestates.netlify.app/](https://evergreen-estates.netlify.app/))
+[Visit site](https://evergreen-estates.netlify.app/)
 
 ![Evergreen Estates Homepage](./dev-images/Screenshot%202026-06-28%20134531.png)
 
