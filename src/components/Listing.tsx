@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import  {Houselisting } from "@/lib/types";
+import  {Houselisting } from "@/app/types";
 
 export interface ListingProps {
   listing: Pick<
