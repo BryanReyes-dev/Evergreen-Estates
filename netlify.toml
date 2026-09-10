@@ -2,3 +2,6 @@
 command = "npm run build"
 
 publish = ".next"
+
+[images]
+remote_images = ["https://vcsotaclvwvbpqiljkuk\\.supabase\\.co/.*"]
