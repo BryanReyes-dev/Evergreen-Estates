@@ -1,52 +1,41 @@
+import { getFilteredListings } from "@/db/supabase/util/GetFilteredData";
+import { filters, SearchParams } from "@/app/types";
+import Listing from "./Listing";
 
-import { getFilteredListings } from '@/db/supabase/util/GetFilteredData';
-import { filters, SearchParams } from '@/app/types';
-import Listing from './Listing';
-
-
-
-
-
-
+const DEFAULT_PRICE_RANGE: [number, number] = [10_000, 3_000_000];
 
 export const ResultsDisplay = async ({
-    searchParams,
-}: { searchParams: SearchParams }) => {
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) => {
+  const price = searchParams.price?.split("-").map(Number);
+  const validPrice =
+    price?.length === 2 && price.every(Number.isFinite)
+      ? (price as [number, number])
+      : DEFAULT_PRICE_RANGE;
 
-    const filters: filters = {
-        price: searchParams.price
-            ? searchParams.price.split('-').map(Number) as [number, number]
-            : [100000, 5000000], // nim to max number range for price filter
-
-        tags: Array.isArray(searchParams.tag)
-        ? searchParams.tag
-        : searchParams.tag
-        ? [searchParams.tag]  //tag is an array of strings, if it's a single string, convert it to an array with one element
+  const filters: filters = {
+    price: validPrice,
+    tags: Array.isArray(searchParams.tag)
+      ? searchParams.tag
+      : searchParams.tag
+        ? [searchParams.tag]
         : [],
+    search: searchParams.query?.trim() || "",
+  };
 
-        search: searchParams.query || ''
-    };
+  const listings = await getFilteredListings(filters);
 
+  if (listings.length === 0) {
+    return <div>No listings found.</div>;
+  }
 
-    const listings = await  getFilteredListings(filters);{
-        if (listings.length === 0) {
-            return <div>No listings found.</div>;
-        }
- 
-    }
- 
-
-    return (
-        <div className="  grid justify-center sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
-
-            {listings.map(listing => (
-                <Listing
-                    key={listing.id}
-                    listing={listing}
-                    
-                />
-            ))}
-
-        </div>
-    )
-}
+  return (
+    <div className="grid justify-center gap-4 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      {listings.map((listing) => (
+        <Listing key={listing.id} listing={listing} />
+      ))}
+    </div>
+  );
+};
