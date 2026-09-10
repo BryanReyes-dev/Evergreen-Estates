@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # EverGreen Estates Agent Instructions
 
-EverGreen Estates is a full-stack real estate web application using Next.js App Router, TypeScript, Supabase, Tailwind CSS, shadcn/ui, and Framer Motion.
+EverGreen Estates is a full-stack real estate web application using Next.js App Router, TypeScript, Supabase, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
 ## Before Working
 
@@ -22,14 +22,30 @@ EverGreen Estates is a full-stack real estate web application using Next.js App 
 
 ## Project Boundaries
 
-- Keep database operations within the established database boundary.
+- Keep database operations within the established `src/db` boundary.
 - Preserve the Server Component / Client Component separation unless the requested change requires otherwise.
-- Keep URL-driven filtering and server-side data fetching aligned with the existing architecture.
+- Keep URL-driven filtering and server-side data fetching aligned with the established architecture.
 - Do not introduce unrelated framework or infrastructure changes during focused work.
+- Keep listing media limited to the established `image` and `video` categories. GIF is an image category.
+
+## Image Pipeline
+
+The project uses `src/lib/netlifyImageLoader.ts` for production image optimization through Netlify Image CDN.
+
+- In development, `next.config.ts` sets `images.unoptimized` to `true` so local `next dev` uses source image URLs and does not request the Netlify-only `/.netlify/images` endpoint.
+- In production, image optimization remains enabled and the custom loader generates `/.netlify/images` requests.
+- `netlify.toml` allowlists the project's Supabase remote image host.
+- Do not remove or change this environment-aware behavior without checking both local development and Netlify production behavior.
 
 ## Documentation Authority
 
-- `ARCHITECTURE.md` is authoritative for finalized architecture.
-- `Agents_Context.md` is temporary working context, discoveries, hypotheses, and handoffs.
-- Do not silently promote working context into architecture.
-- Architectural changes require Bryan's explicit approval before being recorded as finalized.
+- `agent-files/ARCHITECTURE.md` is the **only** authoritative architecture document.
+- `agent-files/Agents_Context.md` is temporary working context, discoveries, implementation notes, and handoffs.
+- `agent-files/CLAUDE.md` is an entry point for Claude and should remain a lightweight include file.
+- The README is human-facing documentation and should describe the implemented system, not stale plans.
+- Do not create additional architecture documents.
+- Architectural changes require Bryan's explicit approval before being recorded as finalized architecture.
+
+## Working Style
+
+Work on one concrete feature or fix at a time. Prefer the smallest change that correctly addresses the request. Verify the existing implementation and relevant framework documentation before changing framework-sensitive behavior.
