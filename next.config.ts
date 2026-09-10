@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
 
   images: {
-    unoptimized: false,
+    unoptimized: process.env.NODE_ENV === 'development',
     loader: 'custom',
     loaderFile: './src/lib/netlifyImageLoader.ts',
     remotePatterns: [
