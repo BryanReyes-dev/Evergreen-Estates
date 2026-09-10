@@ -13,16 +13,13 @@ export const Review = ({ review }: ReviewProps) => {
             {review.user.name}
           </h3>
 
-          <p className="mt-1 font-kanit text-sm text-text-white/60">
+          <p className="mt-1 font-kanit text-sm text-white/60">
             {new Date(review.created_at).toLocaleDateString()}
           </p>
         </div>
 
         <div className="flex items-center gap-1">
-          <span className="font-kanit text-sm text-white">
-            {review.rating}
-          </span>
-
+          <span className="font-kanit text-sm text-white">{review.rating}</span>
           <span className="text-white">★</span>
         </div>
       </div>
