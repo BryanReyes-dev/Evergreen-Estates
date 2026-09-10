@@ -1,5 +1,3 @@
-"use client";
-
 interface NetlifyImageLoaderProps {
   src: string;
   width: number;
