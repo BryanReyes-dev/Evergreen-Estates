@@ -22,6 +22,8 @@ const initialFilters: filters = {
     search: "",
 };
 
+export const dynamic = "force-dynamic";
+
 const Home = async () => {
 
   
