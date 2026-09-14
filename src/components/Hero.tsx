@@ -14,7 +14,7 @@ const Hero = () => {
     
   return (
   
-    <div className="w-full h-[90vh] bg-[url(/images/header-bg.jpg)] bg-cover bg-center flex flex-col  text-5xl ">
+    <div className="w-full h-[90vh] med:bg-[url(/images/home-image.jpg)] bg-[url(/images/header-bg.jpg)] bg-cover bg-center flex flex-col  text-5xl ">
         <div className=" w-full h-[90vh]  bg-gradient-to-t from-[#141616] to-[#141616]/50   flex  relative  ">
 
            
@@ -40,7 +40,7 @@ const Hero = () => {
                 }}>Where Comfort Meets Convenience</span>
                 
             </div>
-            <Menu/>
+            
         </div>
     </div>
     
