@@ -6,6 +6,8 @@ export interface User {
   email: string;
 }
 
+export type PublicUserData = Pick<User, "id" | "name">;
+
 export interface Houselisting {
   id: string;
   media: string[];
@@ -30,7 +32,7 @@ export interface Review {
   rating: number;
   comment: string;
   created_at: string;
-  user: User;
+  user: PublicUserData;
 }
 
 export interface FeaturedCommunitiesProps {

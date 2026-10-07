@@ -10,8 +10,16 @@ export async function getListingById(id: string): Promise<Houselisting | null> {
   .select(`
     *,
     reviews!reviews_listing_id_fkey (
-      *,
-      user:users (*)
+      id,
+      listing_id,
+      user_id,
+      rating,
+      comment,
+      created_at,
+      user:users (
+        id,
+        name
+      )
     )
   `)
   .eq("id", id)
