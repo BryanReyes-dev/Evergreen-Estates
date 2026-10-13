@@ -29,6 +29,13 @@
       "when": 1791744912608,
       "tag": "0003_lock_down_public_read_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791893088221,
+      "tag": "0004_security_hardening_followup",
+      "breakpoints": true
     }
   ]
 }
