@@ -180,6 +180,6 @@ When a finalized architectural decision changes, update `agent-files/ARCHITECTUR
 
 Production image delivery through Netlify is working after adding the Supabase remote-image allowlist. Local development uses the source URL path described above.
 
-Public listing reads use Drizzle with `DRIZZLE_DATABASE_URL`, which must be a dedicated login role that is a member of `evergreen_readonly`. The migration creates the non-login group role and grants SELECT-only table/column permissions plus matching RLS policy targets. Create the runtime login and set its password outside version control, then configure the transaction-pooler URL locally and in the deployment environment.
+Public listing reads use Drizzle with `DRIZZLE_DATABASE_URL` and the dedicated `evergreen_runtime` login. Migration `0006` grants it SELECT-only access to listings, reviews, published seller profiles, and only `users.id` / `users.name`; matching RLS policies still apply. The password is configured outside version control. `DIRECT_URL` remains reserved for privileged Drizzle migrations. The temporary `evergreen_readonly` group is removed by `0006`.
 
 The current application has not integrated Better Auth yet. The nullable `users.auth_user_id` column remains a transitional placeholder until the canonical user-ID migration is designed and tested.

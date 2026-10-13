@@ -137,24 +137,21 @@ DRIZZLE_DATABASE_URL=
 
 ### Configure the Drizzle runtime role
 
-The Drizzle read path uses `DRIZZLE_DATABASE_URL` and must not use the privileged `postgres` connection. First, pull the branch and apply its pending migration with the migration-only `DIRECT_URL` connection:
+The Drizzle read path uses `DRIZZLE_DATABASE_URL` and must not use the privileged `postgres` migration connection. Pull the branch and apply the pending migration:
 
 ```bash
 npx drizzle-kit migrate
 ```
 
-Then, in the Supabase SQL Editor, create a login for the runtime role. Generate your own strong password in a password manager; do not put it in source control:
+Migration `0006` replaces the temporary `evergreen_readonly` group with a single, restricted `evergreen_runtime` login. The migration creates the login without a password so the credential is not committed to Git. After the migration succeeds, set its password separately in the Supabase SQL Editor (use a strong, unique password generated in a password manager):
 
 ```sql
-CREATE ROLE evergreen_runtime WITH LOGIN PASSWORD '<your-strong-password>';
-GRANT evergreen_readonly TO evergreen_runtime;
+ALTER ROLE evergreen_runtime WITH PASSWORD '<your-strong-password>';
 ```
 
-In the Supabase Dashboard's **Connect** dialog, copy the **shared transaction pooler** connection string. Set `DRIZZLE_DATABASE_URL` to that connection using the runtime username format `evergreen_runtime.<project-ref>` (replace the username from `postgres.<project-ref>`), the runtime role password, and the copied pooler host/port. Port 6543 is transaction mode. URL-encode any special characters in the password.
+In the Supabase Dashboard's **Connect** dialog, copy the **shared transaction pooler** connection details and configure `DRIZZLE_DATABASE_URL` with the role username format `evergreen_runtime.<project-ref>`, the password you just set, and the copied host/port. Port 6543 is transaction mode. URL-encode special characters in the password.
 
-Keep `DIRECT_URL` restricted to Drizzle Kit migrations. Do not use `postgres` or `service_role` credentials for runtime reads, and never expose `DRIZZLE_DATABASE_URL` through a `NEXT_PUBLIC_` variable.
-
-If you have the runtime role configured, you can open the app. Public listing reads use the read-only role and database RLS policies; Supabase JS remains for Storage signed URLs only.
+Keep `DIRECT_URL` restricted to Drizzle Kit migrations. Do not use `postgres` or `service_role` credentials for runtime reads, and never expose `DRIZZLE_DATABASE_URL` through a `NEXT_PUBLIC_` variable. The runtime role has read-only application-table permissions and cannot access the private Drizzle migration schema.
 
 Run the development server:
 

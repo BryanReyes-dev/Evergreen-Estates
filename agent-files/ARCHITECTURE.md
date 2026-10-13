@@ -48,7 +48,7 @@ The project should not convert server-rendered areas to Client Components merely
 
 ## 4. Data and Search Architecture
 
-Property data is fetched with Drizzle ORM using a dedicated, read-only PostgreSQL runtime role. Drizzle Kit migrations use the separate privileged `DIRECT_URL` connection. The runtime role has explicit SELECT grants and matching RLS policies; it does not bypass RLS.
+Property data is fetched with Drizzle ORM using a dedicated, minimally privileged PostgreSQL runtime login. Drizzle Kit migrations use the separate privileged `DIRECT_URL` connection. The `evergreen_runtime` login has explicit SELECT grants and matching RLS policies; it cannot bypass RLS and has no application-table write permissions.
 
 ```text
 Server Component
@@ -209,7 +209,7 @@ DIRECT_URL             # migration/admin connection; never used at runtime
 DRIZZLE_DATABASE_URL   # server-only, dedicated evergreen_runtime login
 ```
 
-`DRIZZLE_DATABASE_URL` must use a login role that inherits `evergreen_readonly`; never put the privileged `postgres` or `service_role` credential in the runtime URL. For Supabase's shared transaction pooler, use the Dashboard's copied host and the role username format `evergreen_runtime.<project-ref>`. Secrets and credentials must never be committed.
+`DRIZZLE_DATABASE_URL` must use the dedicated `evergreen_runtime` login, which has direct SELECT grants only on the public application data; never put the privileged `postgres` or `service_role` credential in the runtime URL. For Supabase's shared transaction pooler, use the Dashboard's copied host and the role username format `evergreen_runtime.<project-ref>`. Secrets and credentials must never be committed.
 
 Framework-sensitive changes must be checked against the installed Next.js documentation because the repository uses Next.js 16.x.
 
@@ -299,7 +299,7 @@ Only `agent-files/ARCHITECTURE.md` is the authoritative architecture document.
 │             Application Data Layer          │
 │  src/db/queries + Drizzle runtime client    │
 └──────────────────────┬──────────────────────┘
-                       │ read-only PostgreSQL connection
+                       │ restricted, read-only PostgreSQL connection
                        ▼
 ┌─────────────────────────────────────────────┐
 │           Supabase PostgreSQL               │

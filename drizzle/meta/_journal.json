@@ -43,6 +43,13 @@
       "when": 1791896308368,
       "tag": "0005_drizzle_readonly_runtime",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791898211315,
+      "tag": "0006_replace_readonly_role_with_runtime_login",
+      "breakpoints": true
     }
   ]
 }

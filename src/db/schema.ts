@@ -53,7 +53,7 @@ export const users = pgTable(
     pgPolicy("Enable read access for all users", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated", "evergreen_readonly"],
+      to: ["anon", "authenticated", "evergreen_runtime"],
       using: sql`true`,
     }),
   ],
@@ -119,7 +119,7 @@ export const sellerProfiles = pgTable(
     pgPolicy("Published seller storefronts are publicly readable", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated", "evergreen_readonly"],
+      to: ["anon", "authenticated", "evergreen_runtime"],
       using: sql`${table.isPublished} = true`,
     }),
   ],
@@ -172,7 +172,7 @@ export const listings = pgTable(
     pgPolicy("Enable read access for all users", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated", "evergreen_readonly"],
+      to: ["anon", "authenticated", "evergreen_runtime"],
       using: sql`true`,
     }),
   ],
@@ -224,7 +224,7 @@ export const reviews = pgTable(
     pgPolicy("Enable read access for all users", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated", "evergreen_readonly"],
+      to: ["anon", "authenticated", "evergreen_runtime"],
       using: sql`true`,
     }),
 
