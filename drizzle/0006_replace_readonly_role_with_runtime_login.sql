@@ -52,6 +52,9 @@ TO anon, authenticated, evergreen_runtime;
 -- Remove the migration-0005 temporary role after all references/grants move.
 REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM evergreen_readonly;
 --> statement-breakpoint
+-- Column-level privileges are separate from table-level grants.
+REVOKE SELECT (id, name) ON TABLE public.users FROM evergreen_readonly;
+--> statement-breakpoint
 REVOKE USAGE ON SCHEMA public FROM evergreen_readonly;
 --> statement-breakpoint
 REVOKE CONNECT ON DATABASE postgres FROM evergreen_readonly;
