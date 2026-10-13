@@ -57,7 +57,7 @@ export const users = pgTable(
       using: sql`true`,
     }),
   ],
-);
+).enableRLS();
 
 // One storefront per application user.
 // There is intentionally no separate seller-profile ID.
@@ -123,7 +123,7 @@ export const sellerProfiles = pgTable(
       using: sql`${table.isPublished} = true`,
     }),
   ],
-);
+).enableRLS();
 
 export const listings = pgTable(
   "listings",
@@ -176,7 +176,7 @@ export const listings = pgTable(
       using: sql`true`,
     }),
   ],
-);
+).enableRLS();
 
 export const reviews = pgTable(
   "reviews",
@@ -233,4 +233,4 @@ export const reviews = pgTable(
       sql`(${table.rating} >= 1) AND (${table.rating} <= 5)`,
     ),
   ],
-);
+).enableRLS();

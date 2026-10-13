@@ -150,7 +150,7 @@
         }
       },
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.reviews": {
       "name": "reviews",
@@ -277,7 +277,7 @@
           "value": "(\"reviews\".\"rating\" >= 1) AND (\"reviews\".\"rating\" <= 5)"
         }
       },
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.seller_profiles": {
       "name": "seller_profiles",
@@ -399,7 +399,7 @@
           "value": "(\n\t\t\t\"seller_profiles\".\"preferred_contact_method\" = 'email'\n\t\t\tAND \"seller_profiles\".\"contact_email\" IS NOT NULL\n\t\t) OR (\n\t\t\t\"seller_profiles\".\"preferred_contact_method\" = 'phone'\n\t\t\tAND \"seller_profiles\".\"contact_phone\" IS NOT NULL\n\t\t)"
         }
       },
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.users": {
       "name": "users",
@@ -478,7 +478,7 @@
         }
       },
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     }
   },
   "enums": {},

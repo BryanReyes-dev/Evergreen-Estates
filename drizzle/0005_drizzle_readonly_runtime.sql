@@ -3,6 +3,16 @@
 CREATE ROLE evergreen_readonly NOLOGIN;
 --> statement-breakpoint
 
+-- Keep the actual RLS state explicit in the Drizzle schema as well.
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE public.seller_profiles ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE public.listings ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+
 GRANT CONNECT ON DATABASE postgres TO evergreen_readonly;
 --> statement-breakpoint
 GRANT USAGE ON SCHEMA public TO evergreen_readonly;

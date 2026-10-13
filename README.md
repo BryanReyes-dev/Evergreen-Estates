@@ -135,14 +135,6 @@ DIRECT_URL=
 DRIZZLE_DATABASE_URL=
 ```
 
-Run the development server:
-
-```bash
-npm run dev
-```
-
-Open the development URL reported by Next.js.
-
 ### Configure the Drizzle runtime role
 
 The Drizzle read path uses `DRIZZLE_DATABASE_URL` and must not use the privileged `postgres` connection. First, pull the branch and apply its pending migration with the migration-only `DIRECT_URL` connection:
@@ -163,6 +155,14 @@ In the Supabase Dashboard's **Connect** dialog, copy the **shared transaction po
 Keep `DIRECT_URL` restricted to Drizzle Kit migrations. Do not use `postgres` or `service_role` credentials for runtime reads, and never expose `DRIZZLE_DATABASE_URL` through a `NEXT_PUBLIC_` variable.
 
 If you have the runtime role configured, you can open the app. Public listing reads use the read-only role and database RLS policies; Supabase JS remains for Storage signed URLs only.
+
+Run the development server:
+
+```bash
+npm run dev
+```
+
+Open the development URL reported by Next.js.
 
 Build the application:
 
