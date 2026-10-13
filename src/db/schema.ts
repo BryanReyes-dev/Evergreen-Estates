@@ -53,7 +53,7 @@ export const users = pgTable(
     pgPolicy("Enable read access for all users", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated"],
+      to: ["anon", "authenticated", "evergreen_readonly"],
       using: sql`true`,
     }),
   ],
@@ -74,7 +74,7 @@ export const sellerProfiles = pgTable(
     // These contact details are intended to be public when published.
     // contactEmail is separate from the private login email.
     contactEmail: text("contact_email"),
-	  contactPhone: text("contact_phone"),
+    contactPhone: text("contact_phone"),
 
     preferredContactMethod: text("preferred_contact_method")
       .notNull()
@@ -104,23 +104,22 @@ export const sellerProfiles = pgTable(
     }).onDelete("cascade"),
 
     unique("seller_profiles_slug_key").on(table.slug),
-
-	check(
-		"seller_profiles_contact_method_check",
-		sql`(
-			${table.preferredContactMethod} = 'email'
-			AND ${table.contactEmail} IS NOT NULL
-		) OR (
-			${table.preferredContactMethod} = 'phone'
-			AND ${table.contactPhone} IS NOT NULL
-		)`,
-	),
+    check(
+      "seller_profiles_contact_method_check",
+      sql`(
+        ${table.preferredContactMethod} = 'email'
+        AND ${table.contactEmail} IS NOT NULL
+      ) OR (
+        ${table.preferredContactMethod} = 'phone'
+        AND ${table.contactPhone} IS NOT NULL
+      )`,
+    ),
 
     // Guests and buyers can discover published storefronts only.
     pgPolicy("Published seller storefronts are publicly readable", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated"],
+      to: ["anon", "authenticated", "evergreen_readonly"],
       using: sql`${table.isPublished} = true`,
     }),
   ],
@@ -173,7 +172,7 @@ export const listings = pgTable(
     pgPolicy("Enable read access for all users", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated"],
+      to: ["anon", "authenticated", "evergreen_readonly"],
       using: sql`true`,
     }),
   ],
@@ -225,7 +224,7 @@ export const reviews = pgTable(
     pgPolicy("Enable read access for all users", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated"],
+      to: ["anon", "authenticated", "evergreen_readonly"],
       using: sql`true`,
     }),
 

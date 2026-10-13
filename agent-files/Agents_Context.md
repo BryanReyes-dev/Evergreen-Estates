@@ -25,16 +25,18 @@ Browser request
     ↓
 Next.js Server Component / page
     ↓
-src/db Supabase helper
+src/db/queries/listings.ts
     ↓
-Supabase PostgreSQL
+Drizzle ORM + dedicated read-only PostgreSQL role
     ↓
-listing + reviews + related user data returned to server
+Supabase PostgreSQL (grants + RLS)
     ↓
-Next.js transforms data for the UI
+listing + reviews + public author identity returned to server
     ↓
-Server-rendered page / Client Components for browser interaction
+Next.js renders UI
 ```
+
+Supabase JS remains under `src/db/supabase` for Storage only (listing file discovery and signed URLs). Application-table reads have moved to Drizzle.
 
 Media has a second related path:
 
@@ -59,7 +61,7 @@ Client Components should remain focused on browser interaction. `src/db` remains
 
 Before implementing Better Auth, the application needs a clear separation between **identity**, **public profile data**, **authorization**, and **database access**. Three concepts are currently being tracked for focused review:
 
-1. **Public user-data exposure** — The current listing query uses a review relationship that selects `user:users (*)`. This can expose every selected column from `users` to the public listing page. The current `User` model includes `id`, `name`, and `email`, so email should not be included in public review data. The intended immediate fix is to select only fields that are safe for public display, such as `id` and `name`, and keep private account data out of public queries.
+1. **Public user-data exposure** — The Drizzle listing-detail query explicitly selects only review-author `id` and `name`. PostgreSQL column grants also restrict the runtime role to those user columns. Do not reintroduce a broad users selection into public review data.
 
 2. **Better Auth identity ↔ application user/profile relationship** — Better Auth will own authentication/session identity, while EverGreen Estates still needs application-level user/profile data for things such as review authors. The intended conceptual boundary is:
 
@@ -75,7 +77,7 @@ Do not assume Better Auth's internal user/session tables are the same thing as t
 
 3. **Authorization and Supabase RLS boundary** — The current Supabase client uses the public/anonymous Supabase key and is not automatically connected to a Better Auth session. Better Auth cookies/sessions therefore do not automatically make `auth.uid()` available to Supabase/Postgres. Do not rewrite RLS around `auth.uid()` until the Better Auth ↔ Supabase authorization boundary is deliberately designed and verified.
 
-The intended learning/implementation sequence is to understand the current data flow first, then review items 1–3 one at a time, then research Better Auth, then create the auth implementation branch.
+The intended learning/implementation sequence is to verify the Drizzle read path and runtime-role permissions first, then design Better Auth's canonical UUID identity and authenticated write authorization. Do not migrate user IDs until a data-preserving plan is ready.
 
 Do not create `proxy.ts`, add route protection, or redesign Supabase RLS merely as preparation. Those are implementation decisions that come after the auth/session/authorization design is understood.
 
@@ -161,7 +163,7 @@ src/lib/netlifyImageLoader.ts
 src/app/types.ts
 src/db/supabase/util/MediaType.ts
 src/db/supabase/util/GetMediaUrls.ts
-src/db/supabase/util/GetListingById.ts
+src/db/queries/listings.ts
 src/components/Listing.tsx
 src/components/ListingMediaCarousel.tsx
 src/app/(site)/listings/[listingId]/page.tsx
@@ -176,6 +178,8 @@ When a finalized architectural decision changes, update `agent-files/ARCHITECTUR
 
 ## Current status
 
-Production image delivery through Netlify is working after adding the Supabase remote-image allowlist. Local development required the separate `unoptimized` development path described above.
+Production image delivery through Netlify is working after adding the Supabase remote-image allowlist. Local development uses the source URL path described above.
 
-The current repository state should be treated as the source of truth for implementation details. Future work should be documented here only when it is useful for agent handoffs.
+Public listing reads use Drizzle with `DRIZZLE_DATABASE_URL`, which must be a dedicated login role that is a member of `evergreen_readonly`. The migration creates the non-login group role and grants SELECT-only table/column permissions plus matching RLS policy targets. Create the runtime login and set its password outside version control, then configure the transaction-pooler URL locally and in the deployment environment.
+
+The current application has not integrated Better Auth yet. The nullable `users.auth_user_id` column remains a transitional placeholder until the canonical user-ID migration is designed and tested.

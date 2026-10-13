@@ -1,4 +1,4 @@
-import { getListingById } from "@/db/supabase/util/GetListingById";
+import { getListingById } from "@/db/queries/listings";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { HeartIcon } from "@hugeicons/core-free-icons";

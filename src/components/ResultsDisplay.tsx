@@ -1,4 +1,4 @@
-import { getFilteredListings } from "@/db/supabase/util/GetFilteredData";
+import { getFilteredListings } from "@/db/queries/listings";
 import { filters, SearchParams } from "@/app/types";
 import Listing from "./Listing";
 

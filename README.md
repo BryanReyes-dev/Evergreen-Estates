@@ -4,7 +4,7 @@
 
 EverGreen Estates is a full-stack real estate web application built with Next.js, TypeScript, Supabase, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
-The project uses the Next.js App Router, Server Components for data fetching and rendering, and focused Client Components for browser interactivity. Users can browse property listings, view property details, search listings, and filter properties through URL-based search parameters connected to server-side Supabase queries.
+The project uses the Next.js App Router, Server Components for data fetching and rendering, and focused Client Components for browser interactivity. Users can browse property listings, view property details, search listings, and filter properties through URL-based search parameters connected to server-side Drizzle ORM queries against PostgreSQL.
 
 ## Live Demo Link
 
@@ -65,10 +65,12 @@ This keeps development and production functional without introducing a second im
 
 ### Backend / Database
 
+- Drizzle ORM for server-side PostgreSQL queries
+- Drizzle Kit for versioned schema migrations
 - Supabase
-  - PostgreSQL database
+  - PostgreSQL database and Row Level Security
   - Storage bucket for property media
-  - Supabase client integration
+  - Supabase JS client for Storage operations only
 
 ### Deployment
 
@@ -100,7 +102,7 @@ The application separates route/page composition, reusable UI, database operatio
 
 Server Components handle property-data fetching and rendering by default. Client Components are used for browser-specific behavior such as interactive filtering, navigation state, animation, and Embla carousel interaction.
 
-Property filtering is URL-driven: filter controls update search parameters, Next.js renders the server-side result, and Supabase supplies the filtered data.
+Property filtering is URL-driven: filter controls update search parameters, Next.js renders the server-side result, and Drizzle ORM executes parameterized PostgreSQL queries. Supabase JS remains for Storage signed URLs.
 
 For the complete finalized architecture, see `agent-files/ARCHITECTURE.md`.
 
@@ -129,6 +131,8 @@ Create environment variables:
 ```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+DIRECT_URL=
+DRIZZLE_DATABASE_URL=
 ```
 
 Run the development server:
@@ -138,6 +142,27 @@ npm run dev
 ```
 
 Open the development URL reported by Next.js.
+
+### Configure the Drizzle runtime role
+
+The Drizzle read path uses `DRIZZLE_DATABASE_URL` and must not use the privileged `postgres` connection. First, pull the branch and apply its pending migration with the migration-only `DIRECT_URL` connection:
+
+```bash
+npx drizzle-kit migrate
+```
+
+Then, in the Supabase SQL Editor, create a login for the runtime role. Generate your own strong password in a password manager; do not put it in source control:
+
+```sql
+CREATE ROLE evergreen_runtime WITH LOGIN PASSWORD '<your-strong-password>';
+GRANT evergreen_readonly TO evergreen_runtime;
+```
+
+In the Supabase Dashboard's **Connect** dialog, copy the **shared transaction pooler** connection string. Set `DRIZZLE_DATABASE_URL` to that connection using the runtime username format `evergreen_runtime.<project-ref>` (replace the username from `postgres.<project-ref>`), the runtime role password, and the copied pooler host/port. Port 6543 is transaction mode. URL-encode any special characters in the password.
+
+Keep `DIRECT_URL` restricted to Drizzle Kit migrations. Do not use `postgres` or `service_role` credentials for runtime reads, and never expose `DRIZZLE_DATABASE_URL` through a `NEXT_PUBLIC_` variable.
+
+If you have the runtime role configured, you can open the app. Public listing reads use the read-only role and database RLS policies; Supabase JS remains for Storage signed URLs only.
 
 Build the application:
 

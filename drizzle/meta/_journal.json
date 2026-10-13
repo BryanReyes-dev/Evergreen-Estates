@@ -36,6 +36,13 @@
       "when": 1791893088221,
       "tag": "0004_security_hardening_followup",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791896308368,
+      "tag": "0005_drizzle_readonly_runtime",
+      "breakpoints": true
     }
   ]
 }

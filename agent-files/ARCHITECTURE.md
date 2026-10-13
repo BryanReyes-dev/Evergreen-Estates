@@ -26,7 +26,7 @@ The project uses the Next.js App Router with a `src` directory.
 src/
 ├── app/          routes, layouts, pages, server/client boundaries
 ├── components/   reusable UI and feature components
-├── db/           Supabase queries and database helpers
+├── db/           Drizzle PostgreSQL queries, connection client, and Storage helpers
 └── lib/          shared utilities
 ```
 
@@ -48,19 +48,23 @@ The project should not convert server-rendered areas to Client Components merely
 
 ## 4. Data and Search Architecture
 
-Property data is fetched through the database layer and Supabase.
+Property data is fetched with Drizzle ORM using a dedicated, read-only PostgreSQL runtime role. Drizzle Kit migrations use the separate privileged `DIRECT_URL` connection. The runtime role has explicit SELECT grants and matching RLS policies; it does not bypass RLS.
 
 ```text
 Server Component
       ↓
-src/db helper
+src/db/queries/listings.ts
       ↓
-Supabase PostgreSQL / Storage
+Drizzle ORM + postgres.js
+      ↓
+Supabase PostgreSQL
       ↓
 Server Component
       ↓
 Rendered UI
 ```
+
+Supabase JS is retained only for Storage operations such as listing media files and generating signed URLs. It is not used for application-table queries.
 
 Property filtering uses URL search parameters as the state boundary.
 
@@ -201,9 +205,11 @@ Local and deployment environments provide Supabase configuration through environ
 ```text
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
+DIRECT_URL             # migration/admin connection; never used at runtime
+DRIZZLE_DATABASE_URL   # server-only, dedicated evergreen_runtime login
 ```
 
-Secrets and credentials must never be committed.
+`DRIZZLE_DATABASE_URL` must use a login role that inherits `evergreen_readonly`; never put the privileged `postgres` or `service_role` credential in the runtime URL. For Supabase's shared transaction pooler, use the Dashboard's copied host and the role username format `evergreen_runtime.<project-ref>`. Secrets and credentials must never be committed.
 
 Framework-sensitive changes must be checked against the installed Next.js documentation because the repository uses Next.js 16.x.
 
@@ -257,7 +263,7 @@ Use Client Components only when browser execution is necessary.
 
 ### Database isolation
 
-Keep Supabase queries and storage helpers under `src/db`.
+Keep application-table queries under `src/db/queries` and use Drizzle ORM with the dedicated read-only PostgreSQL runtime role. Keep Supabase JS under `src/db/supabase` only for Storage operations. Keep privileged migration connections separate from runtime database connections.
 
 ### URL-driven filtering
 
@@ -291,15 +297,24 @@ Only `agent-files/ARCHITECTURE.md` is the authoritative architecture document.
                        ▼
 ┌─────────────────────────────────────────────┐
 │             Application Data Layer          │
-│                    src/db                   │
+│  src/db/queries + Drizzle runtime client    │
 └──────────────────────┬──────────────────────┘
-                       │
+                       │ read-only PostgreSQL connection
                        ▼
 ┌─────────────────────────────────────────────┐
-│                  Supabase                   │
-│                                             │
-│      PostgreSQL           Storage           │
-│      Listings             Property Media    │
+│           Supabase PostgreSQL               │
+│  Grants + RLS → listings, reviews, profiles │
+└─────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────┐
+│       Supabase JS Storage helper            │
+│  src/db/supabase/util/GetMediaUrls.ts       │
+└──────────────────────┬──────────────────────┘
+                       │ signed image URL
+                       ▼
+┌─────────────────────────────────────────────┐
+│             Supabase Storage                │
+│                Property Media               │
 └─────────────────────────────────────────────┘
                        │
                        │ signed image URL
