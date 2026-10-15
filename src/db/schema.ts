@@ -17,7 +17,7 @@ import {
 
 // Application profile data.
 // The legacy email column is retained to preserve existing records.
-// Database grants restrict anon/authenticated reads to id and name.
+// The server-side runtime connection can read only id and name.
 // Consider removing email after the authentication migration and data review.
 export const users = pgTable(
   "users",
@@ -48,12 +48,12 @@ export const users = pgTable(
     unique("users_email_key").on(table.email),
     unique("users_auth_user_id_key").on(table.authUserId),
 
-    // Public row visibility. Column-level SQL grants will separately
-    // restrict public reads to id and name.
-    pgPolicy("Enable read access for all users", {
+    // Server-side read visibility. SQL column grants restrict the runtime
+    // connection to id and name; public clients use the Route Handlers.
+    pgPolicy("Runtime can read application user identity", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated", "evergreen_runtime"],
+      to: ["evergreen_runtime"],
       using: sql`true`,
     }),
   ],
@@ -115,11 +115,11 @@ export const sellerProfiles = pgTable(
       )`,
     ),
 
-    // Guests and buyers can discover published storefronts only.
-    pgPolicy("Published seller storefronts are publicly readable", {
+    // The public API may expose published storefronts only.
+    pgPolicy("Runtime can read published seller storefronts", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated", "evergreen_runtime"],
+      to: ["evergreen_runtime"],
       using: sql`${table.isPublished} = true`,
     }),
   ],
@@ -169,10 +169,10 @@ export const listings = pgTable(
 
     index("listings_seller_user_id_idx").on(table.sellerUserId),
 
-    pgPolicy("Enable read access for all users", {
+    pgPolicy("Runtime can read listings", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated", "evergreen_runtime"],
+      to: ["evergreen_runtime"],
       using: sql`true`,
     }),
   ],
@@ -221,10 +221,10 @@ export const reviews = pgTable(
 
     index("reviews_user_id_idx").on(table.userId),
 
-    pgPolicy("Enable read access for all users", {
+    pgPolicy("Runtime can read reviews", {
       as: "permissive",
       for: "select",
-      to: ["anon", "authenticated", "evergreen_runtime"],
+      to: ["evergreen_runtime"],
       using: sql`true`,
     }),
 
