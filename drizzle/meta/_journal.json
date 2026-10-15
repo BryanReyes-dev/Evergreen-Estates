@@ -50,6 +50,13 @@
       "when": 1791898211315,
       "tag": "0006_replace_readonly_role_with_runtime_login",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792103505501,
+      "tag": "0007_restrict_application_api_role_permissions",
+      "breakpoints": true
     }
   ]
 }
