@@ -11,13 +11,15 @@ import {
 
 import type { Houselisting, filters as Filters } from "@/app/types";
 import { getDrizzleDb } from "@/db/drizzle/client";
-import { listings } from "@/db/schema";
+import { listings, reviews, users } from "@/db/schema";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function getListingById(id: string): Promise<Houselisting | null> {
+
+export async function getListingById(
+  id: string,
+): Promise<Houselisting | null> {
   if (!UUID_PATTERN.test(id)) {
     return null;
   }
@@ -25,50 +27,53 @@ export async function getListingById(id: string): Promise<Houselisting | null> {
   const db = getDrizzleDb();
 
   try {
-    const listing = await db.query.listings.findFirst({
-      columns: {
-        id: true,
-        media: true,
-        tags: true,
-        title: true,
-        price: true,
-        stars: true,
-        beds: true,
-        baths: true,
-        sqft: true,
-        address: true,
-        description: true,
-        createdAt: true,
-        seller: true,
-      },
-      where: eq(listings.id, id),
-      with: {
-        reviews: {
-          columns: {
-            id: true,
-            listingId: true,
-            userId: true,
-            rating: true,
-            comment: true,
-            createdAt: true,
-          },
-          with: {
-            user: {
-              columns: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    // Fetch only the required listing columns.
+    const [listing] = await db
+      .select({
+        id: listings.id,
+        media: listings.media,
+        tags: listings.tags,
+        title: listings.title,
+        price: listings.price,
+        stars: listings.stars,
+        beds: listings.beds,
+        baths: listings.baths,
+        sqft: listings.sqft,
+        address: listings.address,
+        description: listings.description,
+        createdAt: listings.createdAt,
+        seller: listings.seller,
+      })
+      .from(listings)
+      .where(eq(listings.id, id))
+      .limit(1);
 
     if (!listing) {
       return null;
     }
 
-    const media = await getMediaUrls(listing.id, listing.media);
+    // Explicitly select only the permitted public user fields.
+    // This avoids Drizzle's relational query generating SELECT *
+    // against the restricted users table.
+    const reviewRows = await db
+      .select({
+        id: reviews.id,
+        listingId: reviews.listingId,
+        userId: reviews.userId,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        createdAt: reviews.createdAt,
+        authorId: users.id,
+        authorName: users.name,
+      })
+      .from(reviews)
+      .leftJoin(users, eq(reviews.userId, users.id))
+      .where(eq(reviews.listingId, listing.id));
+
+    const media = await getMediaUrls(
+      listing.id,
+      listing.media,
+    );
 
     return {
       id: listing.id,
@@ -84,7 +89,7 @@ export async function getListingById(id: string): Promise<Houselisting | null> {
       description: listing.description,
       created_at: listing.createdAt,
       seller: listing.seller,
-      reviews: listing.reviews.map((review) => ({
+      reviews: reviewRows.map((review) => ({
         id: review.id,
         listing_id: review.listingId,
         user_id: review.userId,
@@ -92,8 +97,8 @@ export async function getListingById(id: string): Promise<Houselisting | null> {
         comment: review.comment,
         created_at: review.createdAt,
         user: {
-          id: review.user?.id ?? review.userId,
-          name: review.user?.name ?? "Unknown user",
+          id: review.authorId ?? review.userId,
+          name: review.authorName ?? "Unknown user",
         },
       })),
     };
@@ -102,6 +107,7 @@ export async function getListingById(id: string): Promise<Houselisting | null> {
     return null;
   }
 }
+
 
 export async function getFilteredListings(
   filters: Filters,
