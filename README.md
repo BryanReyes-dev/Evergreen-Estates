@@ -133,6 +133,9 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 DIRECT_URL=
 DRIZZLE_DATABASE_URL=
+AUTH_DATABASE_URL=
+BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_SECRET=
 ```
 
 ### Configure the Drizzle runtime role
@@ -152,6 +155,18 @@ ALTER ROLE evergreen_runtime WITH PASSWORD '<your-strong-password>';
 In the Supabase Dashboard's **Connect** dialog, copy the **shared transaction pooler** connection details and configure `DRIZZLE_DATABASE_URL` with the role username format `evergreen_runtime.<project-ref>`, the password you just set, and the copied host/port. Port 6543 is transaction mode. URL-encode special characters in the password.
 
 Keep `DIRECT_URL` restricted to Drizzle Kit migrations. Do not use `postgres` or `service_role` credentials for runtime reads, and never expose `DRIZZLE_DATABASE_URL` through a `NEXT_PUBLIC_` variable. The runtime role has read-only application-table permissions and cannot access the private Drizzle migration schema.
+
+### Configure the Better Auth role
+
+Migration `0008` creates a separate `evergreen_auth` login with access limited to the canonical `users` table and the Better Auth `account`, `session`, and `verification` tables. The migration intentionally creates this role without a password. After `npx drizzle-kit migrate` succeeds, set a strong password separately in the Supabase SQL Editor:
+
+```sql
+ALTER ROLE evergreen_auth WITH PASSWORD '<your-strong-password>';
+```
+
+Configure `AUTH_DATABASE_URL` with the Supabase shared transaction pooler details (port 6543), username `evergreen_auth.<project-ref>`, and that password. This connection is separate from the read-only `DRIZZLE_DATABASE_URL`. Never use `DIRECT_URL` for application requests or expose either database URL via a `NEXT_PUBLIC_` variable.
+
+Set `BETTER_AUTH_URL=http://localhost:3000` locally and generate a strong `BETTER_AUTH_SECRET` (at least 32 characters). Keep the secret server-only and configure the production URL/secret in the deployment environment before enabling auth there.
 
 Run the development server:
 
