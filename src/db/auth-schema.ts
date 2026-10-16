@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  pgPolicy,
   pgTable,
   text,
   timestamp,
