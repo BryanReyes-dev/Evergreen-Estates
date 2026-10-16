@@ -28,8 +28,17 @@ export const session = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
   },
-  (table) => [index("session_userId_idx").on(table.userId)],
-);
+  (table) => [
+    index("session_userId_idx").on(table.userId),
+    pgPolicy("Evergreen auth can manage sessions", {
+      as: "permissive",
+      for: "all",
+      to: ["evergreen_auth"],
+      using: sql`true`,
+      withCheck: sql`true`,
+    }),
+  ],
+).enableRLS();
 
 export const account = pgTable(
   "account",
@@ -54,8 +63,17 @@ export const account = pgTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [index("account_userId_idx").on(table.userId)],
-);
+  (table) => [
+    index("account_userId_idx").on(table.userId),
+    pgPolicy("Evergreen auth can manage accounts", {
+      as: "permissive",
+      for: "all",
+      to: ["evergreen_auth"],
+      using: sql`true`,
+      withCheck: sql`true`,
+    }),
+  ],
+).enableRLS();
 
 export const verification = pgTable(
   "verification",
@@ -72,8 +90,17 @@ export const verification = pgTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [index("verification_identifier_idx").on(table.identifier)],
-);
+  (table) => [
+    index("verification_identifier_idx").on(table.identifier),
+    pgPolicy("Evergreen auth can manage verifications", {
+      as: "permissive",
+      for: "all",
+      to: ["evergreen_auth"],
+      using: sql`true`,
+      withCheck: sql`true`,
+    }),
+  ],
+).enableRLS();
 
 export const userRelations = relations(users, ({ many }) => ({
   sessions: many(session),
