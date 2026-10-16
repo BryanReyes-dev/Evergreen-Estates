@@ -53,6 +53,14 @@ export const users = pgTable(
       to: ["evergreen_runtime"],
       using: sql`true`,
     }),
+
+    pgPolicy("Evergreen auth can manage users", {
+      as: "permissive",
+      for: "all",
+      to: ["evergreen_auth"],
+      using: sql`true`,
+      withCheck: sql`true`,
+    }),
   ],
 ).enableRLS();
 
@@ -101,13 +109,7 @@ export const sellerProfiles = pgTable(
     unique("seller_profiles_slug_key").on(table.slug),
     check(
       "seller_profiles_contact_method_check",
-      sql`(
-          ${table.preferredContactMethod} = 'email'
-          AND ${table.contactEmail} IS NOT NULL
-        ) OR (
-          ${table.preferredContactMethod} = 'phone'
-          AND ${table.contactPhone} IS NOT NULL
-        )`,
+      sql`(\n\t\t\t${table.preferredContactMethod} = 'email'\n\t\t\tAND ${table.contactEmail} IS NOT NULL\n\t\t) OR (\n\t\t\t${table.preferredContactMethod} = 'phone'\n\t\t\tAND ${table.contactPhone} IS NOT NULL\n\t\t)`,
     ),
 
     // The public API may expose published storefronts only.
