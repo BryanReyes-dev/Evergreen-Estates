@@ -48,7 +48,7 @@ The project should not convert server-rendered areas to Client Components merely
 
 ## 4. Data and Search Architecture
 
-Property data is fetched with Drizzle ORM using a dedicated, minimally privileged PostgreSQL runtime login. Drizzle Kit migrations use the separate privileged `DIRECT_URL` connection. The `evergreen_runtime` login has explicit SELECT grants and matching RLS policies; it cannot bypass RLS and has no application-table write permissions.
+Property data is fetched with Drizzle ORM using the dedicated, minimally privileged `evergreen_runtime` PostgreSQL login. That login has explicit read-only grants and matching RLS policies; it cannot bypass RLS and has no application-table write permissions. Better Auth uses a separate `evergreen_auth` login and `AUTH_DATABASE_URL`, limited by grants and RLS to the canonical `users` table and the `account`, `session`, and `verification` tables. Drizzle Kit migrations alone use the privileged `DIRECT_URL` connection. Neither application connection may use the migration/admin credential.
 
 ```text
 Server Component
