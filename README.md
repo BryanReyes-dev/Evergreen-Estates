@@ -4,7 +4,7 @@
 
 EverGreen Estates is a full-stack real estate web application built with Next.js, TypeScript, Supabase, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
-The project uses the Next.js App Router, Server Components for data fetching and rendering, and focused Client Components for browser interactivity. Users can browse property listings, view property details, search listings, and filter properties through URL-based search parameters connected to server-side Supabase queries.
+The project uses the Next.js App Router, Server Components for data fetching and rendering, and focused Client Components for browser interactivity. Users can browse property listings, view property details, search listings, and filter properties through URL-based search parameters connected to server-side Drizzle ORM queries against PostgreSQL.
 
 ## Live Demo Link
 
@@ -65,10 +65,12 @@ This keeps development and production functional without introducing a second im
 
 ### Backend / Database
 
+- Drizzle ORM for server-side PostgreSQL queries
+- Drizzle Kit for versioned schema migrations
 - Supabase
-  - PostgreSQL database
+  - PostgreSQL database and Row Level Security
   - Storage bucket for property media
-  - Supabase client integration
+  - Supabase JS client for Storage operations only
 
 ### Deployment
 
@@ -100,7 +102,7 @@ The application separates route/page composition, reusable UI, database operatio
 
 Server Components handle property-data fetching and rendering by default. Client Components are used for browser-specific behavior such as interactive filtering, navigation state, animation, and Embla carousel interaction.
 
-Property filtering is URL-driven: filter controls update search parameters, Next.js renders the server-side result, and Supabase supplies the filtered data.
+Property filtering is URL-driven: filter controls update search parameters, Next.js renders the server-side result, and Drizzle ORM executes parameterized PostgreSQL queries. Supabase JS remains for Storage signed URLs.
 
 For the complete finalized architecture, see `agent-files/ARCHITECTURE.md`.
 
@@ -129,7 +131,42 @@ Create environment variables:
 ```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+DIRECT_URL=
+DRIZZLE_DATABASE_URL=
+AUTH_DATABASE_URL=
+BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_SECRET=
 ```
+
+### Configure the Drizzle runtime role
+
+The Drizzle read path uses `DRIZZLE_DATABASE_URL` and must not use the privileged `postgres` migration connection. Pull the branch and apply the pending migration:
+
+```bash
+npx drizzle-kit migrate
+```
+
+Migration `0006` replaces the temporary `evergreen_readonly` group with a single, restricted `evergreen_runtime` login. The migration creates the login without a password so the credential is not committed to Git. After the migration succeeds, set its password separately in the Supabase SQL Editor (use a strong, unique password generated in a password manager):
+
+```sql
+ALTER ROLE evergreen_runtime WITH PASSWORD '<your-strong-password>';
+```
+
+In the Supabase Dashboard's **Connect** dialog, copy the **shared transaction pooler** connection details and configure `DRIZZLE_DATABASE_URL` with the role username format `evergreen_runtime.<project-ref>`, the password you just set, and the copied host/port. Port 6543 is transaction mode. URL-encode special characters in the password.
+
+Keep `DIRECT_URL` restricted to Drizzle Kit migrations. Do not use `postgres` or `service_role` credentials for runtime reads, and never expose `DRIZZLE_DATABASE_URL` through a `NEXT_PUBLIC_` variable. The runtime role has read-only application-table permissions and cannot access the private Drizzle migration schema.
+
+### Configure the Better Auth role
+
+Migration `0008` creates a separate `evergreen_auth` login with access limited to the canonical `users` table and the Better Auth `account`, `session`, and `verification` tables. The migration intentionally creates this role without a password. After `npx drizzle-kit migrate` succeeds, set a strong password separately in the Supabase SQL Editor:
+
+```sql
+ALTER ROLE evergreen_auth WITH PASSWORD '<your-strong-password>';
+```
+
+Configure `AUTH_DATABASE_URL` with the Supabase shared transaction pooler details (port 6543), username `evergreen_auth.<project-ref>`, and that password. This connection is separate from the read-only `DRIZZLE_DATABASE_URL`. Never use `DIRECT_URL` for application requests or expose either database URL via a `NEXT_PUBLIC_` variable.
+
+Set `BETTER_AUTH_URL=http://localhost:3000` locally and generate a strong `BETTER_AUTH_SECRET` (at least 32 characters). Keep the secret server-only and configure the production URL/secret in the deployment environment before enabling auth there.
 
 Run the development server:
 

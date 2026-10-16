@@ -20,7 +20,7 @@ export interface Houselisting {
   sqft: number;
   address: string;
   description: string;
-  created_at: string;
+  created_at: string | null;
   seller: string;
   reviews: Review[];
 }

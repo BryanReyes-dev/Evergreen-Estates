@@ -8,6 +8,8 @@ interface SearchParams {
   tag?: string[];
 }
 
+export const dynamic = "force-dynamic";
+
 const Search = async ({
   searchParams,
 }: {
