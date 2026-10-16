@@ -77,6 +77,13 @@ REVOKE ALL PRIVILEGES
 ON TABLE public.users, public.account, public.session, public.verification
 FROM PUBLIC, anon, authenticated, service_role;--> statement-breakpoint
 
+-- User deletion is intentionally withheld because deleting users currently
+-- cascades into reviews and seller profiles. Add it only with an explicit
+-- account-deletion/data-retention policy.
+GRANT SELECT, INSERT, UPDATE
+ON TABLE public.users
+TO evergreen_auth;--> statement-breakpoint
+
 GRANT SELECT, INSERT, UPDATE, DELETE
-ON TABLE public.users, public.account, public.session, public.verification
+ON TABLE public.account, public.session, public.verification
 TO evergreen_auth;--> statement-breakpoint
