@@ -1,102 +1,169 @@
-# EverGreen Estates Architecture
+# Evergreen Estates Architecture
 
 ## Document Authority
 
-This file is the **single authoritative record of finalized EverGreen Estates architectural decisions**.
+This is the single authoritative record of finalized Evergreen Estates architectural decisions. Approved target designs that are not implemented are explicitly labeled as such.
 
-`agent-files/Agents_Context.md` is working context only. `agent-files/AGENTS.md` contains agent operating rules. `agent-files/CLAUDE.md` is a Claude entry point. No other file is an architecture authority.
+- `agent-files/Agents_Context.md` is current working context and task status.
+- `agent-files/AGENTS.md` contains agent operating rules.
+- `agent-files/CLAUDE.md` is the Claude entry point.
+- Never describe planned code as already implemented.
 
-There must be only one authoritative architecture document for the project: `agent-files/ARCHITECTURE.md`.
+## 1. Project Identity and Stack
 
----
+Evergreen Estates is a real-estate marketplace built with Next.js 16.x App Router, React, TypeScript, Supabase/PostgreSQL and Storage, Drizzle ORM, Better Auth, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
-## 1. Project Identity
-
-EverGreen Estates is a full-stack real estate web application built with Next.js 16.x, React, TypeScript, Supabase, Tailwind CSS, shadcn/ui, Framer Motion, and Embla Carousel.
-
-The application provides property browsing, property detail pages, search/filtering, URL-based filter state, reviews, and property media presentation.
-
----
+Implemented: property browsing, listing details, URL-based search/filtering, review display, listing media, and Better Auth email/password authentication. Listing API endpoints currently support GET only; authenticated listing writes are pending.
 
 ## 2. Application Structure
 
-The project uses the Next.js App Router with a `src` directory.
-
-```text
+```
 src/
-├── app/          routes, layouts, pages, server/client boundaries
+├── app/          pages, layouts, Route Handlers, server/client boundaries
 ├── components/   reusable UI and feature components
-├── db/           Drizzle PostgreSQL queries, connection client, and Storage helpers
-└── lib/          shared utilities
+├── db/           Drizzle schemas/queries/clients and Supabase Storage helpers
+└── lib/          shared utilities and Better Auth configuration
+
+agent-files/      agent guidance, current context, architecture authority
+drizzle/          SQL migrations and Drizzle Kit metadata
+scripts/          planned developer-run population entry point
+seed/             planned bundled mock media assets
 ```
 
-`src/db` is the database boundary. Presentation components should not duplicate database-query logic when an appropriate helper already exists.
+`src/db` is the database boundary. Keep application-table query logic here rather than duplicating it in presentation components.
 
----
+## 3. Server, Client, and HTTP Boundaries
 
-## 3. Server and Client Boundaries
+Server Components are the default for data fetching and rendering. Client Components are for browser-only behavior such as event handlers, interactive state, animation, client navigation, and Embla interaction.
 
-Server Components are the default.
+Explicit HTTP APIs live in Next.js Route Handlers under `src/app/api`. CRUD requests must verify the Better Auth session on the server, validate input, enforce business rules, and call narrowly scoped database operations. Client-side checks are not authorization.
 
-They handle server-side data fetching, Supabase queries, route rendering, and URL-driven search results.
+## 4. Listing Read and Search Architecture
 
-Client Components are limited to browser behavior such as state, event handlers, client navigation, animation, and Embla carousel interaction.
+Application table reads use Drizzle via `src/db/queries/listings.ts` and the dedicated read-only `evergreen_runtime` PostgreSQL login configured through `DRIZZLE_DATABASE_URL`. This role has read-only grants and matching RLS policies and cannot bypass RLS.
 
-The project should not convert server-rendered areas to Client Components merely for convenience.
+Supabase JS under `src/db/supabase` is used for Storage operations only. Drizzle Kit migrations use the privileged `DIRECT_URL` connection only.
 
----
+Implemented listing APIs:
+- `GET /api/v1/listings` supports optional price, query, and tag filters.
+- `GET /api/v1/listings/[id]` returns a listing or the existing 404 response. Its current missing-listing behavior has been tested locally and should not be changed without a concrete reason.
 
-## 4. Data and Search Architecture
-
-Property data is fetched with Drizzle ORM using the dedicated, minimally privileged `evergreen_runtime` PostgreSQL login. That login has explicit read-only grants and matching RLS policies; it cannot bypass RLS and has no application-table write permissions. Better Auth uses a separate `evergreen_auth` login and `AUTH_DATABASE_URL`, limited by grants and RLS to the canonical `users` table and the `account`, `session`, and `verification` tables. Drizzle Kit migrations alone use the privileged `DIRECT_URL` connection. Neither application connection may use the migration/admin credential.
-
-```text
-Server Component
+```
+Listing page / API
       ↓
 src/db/queries/listings.ts
       ↓
-Drizzle ORM + postgres.js
-      ↓
-Supabase PostgreSQL
-      ↓
-Server Component
-      ↓
-Rendered UI
+Drizzle + postgres.js
+      ↓  DRIZZLE_DATABASE_URL / evergreen_runtime (read-only)
+Supabase PostgreSQL (grants + RLS)
 ```
 
-Supabase JS is retained only for Storage operations such as listing media files and generating signed URLs. It is not used for application-table queries.
+Property filtering is URL-driven: filter controls update search parameters, navigation renders server-side results, and Drizzle executes parameterized PostgreSQL queries.
 
-Property filtering uses URL search parameters as the state boundary.
+## 5. Authentication Architecture — Implemented
 
-```text
-Filter UI
-   ↓
-URL search parameters
-   ↓
-Next.js navigation
-   ↓
-Server Component
-   ↓
-Supabase filtered query
+Better Auth email/password authentication is integrated.
+
+- `src/lib/auth.ts` lazily constructs Better Auth.
+- `src/db/drizzle/auth-client.ts` provides the auth-only Drizzle connection.
+- `src/db/auth-schema.ts` defines `account`, `session`, and `verification`.
+- `src/app/api/auth/[...all]/route.ts` delegates GET/POST to Better Auth's Next.js handler.
+- `src/lib/auth-client.ts` exposes the same-origin browser auth client.
+- Better Auth's logical `user` model maps directly to the existing canonical `public.users` table. There is not a separate Better Auth user table.
+- Better Auth IDs are UUIDs.
+- `AUTH_DATABASE_URL` uses the restricted `evergreen_auth` PostgreSQL login. It has access to the canonical users table and auth tables, not general listing-write permissions.
+
+Email/password registration, sign-in, session retrieval, and sign-out were manually tested locally. These checks validate the basic auth flow, not CRUD or listing ownership enforcement.
+
+`users.auth_user_id` is a legacy/transitional column, not the Better Auth identity mapping. Do not remove it until the seed-data move and repository-wide dependency audit are complete.
+
+## 6. Target Listing Write Architecture — Approved, Not Implemented
+
+Keep the read and authentication roles unchanged. The target write connection is `APP_DATABASE_URL` using a least-privilege `evergreen_app` login. Neither the writer role/client nor ownership-aware listing-write policies exist yet. Never grant listing writes to `evergreen_runtime` or `evergreen_auth`, and never use `DIRECT_URL` in a request handler.
+
+Target request flow:
+
+```
+POST/PATCH/DELETE Route Handler
+      ↓
+Verify Better Auth session from request headers
+      ↓
+Validate and normalize the body
+      ↓
+App-write database transaction
+      ↓
+Set transaction-local app.current_user_id from verified session UUID
+      ↓
+Owner-aware RLS + limited table grants
+      ↓
+Commit or rollback
 ```
 
-This keeps filtered URLs shareable and keeps the property-data query server-driven.
+The proposed database owner predicates use a transaction-local setting such as `set_config('app.current_user_id', ..., true)`. The server must set this only from the verified Better Auth session; never trust a user ID supplied by the browser. Transaction-local scope prevents user identity leaking across pooled connections. This server-side setting is defense in depth, not a replacement for protecting the writer credential.
 
----
+Rules for CRUD:
+- Seller-profile onboarding must associate a profile with the authenticated canonical user ID.
+- A user can modify only their own listings.
+- New listings require an owner; owner identity must not be client-selectable.
+- Limit each seller to three active listings. Enforce it server-side with concurrency-safe handling; a plain count-then-insert can race.
+- Existing listings currently have `seller_user_id = NULL`. They must not become mutable to ordinary signed-in users until their owners have been deliberately assigned.
+- Rate-limit registration and repeated creates as additional abuse controls, separate from ownership and listing-cap enforcement.
 
-## 5. Supabase and Media Storage
+Test anonymous requests, invalid input, cross-user changes/deletes, ownership reassignment, concurrent creates, and the three-listing cap.
 
-Supabase provides PostgreSQL application data and the `property-images` Storage bucket.
+## 7. Portable Mock Data and Population — Principles Approved; Details Deferred
 
-Listing media is represented by the listing's `media` array. The storage helper resolves the stored filenames to signed URLs and preserves database media ordering while appending storage files that are not yet listed in the database array.
+Intentional mock records should become editable repository fixtures so a fresh environment can recreate the app data. Do not finalize or implement the population script before CRUD and ownership are stable.
 
-Signed media URLs can contain query parameters, so media-type detection removes query strings and URL fragments before inspecting the file extension.
+Use a minimal two-code-file design:
 
----
+```
+src/db/seed/data.ts   # exports editable seed definitions
+scripts/populate.ts   # exports/calls populate() and imports data.ts
+seed/images/          # bundled source media files
+```
 
-## 6. Listing Media Model
+Avoid creating a redundant `src/db/seed/populate.ts`. `data.ts` defines what should exist; `scripts/populate.ts` defines how to populate the database and Storage.
 
-EverGreen Estates has exactly two application media categories:
+The current Supabase database contains six intended mock listings. The Modern Luxury Villa has three existing reviews referencing mock public-user rows named Alex Johnson, Sarah Williams, and Michael Brown. These three user rows did not have Better Auth credential accounts. A separate Evergreen Test user has an account/session from auth testing; do not treat that test user as intended seed data.
+
+Preserve meaningful listing fields and stable existing listing IDs where practical because the IDs are part of the Storage paths. Review fixtures should reference stable seed keys or emails and resolve the Better Auth-generated user IDs during population rather than relying on generated IDs being identical across databases.
+
+A reasonable initial data set is four synthetic sellers, the six existing listings plus six new listings (12 total), and up to three seeded listings per seller. This is a starting target, not a hard limit on future fixture customizations.
+
+### Preserve Supabase Storage
+
+The existing `property-images` bucket is private. Runtime media uses `src/db/supabase/util/GetMediaUrls.ts`, which reads filenames under `listings/<listing-id>/<filename>` and returns signed URLs. Do not replace this with public local paths.
+
+Bundle source assets under:
+
+```
+seed/images/listings/<listing-id>/<filename>
+```
+
+The future populate script should upload files into the same relative paths inside the private `property-images` bucket. Media names in fixture data must match Storage object names. Existing bucket content currently includes 14 listing media files across the six listing folders (JPEGs, a GIF, and an MP4).
+
+The eventual `populate()` should use a supported server-side Better Auth workflow for valid seed accounts, create profiles/listings/reviews and resolve foreign keys, upload source media, safely repeat without duplicating seed-managed records, report its result, avoid deleting unrelated data by default, and require explicit safeguards against accidentally targeting production. Do not commit reusable passwords, hashes, DB URLs, or secrets. Never run population from app startup or a public route.
+
+No complete fixture export has been committed yet. Keep the live data intact until the copy is complete and verified.
+
+## 8. Schema Cleanup Depends on the Portable Dataset
+
+Only after mock data is preserved in the repository and code/UI relationships are migrated should we remove temporary or legacy schema. Audit every field in application code, tests, Drizzle schema, migration history, UI types, and fixtures before changing the database.
+
+Candidate fields to review (not automatic deletion instructions):
+- `users.auth_user_id` — transitional; Better Auth maps directly to `users`.
+- `listings.seller` — denormalized legacy display text currently returned to the UI.
+- `listings.seller_user_id` — nullable to support current unowned records; should become required only after all retained listings have a valid owner.
+- Any other columns shown by dependency and data audits to exist only for the old mock-data arrangement.
+
+Generate and inspect a migration, preserve real product requirements, and verify data/UI behavior before dropping any field.
+
+## 9. Supabase Storage and Media Model
+
+The listing `media` array stores filenames, not public URLs. `GetMediaUrls.ts` discovers files under `listings/<listing-id>`, preserves the order of filenames already in the array, appends Storage files not in the array, and generates signed URLs. The bucket remains private.
+
+There are exactly two media categories:
 
 ```ts
 type ListingMedia = {
@@ -106,225 +173,61 @@ type ListingMedia = {
 };
 ```
 
-The mapping is:
+JPG/JPEG/PNG/WebP/AVIF/GIF map to `image`; MP4/WebM map to `video`. GIF is not a third category. Classification removes query strings/fragments because signed URLs contain query parameters. Images use Next.js `<Image>`; videos use native `<video controls>`. `ListingMediaCarousel` uses Embla as a Client Component.
 
-```text
-JPG / JPEG / PNG / WebP / AVIF / GIF → image
-MP4 / WebM                           → video
+Signed URLs expire. Server-rendered pages relying on newly signed URLs must not be indefinitely cached; the home page currently uses `dynamic = "force-dynamic"`.
+
+## 10. Image Optimization
+
+`src/lib/netlifyImageLoader.ts` generates Netlify Image CDN URLs in production. The Supabase remote host is allowlisted in `netlify.toml`.
+
+In local development, `next.config.ts` sets `images.unoptimized` to `true` when `NODE_ENV` is `development`. Local development uses original signed source URLs instead of requesting Netlify's production-only `/.netlify/images` endpoint. Preserve this environment-aware behavior.
+
+## 11. Environment and Secret Boundaries
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+DIRECT_URL=             # migration/admin connection only
+DRIZZLE_DATABASE_URL=   # read-only evergreen_runtime
+AUTH_DATABASE_URL=      # Better Auth / evergreen_auth
+BETTER_AUTH_URL=
+BETTER_AUTH_SECRET=
+APP_DATABASE_URL=       # planned; not used until writer is implemented
 ```
 
-GIF is intentionally an `image` category rather than a third media type.
+`APP_DATABASE_URL` is an approved future name, not a functioning connection/client yet. Keep DB URLs and the Better Auth secret server-only. For Supabase shared transaction pooler connections, use the Dashboard's copied host/port and the role username format `<role>.<project-ref>`; postgres.js may require prepared statements disabled. Never expose write credentials or `BETTER_AUTH_SECRET` through a `NEXT_PUBLIC_` variable.
 
-`getMediaType()` strips query strings and fragments, then classifies `mp4` and `webm` as video. All other supported listing media is treated as image.
+## 12. Verification and Work Order
 
-Rendering uses:
+The last user-reported local checks after authentication setup passed: `npx tsc --noEmit`, `npm run build`, `npx drizzle-kit check`, `npm run test:run`, and `npx drizzle-kit migrate`. These historic results do not verify future CRUD, schema cleanup, or seeding work; rerun relevant checks after changes.
 
-```text
-image → Next.js <Image>
-video → native <video controls>
+Current sequence:
+1. Export all six existing listings, reviews, referenced mock identities, and required field values into version-controlled fixtures; download and inventory all 14 existing listing Storage assets. Verify completeness before cleanup.
+2. Implement app-write connection/role, ownership RLS, seller onboarding, authenticated listing POST/PATCH/DELETE, and the three-listing cap. Test security boundaries.
+3. Audit/replace schema dependencies and remove temporary legacy fields only after fixtures and CRUD/UI code are ready.
+4. Finalize and implement `populate()` against the stable schema/CRUD model, including private-bucket uploads, idempotency, safety checks, and fresh-database verification.
+5. Connect CRUD to the UI and test the end-to-end experience.
+
+Consult the installed Next.js 16 documentation before framework-sensitive changes.
+
+## 13. Architecture Overview
+
 ```
+Next.js App Router
+  ├─ Server Components/pages
+  │   └─ Drizzle read client
+  │       └─ DRIZZLE_DATABASE_URL / evergreen_runtime (read-only)
+  ├─ Route Handlers
+  │   ├─ /api/auth/[...all] → Better Auth
+  │   │   └─ AUTH_DATABASE_URL / evergreen_auth
+  │   └─ /api/v1/listings (GET implemented; writes pending)
+  │       └─ future authenticated writer
+  │           └─ APP_DATABASE_URL / evergreen_app (planned)
+  └─ Supabase JS Storage helper
+      └─ private property-images bucket
+          ├─ runtime: signed URLs
+          └─ future populate script: upload seed/images assets
 
-The listing detail page uses the first media item as the featured media and the reusable `ListingMediaCarousel` for the complete media collection.
-
-The carousel uses Embla for interaction and is a Client Component because it requires browser-side behavior.
-
----
-
-## 7. Image Optimization Architecture
-
-The project uses a custom Next.js image loader at:
-
-```text
-src/lib/netlifyImageLoader.ts
+DIRECT_URL → Drizzle Kit migrations only
 ```
-
-The loader generates Netlify Image CDN URLs in the form:
-
-```text
-/.netlify/images?url=...&w=...&q=...
-```
-
-Production image delivery therefore follows:
-
-```text
-Supabase signed image URL
-        ↓
-Next.js <Image>
-        ↓
-custom Netlify loader
-        ↓
-Netlify Image CDN
-        ↓
-optimized browser image
-```
-
-Netlify is configured to allow the project's Supabase remote image host through `[images].remote_images` in `netlify.toml`.
-
-### Development behavior
-
-The Netlify Image CDN does not exist on the local Next.js development server. Therefore:
-
-```ts
-unoptimized: process.env.NODE_ENV === 'development'
-```
-
-is intentional.
-
-Local development uses the original remote image URL so `npm run dev` does not attempt to request `/.netlify/images`.
-
-Production keeps image optimization enabled because `NODE_ENV` is not `development` there.
-
-This is a deliberate environment boundary, not a separate image architecture.
-
----
-
-## 8. Dynamic Signed URLs
-
-Supabase listing media uses signed URLs with finite expiration.
-
-Pages that depend on newly generated signed media URLs must not be allowed to serve indefinitely stale rendered data. The home page therefore uses request-time rendering with `dynamic = "force-dynamic"` for its featured listing data.
-
-The application must preserve this requirement while signed URLs remain the media-delivery mechanism.
-
----
-
-## 9. UI Architecture
-
-The UI uses Tailwind CSS, shadcn/ui, Hugeicons, and Framer Motion.
-
-The project follows a Server Component-first approach and keeps interactive behavior in focused Client Components.
-
-Embla Carousel is the carousel mechanism for listing media.
-
----
-
-## 10. Environment and Configuration
-
-Local and deployment environments provide Supabase configuration through environment variables:
-
-```text
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-DIRECT_URL             # migration/admin connection; never used at runtime
-DRIZZLE_DATABASE_URL   # server-only, dedicated evergreen_runtime login
-```
-
-`DRIZZLE_DATABASE_URL` must use the dedicated `evergreen_runtime` login, which has direct SELECT grants only on the public application data; never put the privileged `postgres` or `service_role` credential in the runtime URL. For Supabase's shared transaction pooler, use the Dashboard's copied host and the role username format `evergreen_runtime.<project-ref>`. Secrets and credentials must never be committed.
-
-Framework-sensitive changes must be checked against the installed Next.js documentation because the repository uses Next.js 16.x.
-
----
-
-## 11. Development, Build, and Deployment
-
-Development:
-
-```text
-npm run dev
-    ↓
-Next.js development server
-    ↓
-source remote images (no Netlify image CDN)
-```
-
-Production build:
-
-```text
-npm run build
-    ↓
-Next.js production build
-    ↓
-Netlify deployment
-```
-
-Production runtime:
-
-```text
-Netlify
-  ↓
-Next.js application
-  ↓
-Netlify Image CDN for <Image>
-```
-
-The repository is currently deployed through Netlify.
-
----
-
-## 12. Architecture Principles
-
-### Server-first
-
-Prefer Server Components and server-side data fetching.
-
-### Small client boundaries
-
-Use Client Components only when browser execution is necessary.
-
-### Database isolation
-
-Keep application-table queries under `src/db/queries` and use Drizzle ORM with the dedicated read-only PostgreSQL runtime role. Keep Supabase JS under `src/db/supabase` only for Storage operations. Keep privileged migration connections separate from runtime database connections.
-
-### URL-driven filtering
-
-Use URL search parameters for shareable property filters.
-
-### Two media categories
-
-Keep listing media classified as only `image` or `video`; GIF remains an image.
-
-### Environment-aware image delivery
-
-Use direct source URLs in local development and Netlify Image CDN optimization in production.
-
-### Single architecture authority
-
-Only `agent-files/ARCHITECTURE.md` is the authoritative architecture document.
-
----
-
-## 13. Current Architecture Boundary
-
-```text
-┌─────────────────────────────────────────────┐
-│               Next.js App Router            │
-│                                             │
-│  Server Components      Client Components   │
-│  Pages / data           Filters / Menu      │
-│  fetching               Embla interaction   │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│             Application Data Layer          │
-│  src/db/queries + Drizzle runtime client    │
-└──────────────────────┬──────────────────────┘
-                       │ restricted, read-only PostgreSQL connection
-                       ▼
-┌─────────────────────────────────────────────┐
-│           Supabase PostgreSQL               │
-│  Grants + RLS → listings, reviews, profiles │
-└─────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────┐
-│       Supabase JS Storage helper            │
-│  src/db/supabase/util/GetMediaUrls.ts       │
-└──────────────────────┬──────────────────────┘
-                       │ signed image URL
-                       ▼
-┌─────────────────────────────────────────────┐
-│             Supabase Storage                │
-│                Property Media               │
-└─────────────────────────────────────────────┘
-                       │
-                       │ signed image URL
-                       ▼
-┌─────────────────────────────────────────────┐
-│             Next.js Image Layer             │
-│                                             │
-│  Development → source URL                  │
-│  Production  → Netlify Image CDN           │
-└─────────────────────────────────────────────┘
-```
-
-Future features may extend the application, but they are not architecture until explicitly finalized.
