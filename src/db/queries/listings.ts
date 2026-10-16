@@ -49,7 +49,7 @@ export async function getListingById(
       .limit(1);
 
     if (!listing) {
-      throw new Error("Listing not found");
+      return null;
     }
 
     // Explicitly select only the permitted public user fields.
