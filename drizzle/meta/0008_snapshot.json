@@ -390,7 +390,7 @@
       "checkConstraints": {
         "seller_profiles_contact_method_check": {
           "name": "seller_profiles_contact_method_check",
-          "value": "(\n          \"seller_profiles\".\"preferred_contact_method\" = 'email'\n          AND \"seller_profiles\".\"contact_email\" IS NOT NULL\n        ) OR (\n          \"seller_profiles\".\"preferred_contact_method\" = 'phone'\n          AND \"seller_profiles\".\"contact_phone\" IS NOT NULL\n        )"
+          "value": "(\n\t\t\t\"seller_profiles\".\"preferred_contact_method\" = 'email'\n\t\t\tAND \"seller_profiles\".\"contact_email\" IS NOT NULL\n\t\t) OR (\n\t\t\t\"seller_profiles\".\"preferred_contact_method\" = 'phone'\n\t\t\tAND \"seller_profiles\".\"contact_phone\" IS NOT NULL\n\t\t)"
         }
       },
       "isRLSEnabled": true
@@ -480,6 +480,16 @@
             "evergreen_runtime"
           ],
           "using": "true"
+        },
+        "Evergreen auth can manage users": {
+          "name": "Evergreen auth can manage users",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "evergreen_auth"
+          ],
+          "using": "true",
+          "withCheck": "true"
         }
       },
       "checkConstraints": {},
@@ -604,9 +614,20 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "Evergreen auth can manage accounts": {
+          "name": "Evergreen auth can manage accounts",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "evergreen_auth"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.session": {
       "name": "session",
@@ -705,9 +726,20 @@
           ]
         }
       },
-      "policies": {},
+      "policies": {
+        "Evergreen auth can manage sessions": {
+          "name": "Evergreen auth can manage sessions",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "evergreen_auth"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.verification": {
       "name": "verification",
@@ -773,9 +805,20 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "Evergreen auth can manage verifications": {
+          "name": "Evergreen auth can manage verifications",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "evergreen_auth"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     }
   },
   "enums": {},
