@@ -15,19 +15,16 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// Application profile data.
-// The legacy email column is retained to preserve existing records.
-// The server-side runtime connection can read only id and name.
-// Consider removing email after the authentication migration and data review.
+
 export const users = pgTable(
   "users",
   {
+    // Definition for users table
     id: uuid().defaultRandom().primaryKey().notNull(),
     name: text().notNull(),
     email: text().notNull(),
-
-    // Links this profile to Better Auth once authentication is integrated.
-    // Nullable so existing profiles can be preserved during migration.
+    emailVerified: boolean("email_verified").notNull().default(false),
+    image: text("image"),
     authUserId: uuid("auth_user_id"),
 
     createdAt: timestamp("created_at", {
@@ -59,8 +56,6 @@ export const users = pgTable(
   ],
 ).enableRLS();
 
-// One storefront per application user.
-// There is intentionally no separate seller-profile ID.
 export const sellerProfiles = pgTable(
   "seller_profiles",
   {
@@ -107,12 +102,12 @@ export const sellerProfiles = pgTable(
     check(
       "seller_profiles_contact_method_check",
       sql`(
-        ${table.preferredContactMethod} = 'email'
-        AND ${table.contactEmail} IS NOT NULL
-      ) OR (
-        ${table.preferredContactMethod} = 'phone'
-        AND ${table.contactPhone} IS NOT NULL
-      )`,
+          ${table.preferredContactMethod} = 'email'
+          AND ${table.contactEmail} IS NOT NULL
+        ) OR (
+          ${table.preferredContactMethod} = 'phone'
+          AND ${table.contactPhone} IS NOT NULL
+        )`,
     ),
 
     // The public API may expose published storefronts only.

@@ -57,6 +57,13 @@
       "when": 1792103505501,
       "tag": "0007_restrict_application_api_role_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792176817391,
+      "tag": "0008_better_auth_tables",
+      "breakpoints": true
     }
   ]
 }

@@ -49,7 +49,7 @@ export async function getListingById(
       .limit(1);
 
     if (!listing) {
-      return null;
+      throw new Error("Listing not found");
     }
 
     // Explicitly select only the permitted public user fields.
@@ -104,7 +104,7 @@ export async function getListingById(
     };
   } catch (error) {
     console.error("Error fetching listing with Drizzle:", error);
-    return null;
+    throw error;
   }
 }
 
@@ -119,7 +119,7 @@ export async function getFilteredListings(
     const [minPrice, maxPrice] = filters.price;
 
     if (!Number.isFinite(minPrice) || !Number.isFinite(maxPrice)) {
-      return [];
+      throw new Error("Invalid price filter values");
     }
 
     conditions.push(gte(listings.price, String(minPrice)));
@@ -182,6 +182,6 @@ export async function getFilteredListings(
     );
   } catch (error) {
     console.error("Error fetching filtered listings with Drizzle:", error);
-    return [];
+    throw error;
   }
 }

@@ -4,7 +4,10 @@ import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
   out: "./drizzle",
-  schema: "./src/db/schema.ts",
+  schema: [
+    "./src/db/schema.ts",
+    "./src/db/auth-schema.ts",
+  ],
   dialect: "postgresql",
   schemaFilter: ["public"],
   tablesFilter: [
@@ -12,6 +15,9 @@ export default defineConfig({
     "users",
     "reviews",
     "seller_profiles",
+    "session",
+    "account",
+    "verification",
   ],
 
   dbCredentials: {
