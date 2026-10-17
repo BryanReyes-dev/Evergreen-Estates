@@ -35,14 +35,12 @@ export async function getListingById(
         tags: listings.tags,
         title: listings.title,
         price: listings.price,
-        stars: listings.stars,
         beds: listings.beds,
         baths: listings.baths,
         sqft: listings.sqft,
         address: listings.address,
         description: listings.description,
         createdAt: listings.createdAt,
-        seller: listings.seller,
       })
       .from(listings)
       .where(eq(listings.id, id))
@@ -81,14 +79,12 @@ export async function getListingById(
       tags: listing.tags,
       title: listing.title,
       price: Number(listing.price),
-      stars: Number(listing.stars),
       beds: listing.beds,
       baths: listing.baths,
       sqft: listing.sqft,
       address: listing.address,
       description: listing.description,
       created_at: listing.createdAt,
-      seller: listing.seller,
       reviews: reviewRows.map((review) => ({
         id: review.id,
         listing_id: review.listingId,
@@ -150,14 +146,12 @@ export async function getFilteredListings(
         tags: listings.tags,
         title: listings.title,
         price: listings.price,
-        stars: listings.stars,
         beds: listings.beds,
         baths: listings.baths,
         sqft: listings.sqft,
         address: listings.address,
         description: listings.description,
         createdAt: listings.createdAt,
-        seller: listings.seller,
       })
       .from(listings)
       .where(conditions.length > 0 ? and(...conditions) : undefined);
@@ -169,14 +163,12 @@ export async function getFilteredListings(
         tags: row.tags,
         title: row.title,
         price: Number(row.price),
-        stars: Number(row.stars),
         beds: row.beds,
         baths: row.baths,
         sqft: row.sqft,
         address: row.address,
         description: row.description,
         created_at: row.createdAt,
-        seller: row.seller,
         reviews: [],
       })),
     );

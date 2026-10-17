@@ -64,6 +64,13 @@
       "when": 1792176817391,
       "tag": "0008_better_auth_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792262156747,
+      "tag": "0009_remove_redundant_schema_fields",
+      "breakpoints": true
     }
   ]
 }

@@ -25,7 +25,7 @@ export const users = pgTable(
     email: text().notNull(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
-    authUserId: uuid("auth_user_id"),
+
 
     createdAt: timestamp("created_at", {
       withTimezone: true,
@@ -43,7 +43,7 @@ export const users = pgTable(
   },
   (table) => [
     unique("users_email_key").on(table.email),
-    unique("users_auth_user_id_key").on(table.authUserId),
+
 
     // Server-side read visibility. SQL column grants restrict the runtime
     // connection to id and name; public clients use the Route Handlers.
@@ -69,7 +69,7 @@ export const sellerProfiles = pgTable(
   {
     userId: uuid("user_id").primaryKey().notNull(),
 
-    slug: text().notNull(),
+
     displayName: text("display_name").notNull(),
     bio: text(),
     avatarUrl: text("avatar_url"),
@@ -80,8 +80,8 @@ export const sellerProfiles = pgTable(
     contactPhone: text("contact_phone"),
 
     preferredContactMethod: text("preferred_contact_method")
-      .notNull()
-      .default("email"),
+      .notNull(),
+
 
     isPublished: boolean("is_published").notNull().default(false),
 
@@ -106,7 +106,7 @@ export const sellerProfiles = pgTable(
       name: "seller_profiles_user_id_fkey",
     }).onDelete("cascade"),
 
-    unique("seller_profiles_slug_key").on(table.slug),
+
     check(
       "seller_profiles_contact_method_check",
       sql`(\n\t\t\t${table.preferredContactMethod} = 'email'\n\t\t\tAND ${table.contactEmail} IS NOT NULL\n\t\t) OR (\n\t\t\t${table.preferredContactMethod} = 'phone'\n\t\t\tAND ${table.contactPhone} IS NOT NULL\n\t\t)`,
@@ -130,7 +130,6 @@ export const listings = pgTable(
     tags: text().array().notNull(),
     title: text().notNull(),
     price: numeric().notNull(),
-    stars: numeric().notNull(),
     beds: integer().notNull(),
     baths: integer().notNull(),
     sqft: integer().notNull(),
@@ -140,11 +139,10 @@ export const listings = pgTable(
     createdAt: timestamp("created_at", {
       withTimezone: true,
       mode: "string",
-    }).defaultNow(),
+    })
+      .defaultNow()
+      .notNull(),
 
-    // Legacy display label retained until the existing Admin listings
-    // have an explicit ownership/backfill decision.
-    seller: text().notNull(),
 
     // Nullable during migration because existing listings don't yet map
     // to a seller profile. New listing creation must require an owner.

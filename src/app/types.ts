@@ -14,14 +14,12 @@ export interface Houselisting {
   tags: string[];
   title: string;
   price: number;
-  stars: number;
   beds: number;
   baths: number;
   sqft: number;
   address: string;
   description: string;
-  created_at: string | null;
-  seller: string;
+  created_at: string;
   reviews: Review[];
 }
 

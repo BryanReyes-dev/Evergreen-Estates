@@ -1,102 +1,233 @@
 # Evergreen Estates — Working Context
 
-> Working notes for Bryan and coding agents. This file records current implementation status, verified findings, decisions, and the immediate work sequence. It is not the authoritative architecture document.
+> Current implementation status, verified findings, decisions, and immediate work order. ARCHITECTURE.md remains the authority for finalized architecture.
 
 ## Documentation authority
 
-- `agent-files/ARCHITECTURE.md` is the only architecture authority.
-- `agent-files/AGENTS.md` contains working rules for agents.
+- `agent-files/ARCHITECTURE.md` is the authoritative architecture document.
+- `agent-files/AGENTS.md` contains agent operating rules.
 - `agent-files/CLAUDE.md` is the Claude entry point.
-- Keep this file current; replace obsolete state instead of accumulating conflicting history.
-- Distinguish code that exists and has been verified from intended work that has not been implemented.
+- Replace stale information rather than appending contradictory history.
+- Distinguish implemented code from approved but unimplemented designs.
 
-## Project and branch
+## Project and workflow
 
-Evergreen Estates is a Next.js App Router real-estate marketplace using TypeScript, React, Supabase/PostgreSQL, Drizzle ORM, Better Auth, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
+Evergreen Estates is a Next.js 16 App Router real-estate marketplace using TypeScript, React, Supabase/PostgreSQL and Storage, Drizzle ORM, Better Auth, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
-Current working branch: `feat/better-auth-drizzle-integration`.
+The working branch is `main`.
 
-The user prefers an incremental, local-first workflow: explain one small change, let Bryan make it locally, then review the diff/output and test result. Do not silently make unrelated code changes or skip ahead. Explicit permission was given to update agent documentation, including ARCHITECTURE, in the current documentation task.
+Bryan prefers an incremental, local-first workflow:
+1. Explain one focused change and why it is needed.
+2. Let Bryan make the change locally.
+3. Review the resulting diff and command output.
+4. Run the relevant tests before proceeding.
 
-## Current implemented functionality
+Do not assume local edits are committed or pushed without confirmation.
 
-- Public browsing, listing detail pages, URL-based search/filtering, review display, and listing media presentation.
-- Application table reads use Drizzle through `src/db/queries/listings.ts` and the dedicated, read-only `evergreen_runtime` PostgreSQL login configured by `DRIZZLE_DATABASE_URL`.
-- Supabase JS is used for Storage operations, not application-table queries.
-- Better Auth email/password authentication is integrated.
-- `src/lib/auth.ts` lazily creates Better Auth using `drizzleAdapter` and maps Better Auth's logical `user` model to the existing `public.users` table.
-- `src/db/drizzle/auth-client.ts` uses the separate `AUTH_DATABASE_URL` connection and the restricted `evergreen_auth` PostgreSQL login.
-- `src/db/auth-schema.ts` defines the `account`, `session`, and `verification` tables and their RLS policies.
-- `src/app/api/auth/[...all]/route.ts` exposes the Better Auth GET/POST handlers.
-- `src/lib/auth-client.ts` exposes the same-origin browser auth client.
-- Listing GET endpoints exist at `/api/v1/listings` and `/api/v1/listings/[id]`. Their current missing-listing behavior has been tested locally and is intentionally left unchanged.
-- The auth registration, sign-in, session retrieval, and sign-out flow was manually tested locally. Registration created linked user, credential-account, and session records; authenticated session retrieval succeeded and sign-out cleared the session.
-- User-reported local checks have passed: `npx tsc --noEmit`, `npm run build`, `npx drizzle-kit check`, `npm run test:run`, and `npx drizzle-kit migrate`. Treat these as the last reported results, not proof that later unverified edits were tested.
+## Implemented functionality
 
-## Connection and role boundaries
+- Public listing browsing, listing details, URL-driven search/filtering, review display, and media presentation.
+- Listing read queries in `src/db/queries/listings.ts` use Drizzle.
+- `DRIZZLE_DATABASE_URL` connects through the read-only `evergreen_runtime` role.
+- Supabase JS is used for Storage operations rather than application-table queries.
+- Better Auth email/password authentication is integrated with the canonical `public.users` table.
+- `AUTH_DATABASE_URL` connects through the restricted `evergreen_auth` role.
+- Auth tables are `account`, `session`, and `verification`.
+- Auth endpoints live at `/api/auth/[...all]`.
+- Listing GET endpoints exist at `/api/v1/listings` and `/api/v1/listings/[id]`.
+- Auth registration, sign-in, session retrieval, and sign-out were manually tested previously.
+- Listing CRUD writes, seller onboarding, and the dedicated application-write role are not implemented yet.
 
-- `DRIZZLE_DATABASE_URL` → `evergreen_runtime`; read-only application access.
-- `AUTH_DATABASE_URL` → `evergreen_auth`; Better Auth access to the canonical `users` identity table and the `account`, `session`, and `verification` tables.
-- `DIRECT_URL` → privileged Drizzle Kit migration connection only.
-- Never use the runtime or auth logins for migrations, and never use the privileged migration connection in a request handler.
-- Keep every database URL and Better Auth secret server-only. Never put credentials in committed fixtures or a `NEXT_PUBLIC_` environment variable.
+## Database connections and security boundaries
 
-The separate application-write role, currently referred to as `evergreen_app`, and its environment variable/Drizzle client are **not implemented yet**. Do not grant listing writes to `evergreen_runtime` or `evergreen_auth`. The exact app-write connection variable must be chosen consistently when implementing the writer client; the existing runtime/auth credentials remain separate.
+- `DRIZZLE_DATABASE_URL` → `evergreen_runtime`, read-only application-table access.
+- `AUTH_DATABASE_URL` → `evergreen_auth`, Better Auth identity and auth-table operations.
+- `DIRECT_URL` → privileged Drizzle Kit migrations only.
+- `APP_DATABASE_URL` and the `evergreen_app` write role/client are planned, not implemented.
 
-## Current database state and legacy mock data
+Never use the runtime or auth roles for migrations. Never use `DIRECT_URL` in request handlers. Keep credentials and Better Auth secrets server-only.
 
-The current Supabase project contains six established mock listings. Their current stable IDs, listing fields, and existing review/media relationships must be captured before modifying the schema or removing legacy columns.
+Do not grant general listing-write permissions to `evergreen_runtime` or `evergreen_auth`.
 
-The six existing records are:
+## Latest schema state
 
-| Listing | Current price | Beds | Baths | Existing reviews |
-|---|---:|---:|---:|---:|
-| Modern Luxury Villa | $850,000 | 5 | 4 | 3 |
-| Private Country Estate | $1,200,000 | 6 | 5 | 0 |
-| Cozy Suburban Family Home | $410,000 | 3 | 2 | 0 |
-| Modern Townhouse with Garage | $520,000 | 3 | 3 | 0 |
-| Affordable City Apartment | $280,000 | 1 | 1 | 0 |
-| Downtown Skyline Condo | $620,000 | 2 | 2 | 0 |
+Migration `0009_remove_redundant_schema_fields.sql` was generated, reviewed, and applied locally through Drizzle Kit. The live Supabase schema was independently checked afterward.
 
-All six currently have `seller_user_id = NULL` and the legacy `seller` label set to `Admin`. The three existing reviews belong to the Modern Luxury Villa and reference existing mock public-user rows named Alex Johnson, Sarah Williams, and Michael Brown. Those three users did not have Better Auth credential-account records when checked. A separate Evergreen Test user does have an auth account/session from the manual auth test; do not mistake that test record for intentional portable seed data.
+### `users`
 
-The `property-images` Supabase Storage bucket is private. It currently has 14 files in the six listing-specific folders, including JPEGs, a GIF, and an MP4. The current media helper builds Storage paths under `listings/<listing-id>/<filename>` and resolves filenames into signed URLs. Preserve the bucket privacy and path layout.
+- Canonical Better Auth identity table.
+- `id` is the UUID primary key.
+- `name`, `email`, `email_verified`, `image`, `created_at`, and `updated_at` remain.
+- `email` is unique.
+- Removed `auth_user_id`; Better Auth uses `users.id`.
 
-### Seed data and media direction — approved principles, implementation pending
+### `seller_profiles`
 
-- Move the project's intentional mock records out of the live database and into version-controlled repository fixtures, so a fresh environment can recreate the dataset and schema cleanup can be based on explicit requirements rather than legacy data that only exists in one database.
-- The proposed fixture module is `src/db/seed/data.ts`. It will export editable definitions for seed users, seller profiles, listings, reviews, and any required related mock records.
-- The proposed executable entry point is `scripts/populate.ts`. It will import the fixture data and export/call one `populate()` function. Avoid a second redundant `populate.ts` module under `src/db/seed` unless a concrete need emerges.
-- Package the original media assets under `seed/images/listings/<listing-id>/<filename>` in the repository. Those are source assets for population, not public runtime URLs.
-- The population script must upload the local assets to the **private Supabase Storage bucket** at the established `listings/<listing-id>/<filename>` paths. The app must continue to use the bucket and signed-URL helper; do not replace the intentional Storage design with `public/seed/images` paths.
-- Preserve the six existing listings and their useful original IDs/fields/media/reviews; add six more data-rich listings for an initial 12-listing mock dataset, preferably four synthetic sellers with up to three seeded listings each. Review fixture references should resolve by stable seed keys/emails or IDs instead of assuming Better Auth generates the same user UUID in every database.
-- Seed records must be editable by someone who clones the repo. Do not commit credentials/password hashes or allow visitors to trigger population.
-- `populate()` is intentionally **not to be finalized or implemented before CRUD**. Its contract, conflict handling, and reseed behavior depend on the completed ownership model and listing API/schema.
+- `user_id` is both primary key and foreign key to `users.id`.
+- `display_name` is required.
+- `bio`, `avatar_url`, `contact_email`, and `contact_phone` may be null.
+- `preferred_contact_method` is required, has no default, and accepts `email` or `phone`.
+- The check constraint requires `contact_email` when the preference is `email`, or `contact_phone` when the preference is `phone`.
+- `is_published`, `created_at`, and `updated_at` remain.
+- Removed `slug`.
 
-No database rows have been exported to repository fixture files yet. Keep the current database data intact until a portable copy and a verification plan exist.
+The presence of a seller profile establishes seller eligibility. `is_published` controls public storefront visibility; it is not the seller-role flag.
 
-## Immediate work sequence
+### `listings`
 
-1. **Capture and preserve the current mock dataset.** Export all six listing records and all associated review/user fields needed to reproduce them. Download/copy the 14 existing Storage assets into the repository's source-asset layout, retaining listing folder IDs and filenames. Confirm completeness before any cleanup. Do not create the final population script yet.
-2. **Finish secure listing CRUD.** Keep public GET routes working; implement authenticated POST/PATCH/DELETE Route Handlers with server-side input validation and Better Auth session verification.
-3. **Implement profile onboarding and write isolation.** New listing creation requires the authenticated user to have a seller profile. Use a separate least-privilege app-write role/connection, ownership-aware RLS, and transaction-local identity propagation that is set only from the verified Better Auth session. Never make the public or runtime role writable. Existing listings should not become editable by ordinary users until their owner relationship is explicitly seeded/backfilled.
-4. **Enforce three active listings per seller.** Check the limit on the server/database side with concurrency-safe handling; also test cross-user mutation attempts, unauthenticated requests, invalid inputs, and repeated requests. Consider registration/create rate limits as separate abuse controls.
-5. **Audit and simplify the schema only after fixtures and CRUD are ready.** Search the entire source, Drizzle definitions, migrations, query helpers, UI types, and tests for every candidate column. Likely candidates for review include transitional `users.auth_user_id`, the legacy denormalized `listings.seller` display field, and nullable `listings.seller_user_id`. These are candidates, not authorized deletions: remove/alter only after code and data dependencies are addressed, a migration is prepared, and the recreated fixture dataset is verified. Preserve fields that remain product requirements.
-6. **Finalize `data.ts` and `populate()` after the CRUD/schema design is stable.** Population should be safe to repeat, report inserts/updates/skips, avoid deleting unrelated user data by default, support the private Storage upload path, verify existing fixtures, and explicitly guard against accidentally targeting production.
-7. **Connect CRUD to the UI** and run local type-check, build, tests, migration checks, and targeted authorization tests.
+- `id`, `media`, `tags`, `title`, `price`, `beds`, `baths`, `sqft`, `address`, `description`, `created_at`, `seller_user_id`, and `updated_at` remain.
+- `created_at` is now non-null.
+- Removed `stars`; ratings must be derived from reviews.
+- Removed `seller`; seller display data should come from the related seller profile.
+- `seller_user_id` remains nullable temporarily because no fixture owners have been populated yet.
+- `seller_user_id` references `seller_profiles.user_id` and has its ownership index.
+- New listing creation must require a valid owner. Do not make the database column non-null until all retained/seeded listings have valid owners and the migration is planned.
 
-## Known implementation gap
+### `reviews`
 
-The listing routes currently support GET only. The owner-aware RLS policies and `evergreen_app` writer role/client have not yet been added to `src/db/schema.ts`/migrations. The previous proposed ownership-policy edit is therefore still pending. The user has decided that fixture extraction/data preservation comes first, CRUD comes next, and the final `populate()` architecture comes after CRUD rather than before it.
+- Each review references a listing and a user.
+- Ratings are constrained to integer values from 1 through 5.
+- The unique `(listing_id, user_id)` constraint allows one review per user per listing.
+- The review records are the source of truth for average ratings and review counts.
+- Listings without reviews should show an empty-rating state rather than `0.0★`.
 
-## Media and image rendering invariants
+The Better Auth `account`, `session`, and `verification` tables remain unchanged.
 
-- Listing media remains categorized only as `image` or `video`; GIF is `image`.
-- `src/db/supabase/util/GetMediaUrls.ts` discovers files in the private Storage bucket, preserves database media ordering, appends files present in Storage but missing from the database array, and creates signed URLs.
-- Signed URL query strings/fragments are ignored for media-type classification.
-- `src/lib/netlifyImageLoader.ts` provides Netlify Image CDN URLs in production. Local development sets `images.unoptimized` to true so it uses the original source URL.
-- Do not alter this local-vs-production behavior or replace Supabase Storage without an explicit design change.
+Historical migrations and snapshots are preserved. Do not rewrite old migration files to reflect the current schema.
 
-## Working style for the next sessions
+## Live database cleanup — verified
 
-Make one small local change at a time, explain why it exists, and ask Bryan to run the relevant command/test before proceeding. Inspect actual source and installed Next.js 16 documentation before framework-sensitive edits. Do not claim tests passed unless their output was observed or the user reported it.
+The old mock records were cleared from the live database before migration `0009` was applied.
+
+Latest verified counts immediately after cleanup and migration:
+
+| Data | Count |
+|---|---:|
+| Listings | 0 |
+| Reviews | 0 |
+| Seller profiles | 0 |
+| Users | 1 |
+| Better Auth accounts | 1 |
+| Better Auth sessions | 1 |
+| Verification records | 0 |
+| Storage objects in `property-images` | 15 |
+
+The remaining user/account/session is the separate `Evergreen Test` identity from manual auth testing. It is not an intended fixture account.
+
+The legacy reviewer-only rows were removed from the live database, but their original values and review relationships remain in the historical snapshot.
+
+## Historical snapshot and media preservation
+
+- `seed/snapshots/existing-mock-data.json` is the immutable historical archive of the old database state.
+- It records the six original listings, three old reviews, three legacy reviewer identities, and 15 Storage objects.
+- Do not turn this historical snapshot into the intended seed dataset or edit it to match the new schema.
+- The downloaded Storage assets remain under `seed/images/`.
+- All 15 original Storage objects, totalling 39,998,905 bytes, were downloaded and verified locally.
+- The private `property-images` bucket still contains 15 objects.
+- Fourteen objects are under `listings/<listing-id>/<filename>` and one object, `home-image.jpg`, is at the bucket root.
+- Do not make the bucket public or replace signed URLs with public local media URLs.
+
+The app uses `src/db/supabase/util/GetMediaUrls.ts` to generate signed URLs for private Storage objects. Keep this runtime design unchanged.
+
+## Intended fixture dataset — definitions and validation implemented
+
+`src/db/seed/data.ts` defines the intended new mock dataset. It contains fixtures only; it does not write to the database or provision authentication accounts.
+
+`tests/data.test.ts` validates the fixture data.
+
+The intended dataset is:
+
+| Data | Count |
+|---|---:|
+| Login-capable synthetic sellers | 4 |
+| Seller profiles | 4 |
+| Listings | 12 |
+| Listings per seller | 3 |
+| Reviews authored by the sellers | 48 |
+
+All four sellers review all twelve listings, including their own listings. Self-reviews are intentionally allowed in this mock dataset.
+
+Review fixture authors use stable seller keys. The population process must resolve those keys to the actual user UUIDs created for the Better Auth accounts.
+
+The first six listings preserve their historical IDs, core details, and media filenames. Six additional listings have stable fixture IDs. The new listings currently have empty media arrays; assets can be added later.
+
+The intended dataset contains only the four seller identities as users. The three old reviewer identities and their three reviews remain archived, but are not duplicated into the new 48-review dataset.
+
+Seller fixture definitions contain no passwords, hashes, sessions, database credentials, or secrets. Login-capable seller accounts must be provisioned using a supported Better Auth flow.
+
+Ratings must be calculated from reviews. Do not reintroduce a `stars` field into listing fixtures or the schema.
+
+### Validation results
+
+Bryan reported the following checks passing after the latest fixture edits:
+
+- `npx tsc --noEmit`
+- `npx vitest run tests/data.test.ts`
+- `npm run test:run`
+
+The fixture-specific suite passed all 9 tests. The full suite passed 11 tests across 2 files, including the existing runtime database-permissions tests.
+
+These are user-reported command results. Re-run relevant checks after additional edits.
+
+## Immediate work order
+
+### 1. Update architecture documentation
+
+Make `agent-files/ARCHITECTURE.md` agree with the schema changes, empty live listing/review tables, preserved historical snapshot, and validated 4-seller/12-listing/48-review fixture model.
+
+Update `agent-files/AGENTS.md` to reflect the current 15-object Storage inventory and the distinction between historical archive and intended fixtures.
+
+### 2. Implement secure listing CRUD and seller onboarding
+
+Before populating the database:
+
+- Add a dedicated least-privilege writer connection, `APP_DATABASE_URL` / `evergreen_app`.
+- Keep runtime reads, Better Auth operations, and migrations on their existing separate connections.
+- Implement authenticated listing POST/PATCH/DELETE handlers.
+- Verify the Better Auth session on the server.
+- Resolve listing owner identity from the verified session, never from a browser-supplied user ID.
+- Implement seller profile onboarding associated with the authenticated `users.id`.
+- Enforce owner-only updates/deletes.
+- Enforce the three-active-listings-per-seller cap with concurrency-safe handling.
+- Add appropriate RLS policies and limited table grants.
+- Test anonymous access, invalid input, cross-user mutations, owner reassignment, and concurrent listing creation.
+
+The writer role/client and owner-aware listing-write policies are not implemented yet. Do not enable write handlers until their authorization boundaries are tested.
+
+### 3. Audit and finalize schema constraints
+
+After fixture and CRUD dependencies are aligned:
+
+- Ensure listing ownership is set for every intended listing.
+- Make `listings.seller_user_id` non-null in a subsequent migration only after verifying every retained row has a valid owner.
+- Decide and implement the rating aggregate queries needed by listing cards/search results as well as detail pages.
+- Keep historical migrations/snapshots immutable.
+
+### 4. Implement the population function
+
+Only after the schema, seller onboarding, and ownership/write behavior are stable, implement `scripts/populate.ts` importing `src/db/seed/data.ts`.
+
+Population should:
+
+- Provision the four seller accounts through Better Auth without committing reusable credentials.
+- Resolve user UUIDs and create the corresponding seller profiles.
+- Insert or safely reconcile the twelve listings and 48 reviews.
+- Upload bundled media to the private `property-images` bucket.
+- Be repeatable without duplicate fixture records.
+- Report inserts/updates/skips and validation failures.
+- Avoid deleting unrelated data by default.
+- Guard explicitly against accidentally targeting production.
+- Never run automatically at app startup or through a public route.
+
+### 5. Wire CRUD into the UI and verify end to end
+
+After the write path and population workflow are implemented, connect the UI and rerun type-checks, full tests, build, migration checks, and targeted authorization tests.
+
+## Media and implementation invariants
+
+- Listing `media` arrays store filenames rather than public URLs.
+- Media remains categorized as `image` or `video`; GIF is an image.
+- `GetMediaUrls.ts` preserves database media order, appends files found in Storage but missing from the array, and generates signed URLs.
+- Keep the Supabase Storage bucket private.
+- Keep `src/lib/netlifyImageLoader.ts` and the local-development versus production image optimization behavior intact.
+- Use the installed Next.js 16 documentation before framework-sensitive changes.
