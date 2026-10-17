@@ -1,0 +1,323 @@
+
+{
+  "snapshot_version": 1,
+  "captured_on": "2026-10-17",
+  "source": {
+    "project_name": "Evergreen Estates",
+    "database_schema": "public",
+    "storage_bucket": "property-images",
+    "storage_bucket_is_private": true
+  },
+  "counts": {
+    "listings": 6,
+    "reviews": 3,
+    "users": 3,
+    "seller_profiles": 0,
+    "storage_objects": 15,
+    "storage_bytes": 39998905
+  },
+  "notes": [
+    "Archival snapshot of the existing mock data before CRUD and schema changes.",
+    "All six existing listings currently have seller_user_id set to null and seller set to Admin.",
+    "The three included users are mock reviewers, not real authenticated accounts.",
+    "The manually created Evergreen Test auth user, its account, and its session are intentionally excluded.",
+    "Future population code must resolve Better Auth users through stable seed keys or emails instead of assuming that newly generated user IDs match these historical IDs.",
+    "Storage object paths and filenames must be preserved because runtime media references them."
+  ],
+  "users": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "name": "Alex Johnson",
+      "email": "alex@example.com",
+      "email_verified": false,
+      "image": null,
+      "created_at": "2026-09-06T16:25:40.989983+00:00",
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "name": "Sarah Williams",
+      "email": "sarah@example.com",
+      "email_verified": false,
+      "image": null,
+      "created_at": "2026-09-06T16:25:40.989983+00:00",
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "name": "Michael Brown",
+      "email": "michael@example.com",
+      "email_verified": false,
+      "image": null,
+      "created_at": "2026-09-06T16:25:40.989983+00:00",
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    }
+  ],
+  "seller_profiles": [],
+  "listings": [
+    {
+      "id": "2efe7c1c-2988-4cbb-8d61-0feced59b0b0",
+      "media": [
+        "house1.jpg",
+        "houseinterior1.jpg",
+        "homes-and-land-virtual-tour (1).gif",
+        "house1-tour.mp4"
+      ],
+      "tags": [
+        "luxury",
+        "swimming pool",
+        "garden",
+        "garage"
+      ],
+      "title": "Modern Luxury Villa",
+      "price": 850000,
+      "stars": 4.5,
+      "beds": 5,
+      "baths": 4,
+      "sqft": 4200,
+      "address": "12 Beverly Hills Dr, Los Angeles, CA",
+      "description": "A stunning luxury villa featuring a private pool, open-concept living space, and panoramic city views.",
+      "created_at": "2026-07-24T20:18:49.529195+00:00",
+      "seller": "Admin",
+      "seller_user_id": null,
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    },
+    {
+      "id": "3843291e-e94b-4ec1-b26e-b191455c8e53",
+      "media": [
+        "house2.jpg",
+        "houseinterior2.jpg"
+      ],
+      "tags": [
+        "estate",
+        "large-land",
+        "luxury",
+        "garden",
+        "fireplace",
+        "garage"
+      ],
+      "title": "Private Country Estate",
+      "price": 1200000,
+      "stars": 4.8,
+      "beds": 6,
+      "baths": 5,
+      "sqft": 6000,
+      "address": "990 Countryside Rd, Nashville, TN",
+      "description": "Expansive estate with large land, fireplace, garden, and garage.",
+      "created_at": "2026-07-24T20:18:49.529195+00:00",
+      "seller": "Admin",
+      "seller_user_id": null,
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    },
+    {
+      "id": "8fca3710-cda9-4ed4-8dba-113cb686dcaf",
+      "media": [
+        "house3.jpg",
+        "houseinterior3.jpg"
+      ],
+      "tags": [
+        "cozy",
+        "family",
+        "suburban",
+        "fireplace",
+        "hardwood floors"
+      ],
+      "title": "Cozy Suburban Family Home",
+      "price": 410000,
+      "stars": 4.2,
+      "beds": 3,
+      "baths": 2,
+      "sqft": 1800,
+      "address": "88 Maplewood Ln, Austin, TX",
+      "description": "Warm family home with fireplace, hardwood floors, and large backyard.",
+      "created_at": "2026-07-24T20:18:49.529195+00:00",
+      "seller": "Admin",
+      "seller_user_id": null,
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    },
+    {
+      "id": "abc12623-5fe6-471e-9683-160b9b4f3fcd",
+      "media": [
+        "house4.jpg",
+        "houseinterior4.jpg"
+      ],
+      "tags": [
+        "modern",
+        "townhouse",
+        "garage",
+        "attic",
+        "hardwood floors"
+      ],
+      "title": "Modern Townhouse with Garage",
+      "price": 520000,
+      "stars": 4.5,
+      "beds": 3,
+      "baths": 3,
+      "sqft": 2100,
+      "address": "77 Pinecrest Ave, Seattle, WA",
+      "description": "Smart townhouse with garage, attic space, and hardwood floors.",
+      "created_at": "2026-07-24T20:18:49.529195+00:00",
+      "seller": "Admin",
+      "seller_user_id": null,
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    },
+    {
+      "id": "bfc338aa-93c5-474d-a9dd-d45859a601f5",
+      "media": [
+        "house5.jpg",
+        "houseinterior5.jpg"
+      ],
+      "tags": [
+        "starter",
+        "affordable",
+        "city",
+        "heating system",
+        "basement"
+      ],
+      "title": "Affordable City Apartment",
+      "price": 280000,
+      "stars": 4.0,
+      "beds": 1,
+      "baths": 1,
+      "sqft": 750,
+      "address": "45 River St, Chicago, IL",
+      "description": "Compact apartment with basement storage and heating system.",
+      "created_at": "2026-07-24T20:18:49.529195+00:00",
+      "seller": "Admin",
+      "seller_user_id": null,
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    },
+    {
+      "id": "dd90c583-f2d0-4276-8e5d-fa424592cdf3",
+      "media": [
+        "house6.jpg",
+        "houseinterior6.jpg"
+      ],
+      "tags": [
+        "modern",
+        "downtown",
+        "condo",
+        "air conditioning",
+        "balcony"
+      ],
+      "title": "Downtown Skyline Condo",
+      "price": 620000,
+      "stars": 4.0,
+      "beds": 2,
+      "baths": 2,
+      "sqft": 1350,
+      "address": "300 Market St, San Francisco, CA",
+      "description": "High-rise condo with skyline views, balcony, and modern amenities.",
+      "created_at": "2026-07-24T20:18:49.529195+00:00",
+      "seller": "Admin",
+      "seller_user_id": null,
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    }
+  ],
+  "reviews": [
+    {
+      "id": "02184701-cce1-479e-a611-04d618836445",
+      "listing_id": "2efe7c1c-2988-4cbb-8d61-0feced59b0b0",
+      "user_id": "22222222-2222-2222-2222-222222222222",
+      "rating": 4,
+      "comment": "Really nice home with plenty of space. The kitchen and living room are my favorite parts.",
+      "created_at": "2026-09-06T16:25:47.350343+00:00",
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    },
+    {
+      "id": "3b65348e-43cd-4d25-866f-e7196c9f0f1e",
+      "listing_id": "2efe7c1c-2988-4cbb-8d61-0feced59b0b0",
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "rating": 5,
+      "comment": "Absolutely beautiful property. The neighborhood is quiet and the house looks even better in person.",
+      "created_at": "2026-09-06T16:25:47.350343+00:00",
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    },
+    {
+      "id": "84593a53-7747-412f-8845-2b98c079e572",
+      "listing_id": "2efe7c1c-2988-4cbb-8d61-0feced59b0b0",
+      "user_id": "33333333-3333-3333-3333-333333333333",
+      "rating": 5,
+      "comment": "Great location and amazing views. I would definitely recommend checking this property out.",
+      "created_at": "2026-09-06T16:25:47.350343+00:00",
+      "updated_at": "2026-10-11T18:25:07.202118+00:00"
+    }
+  ],
+  "storage_objects": [
+    {
+      "path": "home-image.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 392916
+    },
+    {
+      "path": "listings/2efe7c1c-2988-4cbb-8d61-0feced59b0b0/homes-and-land-virtual-tour (1).gif",
+      "content_type": "image/gif",
+      "size_bytes": 11091843
+    },
+    {
+      "path": "listings/2efe7c1c-2988-4cbb-8d61-0feced59b0b0/house1-tour.mp4",
+      "content_type": "video/mp4",
+      "size_bytes": 14962552
+    },
+    {
+      "path": "listings/2efe7c1c-2988-4cbb-8d61-0feced59b0b0/house1.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 2283440
+    },
+    {
+      "path": "listings/2efe7c1c-2988-4cbb-8d61-0feced59b0b0/houseinterior1.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 1587710
+    },
+    {
+      "path": "listings/3843291e-e94b-4ec1-b26e-b191455c8e53/house2.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 2416589
+    },
+    {
+      "path": "listings/3843291e-e94b-4ec1-b26e-b191455c8e53/houseinterior2.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 309659
+    },
+    {
+      "path": "listings/8fca3710-cda9-4ed4-8dba-113cb686dcaf/house3.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 1161368
+    },
+    {
+      "path": "listings/8fca3710-cda9-4ed4-8dba-113cb686dcaf/houseinterior3.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 749008
+    },
+    {
+      "path": "listings/abc12623-5fe6-471e-9683-160b9b4f3fcd/house4.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 1833740
+    },
+    {
+      "path": "listings/abc12623-5fe6-471e-9683-160b9b4f3fcd/houseinterior4.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 1030156
+    },
+    {
+      "path": "listings/bfc338aa-93c5-474d-a9dd-d45859a601f5/house5.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 1397550
+    },
+    {
+      "path": "listings/bfc338aa-93c5-474d-a9dd-d45859a601f5/houseinterior5.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 309659
+    },
+    {
+      "path": "listings/dd90c583-f2d0-4276-8e5d-fa424592cdf3/house6.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 53541
+    },
+    {
+      "path": "listings/dd90c583-f2d0-4276-8e5d-fa424592cdf3/houseinterior6.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 419174
+    }
+  ]
+}
