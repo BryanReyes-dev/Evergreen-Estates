@@ -71,6 +71,20 @@
       "when": 1792262156747,
       "tag": "0009_remove_redundant_schema_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792335589201,
+      "tag": "0010_app_write_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792341803569,
+      "tag": "0011_shared_read_role",
+      "breakpoints": true
     }
   ]
 }

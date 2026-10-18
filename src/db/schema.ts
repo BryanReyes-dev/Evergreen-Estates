@@ -13,8 +13,10 @@ import {
   timestamp,
   unique,
   uuid,
+  pgRole,
 } from "drizzle-orm/pg-core";
 
+export const evergreenReadRole = pgRole("evergreen_read");
 
 export const users = pgTable(
   "users",
@@ -47,10 +49,10 @@ export const users = pgTable(
 
     // Server-side read visibility. SQL column grants restrict the runtime
     // connection to id and name; public clients use the Route Handlers.
-    pgPolicy("Runtime can read application user identity", {
+    pgPolicy("Shared read role can read application user identity", {
       as: "permissive",
       for: "select",
-      to: ["evergreen_runtime"],
+      to: evergreenReadRole,
       using: sql`true`,
     }),
 
@@ -113,10 +115,10 @@ export const sellerProfiles = pgTable(
     ),
 
     // The public API may expose published storefronts only.
-    pgPolicy("Runtime can read published seller storefronts", {
+    pgPolicy("Shared read role can read published seller storefronts", {
       as: "permissive",
       for: "select",
-      to: ["evergreen_runtime"],
+      to: evergreenReadRole,
       using: sql`${table.isPublished} = true`,
     }),
   ],
@@ -164,10 +166,10 @@ export const listings = pgTable(
 
     index("listings_seller_user_id_idx").on(table.sellerUserId),
 
-    pgPolicy("Runtime can read listings", {
+    pgPolicy("Shared read role can read listings", {
       as: "permissive",
       for: "select",
-      to: ["evergreen_runtime"],
+      to: evergreenReadRole,
       using: sql`true`,
     }),
   ],
@@ -216,10 +218,10 @@ export const reviews = pgTable(
 
     index("reviews_user_id_idx").on(table.userId),
 
-    pgPolicy("Runtime can read reviews", {
+    pgPolicy("Shared read role can read reviews", {
       as: "permissive",
       for: "select",
-      to: ["evergreen_runtime"],
+      to: evergreenReadRole,
       using: sql`true`,
     }),
 

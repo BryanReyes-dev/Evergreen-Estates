@@ -19,6 +19,11 @@ export default defineConfig({
     "account",
     "verification",
   ],
+  entities: {
+    roles: {
+      provider: "supabase",
+    },
+  },
 
   dbCredentials: {
     url: process.env.DIRECT_URL!,
