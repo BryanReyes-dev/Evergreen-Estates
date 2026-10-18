@@ -14,43 +14,57 @@ Evergreen Estates is a full-stack real-estate web application using Next.js 16 A
 
 ## Before Working
 
-1. Read `agent-files/Agents_Context.md` for current verified status, blockers, and task order.
+1. Read `agent-files/Agents_Context.md` for the latest implementation status, verified findings, blockers, and immediate work order.
 2. Read `agent-files/ARCHITECTURE.md` for finalized architecture and explicitly labeled planned decisions.
 3. Read the relevant installed Next.js documentation under `node_modules/next/dist/docs/` when changing framework-sensitive behavior.
 4. Inspect the source, schema, migrations, and tests that touch the intended change before editing.
-5. Distinguish code that exists from plans. Do not treat old README text or working notes as proof of implementation.
-6. Work incrementally: propose one concrete local edit, explain why, let Bryan apply/run it, and review the resulting diff and test output before advancing. Do not silently make unrelated code or repository changes.
+5. Distinguish implemented code from plans. Do not treat old README text, historical migrations, or archive snapshots as proof of current implementation.
+6. Work incrementally: propose one focused local edit, explain why it is needed, let Bryan apply/run it, and review the resulting diff and command output before advancing. Do not silently make unrelated code/repository changes.
 
 ## Project Boundaries
 
 - Keep application-table queries and writes behind the established `src/db` boundary.
-- Preserve the Server Component / Client Component separation unless the requested feature requires browser interactivity.
+- Preserve the Server Component / Client Component separation unless a feature requires browser interactivity.
 - Keep URL-driven filtering and the current server-side Drizzle GET path intact while implementing CRUD.
 - Do not change the current listing GET-by-ID 404 behavior without a demonstrated reason; it has been tested locally.
 - Do not introduce unrelated framework or infrastructure changes during focused work.
 - Keep listing media limited to the established `image` and `video` categories. GIF remains an image.
-- Do not switch application table operations from Drizzle to Supabase JS; Supabase JS remains the Storage helper client.
+- Do not switch application-table operations from Drizzle to Supabase JS; Supabase JS is the Storage helper client.
 
 ## Authentication and Database Security
 
-- Better Auth is integrated and maps its logical `user` model to the canonical `public.users` table.
-- `AUTH_DATABASE_URL` / `evergreen_auth` is for Better Auth only.
-- `DRIZZLE_DATABASE_URL` / `evergreen_runtime` is read-only.
+- Better Auth maps its logical `user` model to the canonical `public.users` table; there is no separate Better Auth user table.
+- `AUTH_DATABASE_URL` / `evergreen_auth` is for Better Auth identity and auth-table operations only.
+- `DRIZZLE_DATABASE_URL` / `evergreen_runtime` is read-only for application-table queries.
 - `DIRECT_URL` is reserved for Drizzle Kit migrations; never use it in request handlers.
-- Authenticated listing writes are not implemented yet. The proposed `APP_DATABASE_URL` / `evergreen_app` write path and ownership-aware RLS must be implemented and tested before enabling mutations.
-- Never trust a user ID or ownership field from the request body. Resolve identity from the verified Better Auth session.
-- Apply the three-listing cap on the server with concurrency-safe handling; client-side UI restrictions alone are insufficient.
-- Preserve the current unowned seed/legacy listings from ordinary user writes until ownership has been explicitly assigned.
+- The `APP_DATABASE_URL` / `evergreen_app` application-write connection is planned, not implemented. Do not enable listing writes until the least-privilege role/client and owner-aware RLS policies have been implemented and tested.
+- Never trust a user ID or ownership field from the request body. Resolve owner identity from the verified Better Auth session on the server.
+- Seller-profile onboarding must associate the profile with the authenticated canonical `users.id`.
+- Apply the three-active-listings-per-seller cap server-side with concurrency-safe handling; a client-side restriction or plain count-then-insert is insufficient.
+- Existing unowned listings must not become mutable to ordinary users until their ownership is deliberately assigned.
 - Keep all database URLs and auth secrets server-only.
 
-## Mock Data, Seeding, and Storage
+## Schema and Migrations
 
-- Preserve the existing six listings, their reviews, stable IDs where practical, and all related mock fields before schema cleanup.
-- Move intentional mock records into editable repository fixtures so new developers can recreate the dataset. Do not finalize or implement the `populate()` script until CRUD, ownership, and schema decisions are stable.
-- Planned structure: `src/db/seed/data.ts` exports fixture data; `scripts/populate.ts` imports it and owns the `populate()` entry point; bundled media assets live under `seed/images/listings/<listing-id>/<filename>`.
-- Keep the Supabase `property-images` bucket private. The app resolves media under `listings/<listing-id>/<filename>` and delivers signed URLs. The future population script must upload bundled source assets into that bucket; do not replace this design with direct `public/seed/images` URLs.
-- Do not commit seed-account passwords, hashes, secrets, or database credentials. Population is a developer operation, never a public route or automatic app-startup hook.
-- Before dropping any suspected legacy column, search all code, types, fixtures, tests, and migrations; remove it only after a data-preserving migration and end-to-end verification.
+- Current schema is defined in `src/db/schema.ts` and `src/db/auth-schema.ts`; inspect them and the relevant migrations before changing database behavior.
+- Migration `0009_remove_redundant_schema_fields.sql` removed `users.auth_user_id`, `listings.seller`, `listings.stars`, and `seller_profiles.slug`. Do not reintroduce these removed columns because they appear in historical migrations or snapshots.
+- `listings.seller_user_id` is currently nullable. Do not make it non-null until every retained listing has a valid seller owner and a reviewed migration is ready.
+- Ratings are derived from review records; do not add aggregate `stars` back to listings.
+- Never rewrite already-applied migration files to match the current schema. Generate and review a new migration for a schema change.
+
+## Mock Data, Historical Archive, and Storage
+
+- The historical archive at `seed/snapshots/existing-mock-data.json` is committed and should remain an immutable record of the old database state. Do not edit it to match the new schema or use it as the intended seed dataset.
+- The intended fixture dataset is implemented in `src/db/seed/data.ts`; its pure validation suite is `tests/data.test.ts`. It currently defines four synthetic sellers, 12 listings, and 48 reviews. Each seller owns three listings; every seller reviews all listings, including their own, by deliberate mock-data design.
+- The first six fixture listings preserve the prior listing IDs, core details, and media filenames; the six additional fixtures currently have no media.
+- The previous live database records were cleared before migration 0009. The last verified database state recorded in `Agents_Context.md` had no listings, reviews, or seller profiles, and retained one separate test user/account/session. Recheck the live database before any destructive operation; never treat that test identity as seed data.
+- The private Supabase `property-images` bucket last contained 15 objects totalling 39,998,905 bytes: 14 listing-folder objects and root object `home-image.jpg`. All 15 were reported downloaded and verified under `seed/images/`. Recheck live Storage before any destructive operation.
+- Keep the bucket private. Listing fixture media stores filenames; runtime resolves `listings/<listing-id>/<filename>` to signed URLs with `src/db/supabase/util/GetMediaUrls.ts`. Never replace this with public local media URLs.
+- Planned media source paths are `seed/images/listings/<listing-id>/<filename>`; align fixture filenames and Storage object paths exactly.
+- `scripts/populate.ts` has not been implemented. Do not implement/finalize population until listing CRUD, ownership enforcement, and dependent schema decisions are stable.
+- The future developer-run population operation must provision seller identities through a supported Better Auth flow, resolve UUID relationships, safely repeat without duplicate seed-managed data, upload to private Storage, avoid deleting unrelated data by default, and include explicit production safeguards.
+- Never commit reusable seed passwords, password hashes, database URLs, sessions, auth secrets, or other credentials. Population must never run from application startup or a public route.
+- Before removing or changing any other schema field, search current source, types, fixtures, tests, and migrations for dependencies and plan a data-preserving migration.
 
 ## Image Pipeline
 
@@ -63,9 +77,9 @@ The project uses `src/lib/netlifyImageLoader.ts` for production image optimizati
 
 ## Documentation Authority
 
-- `agent-files/ARCHITECTURE.md` is the only authoritative architecture document.
-- `agent-files/Agents_Context.md` is short-term context and implementation status; replace stale notes rather than accumulating contradictory history.
-- `agent-files/AGENTS.md` contains agent operating rules.
-- `agent-files/CLAUDE.md` is a lightweight include file for Claude.
+- `agent-files/ARCHITECTURE.md` is the authoritative architecture document.
+- `agent-files/Agents_Context.md` is current working context and task status; replace stale information instead of accumulating contradictory history.
+- `agent-files/AGENTS.md` contains operating rules for coding agents.
+- `agent-files/CLAUDE.md` is the Claude entry point.
 - The root README is human-facing and should describe implemented behavior, not future plans.
-- Bryan explicitly approved editing ARCHITECTURE in October 2026 to align it with the current authentication implementation and the planned CRUD / data-portability sequence. Future architecture changes still require explicit approval before being recorded as finalized decisions.
+- Documentation must distinguish implemented fixtures and historical archival from the still-planned population operation.
