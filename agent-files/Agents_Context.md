@@ -171,13 +171,11 @@ These are user-reported command results. Re-run relevant checks after additional
 
 ## Immediate work order
 
-### 1. Update architecture documentation
+### Documentation alignment completed
 
-Make `agent-files/ARCHITECTURE.md` agree with the schema changes, empty live listing/review tables, preserved historical snapshot, and validated 4-seller/12-listing/48-review fixture model.
+The architecture and agent operating documents have been updated on `main` to reflect the current schema, cleared mock-data tables, immutable historical snapshot, implemented fixtures, 15-object Storage inventory, and still-planned population workflow. Pull these documentation changes before starting the next implementation step.
 
-Update `agent-files/AGENTS.md` to reflect the current 15-object Storage inventory and the distinction between historical archive and intended fixtures.
-
-### 2. Implement secure listing CRUD and seller onboarding
+### 1. Implement secure listing CRUD and seller onboarding
 
 Before populating the database:
 
@@ -194,7 +192,7 @@ Before populating the database:
 
 The writer role/client and owner-aware listing-write policies are not implemented yet. Do not enable write handlers until their authorization boundaries are tested.
 
-### 3. Audit and finalize schema constraints
+### 2. Audit and finalize schema constraints
 
 After fixture and CRUD dependencies are aligned:
 
@@ -203,7 +201,7 @@ After fixture and CRUD dependencies are aligned:
 - Decide and implement the rating aggregate queries needed by listing cards/search results as well as detail pages.
 - Keep historical migrations/snapshots immutable.
 
-### 4. Implement the population function
+### 3. Implement the population function
 
 Only after the schema, seller onboarding, and ownership/write behavior are stable, implement `scripts/populate.ts` importing `src/db/seed/data.ts`.
 
@@ -219,7 +217,7 @@ Population should:
 - Guard explicitly against accidentally targeting production.
 - Never run automatically at app startup or through a public route.
 
-### 5. Wire CRUD into the UI and verify end to end
+### 4. Wire CRUD into the UI and verify end to end
 
 After the write path and population workflow are implemented, connect the UI and rerun type-checks, full tests, build, migration checks, and targeted authorization tests.
 
