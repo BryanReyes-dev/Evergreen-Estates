@@ -45,15 +45,20 @@ The application uses separate database credentials for distinct responsibilities
 | `DRIZZLE_DATABASE_URL` | `evergreen_runtime` | Read-only application-table queries | Implemented |
 | `AUTH_DATABASE_URL` | `evergreen_auth` | Better Auth user, account, session, and verification operations | Implemented |
 | `DIRECT_URL` | Privileged migration connection | Drizzle Kit migrations only | Implemented |
-| `APP_DATABASE_URL` | `evergreen_app` | Least-privilege application writes | Planned; not implemented |
+| `APP_DATABASE_URL` | `evergreen_app` | Least-privilege application writes | Connection/client planned; role exists and inherits shared reads; no write grants yet |
 
-Never use `DIRECT_URL` in a request handler. Do not grant general listing writes to `evergreen_runtime` or `evergreen_auth`. All database URLs and Better Auth secrets must remain server-only; never expose them through `NEXT_PUBLIC_` variables.
+The NOLOGIN role evergreen_read holds common SELECT privileges and is the target for shared-read RLS policies. Migration 0011 grants membership to evergreen_runtime and evergreen_app with INHERIT TRUE, SET FALSE. The runtime role remains read-only. The evergreen_app login currently inherits reads but has no table-write grants, and the app connection/client has not been implemented.
 
+Migration 0010 creates evergreen_app with CONNECT only. Applied migration 0011 creates evergreen_read, grants common reads (only users.id and users.name in public.users), switches the read-policy targets, and removes runtime's duplicate direct read grants. Drizzle schema source controls role and policy declarations; 0011 also contains explicit GRANT/REVOKE and membership SQL that Drizzle Kit does not generate from the TypeScript schema.
+
+Never use DIRECT_URL in a request handler. Do not grant general listing writes to evergreen_runtime or evergreen_auth. All database URLs and Better Auth secrets must remain server-only; never expose them through NEXT_PUBLIC_ variables.
 Supabase JS under `src/db/supabase` is used for Storage operations, not application-table queries. Application-table reads use Drizzle and PostgreSQL. The database clients use lazy initialization and disable postgres.js prepared statements for compatibility with the Supabase shared transaction pooler.
 
 ## 4. Current Schema
 
-The schema source is `src/db/schema.ts`, with Better Auth tables defined in `src/db/auth-schema.ts`. Migration history is versioned under `drizzle/`. Do not rewrite historical migrations to make them resemble the current schema.
+The schema source is src/db/schema.ts, with Better Auth tables defined in src/db/auth-schema.ts. Migration history is versioned under drizzle/. Do not rewrite historical migrations to make them resemble the current schema.
+
+src/db/schema.ts declares evergreenReadRole via pgRole and targets it from the four common SELECT RLS policies. The applied role/membership/grant transition is migration 0011; keep future schema-policy changes generated and reviewed, with explicit custom SQL reserved for grants or memberships Drizzle cannot express.
 
 ### `users`
 
@@ -95,14 +100,25 @@ Email/password registration, sign-in, session retrieval, and sign-out were manua
 
 ## 5. Listing Read and Search Architecture — Implemented
 
-Application-table reads use Drizzle through `src/db/queries/listings.ts` and the read-only `evergreen_runtime` PostgreSQL role configured through `DRIZZLE_DATABASE_URL`. That role has read-only grants and matching RLS policies and cannot bypass RLS.
+Application-table reads use Drizzle through src/db/queries/listings.ts and the read-only evergreen_runtime PostgreSQL role configured through DRIZZLE_DATABASE_URL. That login inherits shared SELECT permissions from evergreen_read. RLS is enabled and the runtime role cannot bypass RLS.
 
-Implemented listing endpoints:
+The shared-read policy contract is:
 
-- `GET /api/v1/listings` supports optional price, query, and tag filters.
-- `GET /api/v1/listings/[id]` returns a listing or the existing 404 response.
+- listings: evergreen_read can SELECT all listing rows.
+- reviews: evergreen_read can SELECT review rows.
+- seller_profiles: evergreen_read can SELECT published profiles only (is_published = true).
+- users: the shared SELECT policy permits visible rows, but SQL column grants expose only id and name; email is not accessible through the shared permissions.
 
-The missing-listing 404 behavior has been tested locally. Do not change it without a concrete reason.
+Implemented listing Route Handlers:
+
+| Method and path | Status | Behavior |
+|---|---|---|
+| GET /api/v1/listings | Implemented | Optional price, query, and tag filters |
+| GET /api/v1/listings/[id] | Implemented | Returns a listing or the existing 404 response |
+
+The existing GET-by-ID 404 behavior has been tested locally. Preserve it unless a demonstrated requirement calls for a change.
+
+The handler files are src/app/api/v1/listings/route.ts (collection) and src/app/api/v1/listings/[id]/route.ts (item). These route.ts files are HTTP endpoints. Exporting another HTTP-method function from a route file adds that method to the same URL; a separate API server is not required.
 
 ```
 Listing page / API
@@ -110,47 +126,65 @@ Listing page / API
 src/db/queries/listings.ts
       ↓
 Drizzle + postgres.js
-      ↓  DRIZZLE_DATABASE_URL / evergreen_runtime (read-only)
+      ↓  DRIZZLE_DATABASE_URL / evergreen_runtime
+      ↓  shared grants + policies via evergreen_read
 Supabase PostgreSQL (grants + RLS)
 ```
 
-Filtering is URL-driven: controls update search parameters, navigation renders server-side results, and Drizzle executes parameterized PostgreSQL queries.
+Filtering remains URL-driven: controls update search parameters, navigation renders server-side results, and Drizzle executes parameterized PostgreSQL queries. Server Components should call the query/data layer directly rather than making HTTP requests to this app's own public Route Handlers.
 
-## 6. Target Listing Write Architecture — Approved, Not Implemented
+## 6. Listing Write Architecture — Planned; Shared Read Role Prepared
 
-The planned writer is `APP_DATABASE_URL` using a least-privilege `evergreen_app` login. The writer role/client, owner-aware listing-write policies, seller-onboarding endpoint, and listing mutations do not exist yet. Keep the read and authentication roles unchanged.
+The evergreen_app login exists from migration 0010 and was added to evergreen_read in migration 0011. It inherits common reads but currently has no application-table write grants. APP_DATABASE_URL and a dedicated app Drizzle client are not implemented; listing mutations and seller onboarding do not exist yet.
 
-Target request flow:
+### REST endpoint plan
+
+Use Next.js App Router Route Handlers as the explicit HTTP API contract:
+
+| Method and path | Status | Responsibility |
+|---|---|---|
+| GET /api/v1/listings | Implemented | List/search/filter public listings |
+| POST /api/v1/listings | Planned | Create a listing for the current authenticated seller |
+| GET /api/v1/listings/[id] | Implemented | Read one listing; preserve existing 404 behavior |
+| PATCH /api/v1/listings/[id] | Planned | Partially update an owned listing |
+| DELETE /api/v1/listings/[id] | Planned | Delete an owned listing |
+| POST /api/v1/seller-profiles | Planned | Onboard the current authenticated user as a seller |
+
+Collection methods belong in src/app/api/v1/listings/route.ts; item methods belong in src/app/api/v1/listings/[id]/route.ts. Add exported POST, PATCH, or DELETE functions to those existing route files. PATCH is chosen for partial updates; add PUT only if full-resource replacement is deliberately designed.
+
+### Target write request flow
 
 ```
-POST/PATCH/DELETE Route Handler
+HTTP request to a Next.js Route Handler
       ↓
 Verify Better Auth session from request headers
       ↓
-Validate and normalize the body
+Validate body and allowlisted mutable fields
       ↓
-App-write database transaction
+Dedicated app-write Drizzle client / transaction
       ↓
 Set transaction-local app.current_user_id from verified session UUID
       ↓
-Owner-aware RLS + limited table grants
+Limited grants + owner-aware RLS and database invariants
       ↓
-Commit or rollback
+Commit/rollback and return a client-safe JSON response
 ```
 
-The proposed owner predicates use a transaction-local setting such as `set_config('app.current_user_id', ..., true)`. The server must set it only from the verified Better Auth session; never trust a user ID supplied by the browser. Transaction-local scope prevents identity from leaking across pooled connections. This is defense in depth, not a replacement for protecting the writer credential.
+Write handlers must derive the owner from the verified Better Auth session, never a browser-supplied userId or seller_user_id. Keep route handlers focused on HTTP concerns (auth, validation, status/JSON response) and delegate SQL work to src/db mutation/query modules. Use only APP_DATABASE_URL for app writes; never use DIRECT_URL, evergreen_runtime, or evergreen_auth for listing writes.
 
-CRUD/security requirements:
+Use the established JSON envelope: successful reads/updates return { data: ... }; errors return { error: { code, message } }. Keep status behavior consistent: 201 for created resources, 200 for successful reads/updates, 204 for deletes with no body, 400 for invalid input, 401 for missing/invalid sessions, 404 for missing or non-owned resources, 409 for business-rule conflicts, and 500 with a generic message for unexpected errors.
 
-- Seller onboarding must associate a profile with the authenticated canonical `users.id`.
-- Only the owner may update or delete a listing.
-- A new listing requires an eligible seller profile; owner identity is not client-selectable.
-- Limit each seller to three active listings. Enforce the cap with concurrency-safe handling; a plain count-then-insert can race.
-- Listing writes must not make unowned existing rows mutable to ordinary signed-in users.
-- Test anonymous requests, invalid input, cross-user changes/deletes, ownership reassignment, concurrent creates, and the listing cap.
-- Rate-limit registration/repeated creates as additional abuse controls, separate from ownership and cap enforcement.
+### Authorization and database requirements
 
-Do not enable mutation handlers until their authorization boundaries are implemented and tested.
+- Seller onboarding creates seller_profiles.user_id from the canonical users.id associated with the verified session.
+- A listing's seller_user_id is derived from the current session and an eligible seller profile; clients cannot choose or reassign ownership.
+- Only the owner may update or delete a listing. Existing unowned rows must remain immutable to ordinary users.
+- Shared reads of seller_profiles remain limited to published profiles. Add an app-specific owner policy before a seller must read or update their own unpublished profile.
+- Grant only the INSERT/UPDATE/DELETE and column privileges the handlers require. Keep users and Better Auth tables outside the app writer's write scope.
+- Enforce the three-active-listings-per-seller cap with concurrency-safe database logic; a plain count-then-insert check can race.
+- Test anonymous writes, invalid payloads, cross-user mutations, owner reassignment attempts, unpublished-profile access, concurrent creates, and listing-cap conflicts before enabling the UI.
+
+The proposed owner policy can use a transaction-local setting such as set_config('app.current_user_id', sessionUserId, true). Set it only on the writer transaction using the verified session UUID. This is defense in depth, not protection against compromise of the writer credential or arbitrary SQL under that credential.
 
 ## 7. Historical Data, Seed Fixtures, and Population
 
@@ -229,38 +263,47 @@ DRIZZLE_DATABASE_URL=   # read-only evergreen_runtime
 AUTH_DATABASE_URL=      # Better Auth / evergreen_auth
 BETTER_AUTH_URL=
 BETTER_AUTH_SECRET=
-APP_DATABASE_URL=       # planned; do not configure/use until writer is implemented
+APP_DATABASE_URL=       # future app writer; role exists but client/write grants are not ready
 ```
 
 For Supabase shared transaction-pooler connections, use the Dashboard's copied host/port and role username format `<role>.<project-ref>`; postgres.js may require prepared statements disabled. Never expose database credentials or `BETTER_AUTH_SECRET` in client bundles or committed fixtures.
 
 ## 11. Verification and Work Order
 
-Historical checks after authentication setup included `npx tsc --noEmit`, `npm run build`, `npx drizzle-kit check`, `npm run test:run`, and `npx drizzle-kit migrate`. Fixture-specific checks were later reported passing as described above. Re-run relevant checks after code changes; do not treat historical outcomes as verification of future CRUD, seeding, or schema changes.
+Historical checks after authentication and fixture setup included npx tsc --noEmit, npm run build, npx drizzle-kit check, npm run test:run, and npx drizzle-kit migrate. The fixture suite was previously reported as passing 9 tests and the full suite 11 tests across 2 files. Those results do not verify future CRUD handlers, the app writer connection, or population.
 
-Current order:
+Current plan (Sunday, 2026-10-18):
 
-1. Implement the dedicated least-privilege writer connection/role and owner-aware RLS policies without changing the runtime/auth/migration connection boundaries.
-2. Implement seller-profile onboarding and authenticated listing POST/PATCH/DELETE operations; verify owner-only access and concurrency-safe three-listing enforcement.
-3. Audit and finalize ownership/rating schema constraints once their data dependencies are known.
-4. Implement and test the safe, idempotent population operation, including Better Auth account provisioning and private Storage uploads.
-5. Connect CRUD to the UI and verify the end-to-end experience with type-checks, tests, migration checks, and a production build.
+1. Finish the app-write database client/connection and owner-aware RLS/grants without changing the read, auth, or migration boundaries.
+2. Implement REST-style listing POST/PATCH/DELETE Route Handlers and seller-profile onboarding; preserve the existing GET handlers and GET-by-ID 404 behavior.
+3. Do a minimal local type-check/smoke pass on route contracts and security behavior. Do not populate the live database yet.
 
-Consult the installed Next.js 16 documentation under `node_modules/next/dist/docs/` before framework-sensitive changes.
+Next work session (Monday, 2026-10-19):
+
+1. Expand/run Vitest coverage for CRUD validation, session requirements, owner isolation, role privileges/RLS, and three-listing concurrency behavior.
+2. Implement scripts/populate.ts only after schema, writer grants, and CRUD ownership are stable. It must be repeatable, use fixtures from src/db/seed/data.ts, provision seller accounts through Better Auth, upload assets to private Storage, avoid deleting unrelated rows, guard against production, and never run from app startup or a public route.
+3. Run full type-check/tests/build/migration checks and targeted authorization tests; then connect the UI to the proven endpoints.
+
+Do not let work on Vite or unrelated tooling distract from this API/security milestone. The current test runner is Vitest (npm run test:run). Consult installed Next.js 16 documentation under node_modules/next/dist/docs/ before framework-sensitive changes.
 
 ## 12. Architecture Overview
 
 ```
 Next.js App Router
   ├─ Server Components/pages
-  │   └─ Drizzle read client
-  │       └─ DRIZZLE_DATABASE_URL / evergreen_runtime (read-only)
+  │   └─ Drizzle read/query layer
+  │       └─ DRIZZLE_DATABASE_URL / evergreen_runtime
+  │           └─ inherited evergreen_read permissions + RLS
   ├─ Route Handlers
   │   ├─ /api/auth/[...all] → Better Auth
   │   │   └─ AUTH_DATABASE_URL / evergreen_auth
-  │   └─ /api/v1/listings (GET implemented; writes pending)
-  │       └─ future authenticated writer
-  │           └─ APP_DATABASE_URL / evergreen_app (planned)
+  │   ├─ /api/v1/listings
+  │   │   ├─ GET implemented
+  │   │   └─ POST planned
+  │   └─ /api/v1/listings/[id]
+  │       ├─ GET implemented
+  │       ├─ PATCH planned
+  │       └─ DELETE planned
   └─ Supabase JS Storage helper
       └─ private property-images bucket
           ├─ runtime: signed URLs
@@ -268,3 +311,4 @@ Next.js App Router
 
 DIRECT_URL → Drizzle Kit migrations only
 ```
+
