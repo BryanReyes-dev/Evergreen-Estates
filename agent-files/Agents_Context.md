@@ -34,20 +34,23 @@ Do not assume local edits are committed or pushed without confirmation.
 - `AUTH_DATABASE_URL` connects through the restricted `evergreen_auth` role.
 - Auth tables are `account`, `session`, and `verification`.
 - Auth endpoints live at `/api/auth/[...all]`.
-- Listing GET endpoints exist at `/api/v1/listings` and `/api/v1/listings/[id]`.
+- Listing GET Route Handlers exist at `/api/v1/listings` and `/api/v1/listings/[id]`; no listing mutation handlers are implemented yet.
+- These route.ts files are the intended REST-style HTTP API boundary; use POST on the collection and PATCH/DELETE on an item URL for listing mutations.
 - Auth registration, sign-in, session retrieval, and sign-out were manually tested previously.
-- Listing CRUD writes, seller onboarding, and the dedicated application-write role are not implemented yet.
+- The evergreen_app login role exists and inherits common SELECT privileges, but APP_DATABASE_URL, the writer Drizzle client, application-table write grants, owner-aware write policies, and listing mutations are not implemented yet.
 
 ## Database connections and security boundaries
 
 - `DRIZZLE_DATABASE_URL` → `evergreen_runtime`, read-only application-table access.
 - `AUTH_DATABASE_URL` → `evergreen_auth`, Better Auth identity and auth-table operations.
 - `DIRECT_URL` → privileged Drizzle Kit migrations only.
-- `APP_DATABASE_URL` and the `evergreen_app` write role/client are planned, not implemented.
+- `APP_DATABASE_URL` → not configured/implemented yet; intended for app mutations using `evergreen_app`.
 
-Never use the runtime or auth roles for migrations. Never use `DIRECT_URL` in request handlers. Keep credentials and Better Auth secrets server-only.
+The shared `evergreen_read` NOLOGIN role and the migration-defined memberships/grants are implemented. `evergreen_runtime` and `evergreen_app` inherit shared read access using `INHERIT TRUE, SET FALSE`. Migration `0011_shared_read_role.sql` grants SELECT on listings/reviews/seller_profiles and only users.id/users.name, and the RLS policies target the shared role (seller profiles require is_published = true). `evergreen_app` still has no table-write privileges, and no app Drizzle client currently exists.
 
-Do not grant general listing-write permissions to `evergreen_runtime` or `evergreen_auth`.
+PostgreSQL 17.6 verification on 2026-10-18 confirmed both login roles can read listings; the app role cannot INSERT or UPDATE listings; the runtime role cannot select users.email; all four shared-read policies target `evergreen_read`. The separate `evergreen_auth` policy on users remains in place.
+
+Never use the runtime or auth roles for migrations. Never use `DIRECT_URL` in request handlers. Keep credentials and Better Auth secrets server-only. Do not grant general listing-write permissions to `evergreen_runtime` or `evergreen_auth`.
 
 ## Latest schema state
 
@@ -171,55 +174,46 @@ These are user-reported command results. Re-run relevant checks after additional
 
 ## Immediate work order
 
-### Documentation alignment completed
+### Current focus — secure REST Route Handler CRUD (Sunday, 2026-10-18)
 
-The architecture and agent operating documents have been updated on `main` to reflect the current schema, cleared mock-data tables, immutable historical snapshot, implemented fixtures, 15-object Storage inventory, and still-planned population workflow. Pull these documentation changes before starting the next implementation step.
+The current API already uses the correct Next.js App Router Route Handler convention for the GET endpoints. These are proper HTTP endpoints; a separate Express server is not needed. The remaining work is mutation handlers and security, not replacing the existing GET routes.
 
-### 1. Implement secure listing CRUD and seller onboarding
+| Method and path | Status | Planned behavior |
+|---|---|---|
+| GET /api/v1/listings | Implemented | Public listing collection with price/query/tag filters |
+| POST /api/v1/listings | Planned | Create listing for the authenticated seller |
+| GET /api/v1/listings/[id] | Implemented | Public listing detail; preserve current 404 behavior |
+| PATCH /api/v1/listings/[id] | Planned | Partially update an owned listing |
+| DELETE /api/v1/listings/[id] | Planned | Delete an owned listing |
+| POST /api/v1/seller-profiles | Planned | Create a seller profile for the authenticated user |
 
-Before populating the database:
+The collection methods belong in src/app/api/v1/listings/route.ts; item methods belong in src/app/api/v1/listings/[id]/route.ts. Add exported method functions to the existing route.ts files rather than creating one file per method. Use PATCH for partial updates; do not add PUT unless we intentionally design full replacement semantics.
 
-- Add a dedicated least-privilege writer connection, `APP_DATABASE_URL` / `evergreen_app`.
-- Keep runtime reads, Better Auth operations, and migrations on their existing separate connections.
-- Implement authenticated listing POST/PATCH/DELETE handlers.
-- Verify the Better Auth session on the server.
-- Resolve listing owner identity from the verified session, never from a browser-supplied user ID.
-- Implement seller profile onboarding associated with the authenticated `users.id`.
-- Enforce owner-only updates/deletes.
-- Enforce the three-active-listings-per-seller cap with concurrency-safe handling.
-- Add appropriate RLS policies and limited table grants.
-- Test anonymous access, invalid input, cross-user mutations, owner reassignment, and concurrent listing creation.
+Implementation order:
 
-The writer role/client and owner-aware listing-write policies are not implemented yet. Do not enable write handlers until their authorization boundaries are tested.
+1. Add a server-only Drizzle app client using APP_DATABASE_URL and evergreen_app. The login already exists and inherits shared reads, but it currently has no table-write grants.
+2. Add the app-specific grants and owner-aware RLS policies for only the required INSERT/UPDATE/DELETE operations. Add a policy for a seller to read/manage their own unpublished profile without exposing all unpublished profiles. Keep users and Better Auth tables outside the app writer's write scope.
+3. Implement Route Handler session checks, payload validation, and JSON/status behavior, delegating SQL to src/db mutation modules. Derive seller identity from the verified Better Auth session, never request JSON. Reject or ignore ownership fields supplied by clients.
+4. Implement seller-profile onboarding tied to the canonical users.id; listing creation must require that profile.
+5. Enforce the three-active-listings-per-seller limit with concurrency-safe database logic rather than a client-only check or a plain count-then-insert.
+6. Preserve the current GET routes and GET-by-ID 404 behavior. Keep handlers thin; Server Component reads should go directly through the query layer instead of self-fetching the API.
 
-### 2. Audit and finalize schema constraints
+Use the established response envelope: { data: ... } for success and { error: { code, message } } for errors. Aim for 201 on creation, 200 on read/update, 204 for a delete with no body, 400 for invalid payloads, 401 for unauthenticated mutation requests, 404 for missing/non-owned listings, 409 for business-rule conflicts, and a generic client-safe 500 for unexpected failures.
 
-After fixture and CRUD dependencies are aligned:
+Before any write handler is enabled, verify anonymous writes fail, invalid input is rejected, cross-user update/delete and owner reassignment are blocked, own unpublished profiles are accessible only to that user, and concurrent creates cannot exceed the listing cap.
 
-- Ensure listing ownership is set for every intended listing.
-- Make `listings.seller_user_id` non-null in a subsequent migration only after verifying every retained row has a valid owner.
-- Decide and implement the rating aggregate queries needed by listing cards/search results as well as detail pages.
-- Keep historical migrations/snapshots immutable.
+### Next work session — Monday, 2026-10-19
 
-### 3. Implement the population function
+1. Expand/run Vitest tests for Route Handler payload/status behavior, authenticated session requirements, ownership isolation, database role grants/RLS, and concurrency-safe listing limits. The repository uses Vitest (npm run test:run).
+2. Implement scripts/populate.ts only once CRUD ownership/security and schema decisions are stable. Import fixtures from src/db/seed/data.ts; provision the four synthetic seller accounts through a supported Better Auth flow; resolve UUID relationships; insert/reconcile the twelve listings and 48 reviews; upload assets to the private property-images bucket.
+3. Make population repeatable without duplicate fixture-managed records; report inserts/updates/skips and validation failures; avoid deleting unrelated data by default; guard explicitly against production and never run from app startup/public routes.
+4. Re-run npx tsc --noEmit, relevant Vitest suites, npm run build, npx drizzle-kit check, and migration/permission checks after changes. Earlier passing test results are historical until rerun.
 
-Only after the schema, seller onboarding, and ownership/write behavior are stable, implement `scripts/populate.ts` importing `src/db/seed/data.ts`.
+### After REST CRUD and population
 
-Population should:
-
-- Provision the four seller accounts through Better Auth without committing reusable credentials.
-- Resolve user UUIDs and create the corresponding seller profiles.
-- Insert or safely reconcile the twelve listings and 48 reviews.
-- Upload bundled media to the private `property-images` bucket.
-- Be repeatable without duplicate fixture records.
-- Report inserts/updates/skips and validation failures.
-- Avoid deleting unrelated data by default.
-- Guard explicitly against accidentally targeting production.
-- Never run automatically at app startup or through a public route.
-
-### 4. Wire CRUD into the UI and verify end to end
-
-After the write path and population workflow are implemented, connect the UI and rerun type-checks, full tests, build, migration checks, and targeted authorization tests.
+- Audit ownership completeness before making listings.seller_user_id non-null.
+- Decide/implement rating aggregate queries for cards and search results.
+- Connect UI mutations to the tested endpoints and verify the end-to-end experience.
 
 ## Media and implementation invariants
 
