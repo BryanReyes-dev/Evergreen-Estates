@@ -17,6 +17,9 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const evergreenReadRole = pgRole("evergreen_read");
+const currentAppUserId = sql`
+  nullif(current_setting('app.current_user_id', true), '')::uuid
+`;
 
 export const users = pgTable(
   "users",
@@ -121,6 +124,27 @@ export const sellerProfiles = pgTable(
       to: evergreenReadRole,
       using: sql`${table.isPublished} = true`,
     }),
+    pgPolicy("App can read own seller profile", {
+      as: "permissive",
+      for: "select",
+      to: ["evergreen_app"],
+      using: sql`${table.userId} = ${currentAppUserId}`,
+    }),
+
+    pgPolicy("App can create own seller profile", {
+      as: "permissive",
+      for: "insert",
+      to: ["evergreen_app"],
+      withCheck: sql`${table.userId} = ${currentAppUserId}`,
+    }),
+
+    pgPolicy("App can update own seller profile", {
+      as: "permissive",
+      for: "update",
+      to: ["evergreen_app"],
+      using: sql`${table.userId} = ${currentAppUserId}`,
+      withCheck: sql`${table.userId} = ${currentAppUserId}`,
+    }),
   ],
 ).enableRLS();
 
@@ -171,6 +195,27 @@ export const listings = pgTable(
       for: "select",
       to: evergreenReadRole,
       using: sql`true`,
+    }),
+    pgPolicy("App can create own listings", {
+      as: "permissive",
+      for: "insert",
+      to: ["evergreen_app"],
+      withCheck: sql`${table.sellerUserId} = ${currentAppUserId}`,
+    }),
+
+    pgPolicy("App can update own listings", {
+      as: "permissive",
+      for: "update",
+      to: ["evergreen_app"],
+      using: sql`${table.sellerUserId} = ${currentAppUserId}`,
+      withCheck: sql`${table.sellerUserId} = ${currentAppUserId}`,
+    }),
+
+    pgPolicy("App can delete own listings", {
+      as: "permissive",
+      for: "delete",
+      to: ["evergreen_app"],
+      using: sql`${table.sellerUserId} = ${currentAppUserId}`,
     }),
   ],
 ).enableRLS();

@@ -85,6 +85,41 @@
       "when": 1792341803569,
       "tag": "0011_shared_read_role",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792348397935,
+      "tag": "0012_app_owner_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792348577540,
+      "tag": "0013_app_write_permissions_and_listing_cap",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792358060077,
+      "tag": "0014_grant_seller_profile_timestamp_defaults",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792359884931,
+      "tag": "0015_allow_app_update_timestamps",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792360641442,
+      "tag": "0016_enable_review_crud_and_seller_profile_delete",
+      "breakpoints": true
     }
   ]
 }

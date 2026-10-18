@@ -23,15 +23,8 @@ const getMediaUrl = async (id: string, images: string[] = []) => {
     storageFiles.includes(image)
   );
 
-  // Add new Storage files that aren't in the database yet.
-  const newImages = storageFiles.filter(
-    (file) => !images.includes(file)
-  );
-
-  const syncedImages = [
-    ...existingImages,
-    ...newImages,
-  ];
+  // The database is authoritative: only registered media is served.
+  const syncedImages = existingImages;
 
   const results = await Promise.all(
     syncedImages.map(async (image) => {

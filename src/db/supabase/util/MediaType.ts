@@ -8,7 +8,7 @@ export const getMediaType = (src: string): ListingMediaType => {
     .pop()
     ?.toLowerCase();
 
-  if (["mp4", "webm"].includes(extension ?? "")) {
+  if (["mp4", "webm", "mov"].includes(extension ?? "")) {
     return "video";
   }
 

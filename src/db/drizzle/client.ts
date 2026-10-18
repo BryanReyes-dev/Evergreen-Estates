@@ -1,8 +1,6 @@
 import "server-only";
-
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-
 import * as relations from "@/db/relations";
 import * as tables from "@/db/schema";
 
@@ -37,7 +35,8 @@ let database: AppDatabase | undefined;
  * Lazily initializes the server-only Drizzle client.
  * Keeping initialization lazy allows Next.js builds to complete without
  * a runtime database URL; queries fail clearly if the variable is not set.
- */
+*/
+
 export function getDrizzleDb(): AppDatabase {
   if (!database) {
     database = createDatabase();
@@ -45,3 +44,5 @@ export function getDrizzleDb(): AppDatabase {
 
   return database;
 }
+
+

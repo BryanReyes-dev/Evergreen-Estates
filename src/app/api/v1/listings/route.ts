@@ -1,5 +1,122 @@
 import { getFilteredListings } from "@/db/queries/listings";
 import type { filters as ListingFilters } from "@/app/types";
+import { eq } from "drizzle-orm";
+import { withAppUserTransaction } from "@/db/drizzle/app-client";
+import { listings, sellerProfiles } from "@/db/schema";
+import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
+import { getAuthenticatedUserId } from "@/lib/api/get-authenticated-user-id";
+
+
+type CreateListingInput = {
+  title: string;
+  price: number;
+  beds: number;
+  baths: number;
+  sqft: number;
+  address: string;
+  description: string;
+  tags: string[];
+};
+
+const CREATE_LISTING_FIELDS = new Set([
+  "title",
+  "price",
+  "beds",
+  "baths",
+  "sqft",
+  "address",
+  "description",
+  "tags",
+]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseCreateListingInput(
+  value: unknown,
+): CreateListingInput | null {
+  if (!isRecord(value)) return null;
+
+  // Reject ownership, ID, timestamp, and other unexpected fields.
+  if (Object.keys(value).some((key) => !CREATE_LISTING_FIELDS.has(key))) {
+    return null;
+  }
+
+  const {
+    title,
+    price,
+    beds,
+    baths,
+    sqft,
+    address,
+    description,
+    tags,
+  } = value;
+
+  if (
+    typeof title !== "string" ||
+    title.trim().length === 0 ||
+    title.trim().length > 160 ||
+    typeof address !== "string" ||
+    address.trim().length === 0 ||
+    address.trim().length > 300 ||
+    typeof description !== "string" ||
+    description.trim().length === 0 ||
+    description.length > 10_000 ||
+    typeof price !== "number" ||
+    !Number.isFinite(price) ||
+    price <= 0 ||
+    !Number.isSafeInteger(beds) ||
+    (beds as number) < 0 ||
+    !Number.isSafeInteger(baths) ||
+    (baths as number) < 0 ||
+    !Number.isSafeInteger(sqft) ||
+    (sqft as number) < 1
+  ) {
+    return null;
+  }
+
+  const normalizedTags = tags ?? [];
+
+  if (
+    !Array.isArray(normalizedTags) ||
+    normalizedTags.length > 30 ||
+    !normalizedTags.every(
+      (tag) =>
+        typeof tag === "string" &&
+        tag.trim().length > 0 &&
+        tag.trim().length <= 64,
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    title: title.trim(),
+    price,
+    beds: beds as number,
+    baths: baths as number,
+    sqft: sqft as number,
+    address: address.trim(),
+    description: description.trim(),
+    tags: normalizedTags.map((tag) => (tag as string).trim()),
+  };
+}
+
+function isListingCapViolation(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+
+  const databaseError = error as {
+    code?: unknown;
+    constraint?: unknown;
+  };
+
+  return (
+    databaseError.code === "23514" &&
+    databaseError.constraint === "listings_max_three_per_seller"
+  );
+}
 
 
 //get all listings with optional filters
@@ -72,6 +189,371 @@ export async function GET(request: Request) {
         error: {
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to retrieve listings.",
+        },
+      },
+      { status: 500 },
+    );
+  }
+}
+
+// Utility type guard to check if a value is a record (object) with string keys and unknown values.
+function isRequestRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
+
+//check if the error is a listing limit error (max 3 listings per seller)
+function isListingLimitError(error: unknown): boolean {
+  if (!isRequestRecord(error)) {
+    return false;
+  }
+
+  return (
+    error.code === "23514" &&
+    error.constraint === "listings_max_three_per_seller"
+  );
+}
+
+// POST /api/v1/listings
+export async function POST(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+
+  if (!userId) {
+    return Response.json(
+      {
+        error: {
+          code: "UNAUTHENTICATED",
+          message: "Sign in before creating a listing.",
+        },
+      },
+      { status: 401 },
+    );
+  }
+
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_REQUEST_BODY",
+          message: "The request body must be valid JSON.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  if (!isRequestRecord(body)) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_REQUEST_BODY",
+          message: "Provide listing details.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  const allowedFields = new Set([
+    "title",
+    "price",
+    "beds",
+    "baths",
+    "sqft",
+    "address",
+    "description",
+    "tags",
+  ]);
+
+  if (Object.keys(body).some((key) => !allowedFields.has(key))) {
+    return Response.json(
+      {
+        error: {
+          code: "UNSUPPORTED_FIELD",
+          message:
+            "Do not supply listing IDs, owner IDs, or media fields.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  const {
+    title,
+    price,
+    beds,
+    baths,
+    sqft,
+    address,
+    description,
+    tags: rawTags,
+  } = body;
+
+  if (
+    typeof title !== "string" ||
+    title.trim().length < 3 ||
+    title.trim().length > 140
+  ) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_TITLE",
+          message: "Title must be between 3 and 140 characters.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  if (
+    typeof price !== "number" ||
+    !Number.isFinite(price) ||
+    price <= 0 ||
+    price > 1_000_000_000_000
+  ) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_PRICE",
+          message: "Provide a valid positive listing price.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  if (
+    typeof beds !== "number" ||
+    !Number.isSafeInteger(beds) ||
+    beds < 0 ||
+    beds > 100
+  ) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_BEDS",
+          message: "Beds must be a whole number between 0 and 100.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  if (
+    typeof baths !== "number" ||
+    !Number.isSafeInteger(baths) ||
+    baths < 0 ||
+    baths > 100
+  ) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_BATHS",
+          message: "Baths must be a whole number between 0 and 100.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  if (
+    typeof sqft !== "number" ||
+    !Number.isSafeInteger(sqft) ||
+    sqft < 1 ||
+    sqft > 1_000_000
+  ) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_SQFT",
+          message: "Square footage must be between 1 and 1,000,000.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  if (
+    typeof address !== "string" ||
+    address.trim().length < 5 ||
+    address.trim().length > 300
+  ) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_ADDRESS",
+          message: "Address must be between 5 and 300 characters.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  if (
+    typeof description !== "string" ||
+    description.trim().length < 1 ||
+    description.length > 5000
+  ) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_DESCRIPTION",
+          message: "Description must contain 1–5000 characters.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  if (
+    rawTags !== undefined &&
+    (
+      !Array.isArray(rawTags) ||
+      rawTags.length > 20 ||
+      !rawTags.every(
+        (tag) =>
+          typeof tag === "string" &&
+          tag.trim().length >= 1 &&
+          tag.trim().length <= 40,
+      )
+    )
+  ) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_TAGS",
+          message: "Provide at most 20 tags, each 1–40 characters.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  const tags = [
+    ...new Map(
+      ((rawTags ?? []) as string[])
+        .map((tag) => tag.trim())
+        .map((tag) => [tag.toLowerCase(), tag] as const),
+    ).values(),
+  ];
+
+  try {
+    const result = await withAppUserTransaction(
+      userId,
+      async (tx) => {
+        // Seller eligibility must be established before listing creation.
+        const [profile] = await tx
+          .select({ userId: sellerProfiles.userId })
+          .from(sellerProfiles)
+          .where(eq(sellerProfiles.userId, userId))
+          .limit(1);
+
+        if (!profile) {
+          return { kind: "seller-profile-required" as const };
+        }
+
+        const [created] = await tx
+          .insert(listings)
+          .values({
+            // Ownership always comes from the verified session.
+            sellerUserId: userId,
+
+            title: title.trim(),
+            price: String(price),
+            beds,
+            baths,
+            sqft,
+            address: address.trim(),
+            description: description.trim(),
+            tags,
+
+            // Media must be uploaded and registered separately.
+            media: [],
+          })
+          .returning({
+            id: listings.id,
+            media: listings.media,
+            tags: listings.tags,
+            title: listings.title,
+            price: listings.price,
+            beds: listings.beds,
+            baths: listings.baths,
+            sqft: listings.sqft,
+            address: listings.address,
+            description: listings.description,
+            createdAt: listings.createdAt,
+          });
+
+        if (!created) {
+          throw new Error("Listing insert returned no row.");
+        }
+
+        return { kind: "created" as const, listing: created };
+      },
+    );
+
+    if (result.kind === "seller-profile-required") {
+      return Response.json(
+        {
+          error: {
+            code: "SELLER_PROFILE_REQUIRED",
+            message: "Create a seller profile before creating listings.",
+          },
+        },
+        { status: 409 },
+      );
+    }
+
+    const listing = result.listing;
+
+    return Response.json(
+      {
+        data: {
+          id: listing.id,
+          media: listing.media,
+          tags: listing.tags,
+          title: listing.title,
+          price: Number(listing.price),
+          beds: listing.beds,
+          baths: listing.baths,
+          sqft: listing.sqft,
+          address: listing.address,
+          description: listing.description,
+          created_at: listing.createdAt,
+          reviews: [],
+        },
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    if (isListingLimitError(error)) {
+      return Response.json(
+        {
+          error: {
+            code: "LISTING_LIMIT_REACHED",
+            message: "A seller can own at most three listings.",
+          },
+        },
+        { status: 409 },
+      );
+    }
+
+    console.error("POST /api/v1/listings failed:", error);
+
+    return Response.json(
+      {
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create listing.",
         },
       },
       { status: 500 },
