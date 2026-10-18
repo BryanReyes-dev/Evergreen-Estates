@@ -26,18 +26,32 @@ Evergreen Estates is a full-stack real-estate web application using Next.js 16 A
 - Keep application-table queries and writes behind the established `src/db` boundary.
 - Preserve the Server Component / Client Component separation unless a feature requires browser interactivity.
 - Keep URL-driven filtering and the current server-side Drizzle GET path intact while implementing CRUD.
+- Use Next.js App Router Route Handlers under src/app/api/v1 for explicit REST-style HTTP endpoints; do not introduce a separate Express server or substitute Server Actions for the HTTP API.
 - Do not change the current listing GET-by-ID 404 behavior without a demonstrated reason; it has been tested locally.
 - Do not introduce unrelated framework or infrastructure changes during focused work.
 - Keep listing media limited to the established `image` and `video` categories. GIF remains an image.
 - Do not switch application-table operations from Drizzle to Supabase JS; Supabase JS is the Storage helper client.
+
+## REST API and Route Handlers
+
+- Current listing endpoints are GET /api/v1/listings and GET /api/v1/listings/[id]. They are implemented in the corresponding route.ts files and currently support reads only.
+- Planned listing CRUD uses POST /api/v1/listings to create, PATCH /api/v1/listings/[id] for partial updates, and DELETE /api/v1/listings/[id] to delete. Add method exports to the existing route.ts files; do not create a separate file for each HTTP verb.
+- Seller onboarding must also use a Route Handler under /api/v1/seller-profiles; define its request contract before implementation.
+- Treat every Route Handler as a public HTTP entry point. Authenticate and authorize each mutation on the server, validate the body and allowed fields, and return JSON using the existing { data: ... } success / { error: { code, message } } error shape.
+- Use status codes consistently: 201 for creation, 200 for reads/updates, 204 for a delete with no body, 400 for invalid input, 401 for missing/invalid sessions, 404 for missing or non-owned resources, 409 for business-rule conflicts, and a generic client-safe 500 for unexpected failures.
+- Resolve ownership from the verified Better Auth session, never request-body IDs. Reject or ignore client attempts to set seller_user_id, userId, or equivalent ownership fields.
+- Keep handlers thin: delegate application-table operations to src/db query/mutation modules and use only the connection appropriate to the operation. Server Components should call the data layer directly instead of HTTP-fetching this app's own Route Handler.
 
 ## Authentication and Database Security
 
 - Better Auth maps its logical `user` model to the canonical `public.users` table; there is no separate Better Auth user table.
 - `AUTH_DATABASE_URL` / `evergreen_auth` is for Better Auth identity and auth-table operations only.
 - `DRIZZLE_DATABASE_URL` / `evergreen_runtime` is read-only for application-table queries.
-- `DIRECT_URL` is reserved for Drizzle Kit migrations; never use it in request handlers.
-- The `APP_DATABASE_URL` / `evergreen_app` application-write connection is planned, not implemented. Do not enable listing writes until the least-privilege role/client and owner-aware RLS policies have been implemented and tested.
+- evergreen_read is the NOLOGIN shared-read role. RLS read policies in src/db/schema.ts target it; applied migration 0011 supplies grants and role memberships not fully expressed by Drizzle Kit.
+- evergreen_runtime and evergreen_app inherit evergreen_read with INHERIT TRUE and SET FALSE. The runtime role remains read-only.
+- Migration 0010 created the evergreen_app login and migration 0011 gave it shared reads. It still has no application-table write grants.
+- APP_DATABASE_URL and the dedicated app Drizzle client are not implemented yet. Do not enable mutations until the app connection/client, limited write grants, owner-aware RLS policies, and authorization tests are ready.
+- DIRECT_URL is reserved for Drizzle Kit migrations; never use it in request handlers.
 - Never trust a user ID or ownership field from the request body. Resolve owner identity from the verified Better Auth session on the server.
 - Seller-profile onboarding must associate the profile with the authenticated canonical `users.id`.
 - Apply the three-active-listings-per-seller cap server-side with concurrency-safe handling; a client-side restriction or plain count-then-insert is insufficient.
@@ -47,6 +61,8 @@ Evergreen Estates is a full-stack real-estate web application using Next.js 16 A
 ## Schema and Migrations
 
 - Current schema is defined in `src/db/schema.ts` and `src/db/auth-schema.ts`; inspect them and the relevant migrations before changing database behavior.
+- src/db/schema.ts declares evergreenReadRole and the four shared-read RLS policies. Applied migration 0010 creates evergreen_app; applied migration 0011 creates evergreen_read, grants shared reads and memberships, removes runtime's redundant direct reads, and recreates the four policies for the shared role. These migrations are applied history and must not be rewritten.
+- PostgreSQL 17.6 verification on 2026-10-18 confirmed both login roles can read listings, evergreen_app cannot insert/update listings, and evergreen_runtime cannot select users.email.
 - Migration `0009_remove_redundant_schema_fields.sql` removed `users.auth_user_id`, `listings.seller`, `listings.stars`, and `seller_profiles.slug`. Do not reintroduce these removed columns because they appear in historical migrations or snapshots.
 - `listings.seller_user_id` is currently nullable. Do not make it non-null until every retained listing has a valid seller owner and a reviewed migration is ready.
 - Ratings are derived from review records; do not add aggregate `stars` back to listings.
