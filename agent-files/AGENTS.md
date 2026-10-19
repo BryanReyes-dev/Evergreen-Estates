@@ -34,53 +34,51 @@ Evergreen Estates is a full-stack real-estate web application using Next.js 16 A
 
 ## REST API and Route Handlers
 
-- Current listing endpoints are GET /api/v1/listings and GET /api/v1/listings/[id]. They are implemented in the corresponding route.ts files and currently support reads only.
-- Planned listing CRUD uses POST /api/v1/listings to create, PATCH /api/v1/listings/[id] for partial updates, and DELETE /api/v1/listings/[id] to delete. Add method exports to the existing route.ts files; do not create a separate file for each HTTP verb.
-- Seller onboarding must also use a Route Handler under /api/v1/seller-profiles; define its request contract before implementation.
-- Treat every Route Handler as a public HTTP entry point. Authenticate and authorize each mutation on the server, validate the body and allowed fields, and return JSON using the existing { data: ... } success / { error: { code, message } } error shape.
+- The source implements `GET /api/v1/listings` and `POST /api/v1/listings`; `GET /api/v1/listings/[id]`, `PATCH /api/v1/listings/[id]`, and `DELETE /api/v1/listings/[id]`; seller-profile POST/GET/PATCH/DELETE at `/api/v1/seller-profiles`; review list GET/POST; review-item PATCH/DELETE; and listing-media upload-URL, completion/registration, and deletion endpoints.
+- **Known implementation defect:** the review-item handler is under `src/app/api/v1/listings/[id]/reviews/[id]/route.ts` but reads `params.reviewId`. Rename the inner folder to `[reviewId]` before considering review updates/deletes complete. The public URL shape does not change.
+- Preserve the current listing GET-by-ID 404 behavior.
+- Use Next.js App Router Route Handlers under `src/app/api/v1` for explicit REST-style HTTP endpoints; do not introduce a separate Express server or substitute Server Actions for the HTTP API.
+- Treat every Route Handler as a public HTTP entry point. Authenticate and authorize each mutation on the server, validate the body and allowed fields, and aim for the established `{ data: ... }` success / `{ error: { code, message } }` error envelope. Some current handlers use inconsistent string-valued error bodies; do not assume response-envelope consistency.
 - Use status codes consistently: 201 for creation, 200 for reads/updates, 204 for a delete with no body, 400 for invalid input, 401 for missing/invalid sessions, 404 for missing or non-owned resources, 409 for business-rule conflicts, and a generic client-safe 500 for unexpected failures.
-- Resolve ownership from the verified Better Auth session, never request-body IDs. Reject or ignore client attempts to set seller_user_id, userId, or equivalent ownership fields.
-- Keep handlers thin: delegate application-table operations to src/db query/mutation modules and use only the connection appropriate to the operation. Server Components should call the data layer directly instead of HTTP-fetching this app's own Route Handler.
+- Resolve ownership from the verified Better Auth session, never request-body IDs. Reject or ignore client attempts to set `seller_user_id`, `userId`, or equivalent ownership fields.
+- Keep handlers thin: delegate application-table operations to `src/db` query/mutation modules and use only the connection appropriate to the operation. Server Components should call the data layer directly instead of HTTP-fetching this app's own Route Handler.
 
 ## Authentication and Database Security
 
 - Better Auth maps its logical `user` model to the canonical `public.users` table; there is no separate Better Auth user table.
 - `AUTH_DATABASE_URL` / `evergreen_auth` is for Better Auth identity and auth-table operations only.
 - `DRIZZLE_DATABASE_URL` / `evergreen_runtime` is read-only for application-table queries.
-- evergreen_read is the NOLOGIN shared-read role. RLS read policies in src/db/schema.ts target it; applied migration 0011 supplies grants and role memberships not fully expressed by Drizzle Kit.
-- evergreen_runtime and evergreen_app inherit evergreen_read with INHERIT TRUE and SET FALSE. The runtime role remains read-only.
-- Migration 0010 created the evergreen_app login and migration 0011 gave it shared reads. It still has no application-table write grants.
-- APP_DATABASE_URL and the dedicated app Drizzle client are not implemented yet. Do not enable mutations until the app connection/client, limited write grants, owner-aware RLS policies, and authorization tests are ready.
-- DIRECT_URL is reserved for Drizzle Kit migrations; never use it in request handlers.
-- Never trust a user ID or ownership field from the request body. Resolve owner identity from the verified Better Auth session on the server.
-- Seller-profile onboarding must associate the profile with the authenticated canonical `users.id`.
-- Apply the three-active-listings-per-seller cap server-side with concurrency-safe handling; a client-side restriction or plain count-then-insert is insufficient.
+- `APP_DATABASE_URL` / `evergreen_app` is the dedicated app-write connection, implemented in `src/db/drizzle/app-client.ts`. Application mutations must use `withAppUserTransaction` and the user ID returned from the verified Better Auth session helper.
+- `evergreen_read` is the NOLOGIN shared-read role. Migration 0011 supplies grants and role memberships not fully expressed by Drizzle Kit; migrations 0012–0016 add app writes, owner-aware RLS, the listing cap, and review/profile delete permissions.
+- The policies for review INSERT/UPDATE/DELETE and seller-profile DELETE in migration 0016 are missing from the current `src/db/schema.ts` and `drizzle/meta/0016_snapshot.json`. Reconcile source/snapshot metadata with actual database state before the next generated schema migration; don't blindly generate duplicate policy SQL.
+- The existing app-role review INSERT grant only includes `listing_id`, `user_id`, `rating`, and `comment`. The fixtures also define review `id`, `created_at`, and `updated_at`; if these values must be persisted by the populate script, add the narrow extra column privileges in a new forward migration. Never rewrite applied migration SQL.
+- `DIRECT_URL` is reserved for Drizzle Kit migrations; never use it in request handlers or for seeding. Do not write application data through `evergreen_runtime` or `evergreen_auth`.
+- Never trust a user ID or ownership field from the request body. Seller-profile onboarding must associate the profile with the authenticated canonical `users.id`.
+- The three-listings-per-seller cap is implemented in the database using concurrency-safe locking; keep the database trigger as the final guard.
 - Existing unowned listings must not become mutable to ordinary users until their ownership is deliberately assigned.
-- Keep all database URLs and auth secrets server-only.
+- Keep all database URLs, Better Auth secrets, and the Supabase Storage secret server-only.
 
 ## Schema and Migrations
 
-- Current schema is defined in `src/db/schema.ts` and `src/db/auth-schema.ts`; inspect them and the relevant migrations before changing database behavior.
-- src/db/schema.ts declares evergreenReadRole and the four shared-read RLS policies. Applied migration 0010 creates evergreen_app; applied migration 0011 creates evergreen_read, grants shared reads and memberships, removes runtime's redundant direct reads, and recreates the four policies for the shared role. These migrations are applied history and must not be rewritten.
-- PostgreSQL 17.6 verification on 2026-10-18 confirmed both login roles can read listings, evergreen_app cannot insert/update listings, and evergreen_runtime cannot select users.email.
-- Migration `0009_remove_redundant_schema_fields.sql` removed `users.auth_user_id`, `listings.seller`, `listings.stars`, and `seller_profiles.slug`. Do not reintroduce these removed columns because they appear in historical migrations or snapshots.
-- `listings.seller_user_id` is currently nullable. Do not make it non-null until every retained listing has a valid seller owner and a reviewed migration is ready.
-- Ratings are derived from review records; do not add aggregate `stars` back to listings.
-- Never rewrite already-applied migration files to match the current schema. Generate and review a new migration for a schema change.
+- Current schema declarations live in `src/db/schema.ts` and `src/db/auth-schema.ts`; inspect these along with migrations and snapshots before changing database behavior.
+- Migration 0009 removed `users.auth_user_id`, `listings.seller`, `listings.stars`, and `seller_profiles.slug`; do not reintroduce them because they appear in historic files.
+- Migration 0010 created the `evergreen_app` role; migration 0011 created `evergreen_read` and its memberships; migrations 0012–0016 add policies/grants and the listing-cap trigger. Presence on the Git branch is not proof that all are applied to the live database.
+- `listings.seller_user_id` remains nullable until all retained listings have owners. Do not make it non-null until ownership is reconciled and a reviewed forward migration is ready.
+- Review the current 0016 schema/snapshot mismatch before generating subsequent migrations. Never rewrite already-applied SQL migration files to make them resemble current source. Prefer forward-only migrations and carefully reconcile snapshots.
+- Ratings are derived from review records; never add aggregate `stars` back to listings.
 
 ## Mock Data, Historical Archive, and Storage
 
-- The historical archive at `seed/snapshots/existing-mock-data.json` is committed and should remain an immutable record of the old database state. Do not edit it to match the new schema or use it as the intended seed dataset.
-- The intended fixture dataset is implemented in `src/db/seed/data.ts`; its pure validation suite is `tests/data.test.ts`. It currently defines four synthetic sellers, 12 listings, and 48 reviews. Each seller owns three listings; every seller reviews all listings, including their own, by deliberate mock-data design.
-- The first six fixture listings preserve the prior listing IDs, core details, and media filenames; the six additional fixtures currently have no media.
-- The previous live database records were cleared before migration 0009. The last verified database state recorded in `Agents_Context.md` had no listings, reviews, or seller profiles, and retained one separate test user/account/session. Recheck the live database before any destructive operation; never treat that test identity as seed data.
-- The private Supabase `property-images` bucket last contained 15 objects totalling 39,998,905 bytes: 14 listing-folder objects and root object `home-image.jpg`. All 15 were reported downloaded and verified under `seed/images/`. Recheck live Storage before any destructive operation.
-- Keep the bucket private. Listing fixture media stores filenames; runtime resolves `listings/<listing-id>/<filename>` to signed URLs with `src/db/supabase/util/GetMediaUrls.ts`. Never replace this with public local media URLs.
-- Planned media source paths are `seed/images/listings/<listing-id>/<filename>`; align fixture filenames and Storage object paths exactly.
-- `scripts/populate.ts` has not been implemented. Do not implement/finalize population until listing CRUD, ownership enforcement, and dependent schema decisions are stable.
-- The future developer-run population operation must provision seller identities through a supported Better Auth flow, resolve UUID relationships, safely repeat without duplicate seed-managed data, upload to private Storage, avoid deleting unrelated data by default, and include explicit production safeguards.
-- Never commit reusable seed passwords, password hashes, database URLs, sessions, auth secrets, or other credentials. Population must never run from application startup or a public route.
-- Before removing or changing any other schema field, search current source, types, fixtures, tests, and migrations for dependencies and plan a data-preserving migration.
+- The historical archive at `seed/snapshots/existing-mock-data.json` is immutable. Do not edit it to match the new schema or use it as the new seed dataset.
+- The intended fixture data lives in `src/db/seed/data.ts`; `tests/data.test.ts` validates it but does not write to the database.
+- Fixtures currently contain four synthetic sellers, 12 listings, and 48 reviews. Each seller owns three listings. All four sellers review all 12 listings (including their own) intentionally for mock data.
+- The first six listings reference 14 listing-media files stored under `seed/images/listings/<listing-id>/<filename>`. The six additional listings currently have empty media arrays. `seed/images/home-image.jpg` is separate from listing media.
+- The last documented live database state had zero listings/reviews/profiles and one separate manually tested Evergreen Test user/account/session. Recheck live DB and Storage state before population or destructive operations; the test identity is not fixture data. The last documented Storage inventory was 14 listing-folder objects plus the root `home-image.jpg`; recheck before acting.
+- `scripts/populate.ts` does not exist yet. Before writing it, fix the review route-parameter defect, resolve the review INSERT column-grant decision, and reconcile the 0016 policy/schema/snapshot drift.
+- Use Better Auth's supported server-side signup API to provision missing synthetic identities; don't insert user/account/session records manually or store passwords/hashes in fixtures. If a fixture identity already exists, reconcile it safely without overwriting credentials or claiming arbitrary data as seed-managed.
+- The future population operation must preflight every fixture and local media path before writing, be repeatable after partial failure, report inserts/updates/skips/failures, have a non-writing dry-run plus explicit write opt-in, refuse production/preview environments, and avoid deleting unrelated rows or Storage files.
+- Upload only fixture-referenced assets to the private bucket using `listings/<listing-id>/<filename>`. Keep `home-image.jpg` untouched unless deliberately included by an explicit, separate design.
+- Never commit reusable seed passwords, password hashes, sessions, database URLs, auth secrets, or service-role credentials. Population must never run from app startup or a public route.
 
 ## Image Pipeline
 
