@@ -29,6 +29,11 @@ The project uses the Next.js App Router, Server Components for data fetching and
 - Responsive component-based UI
 - Accessibility and SEO considerations
 - Server-side data fetching with async Server Components
+- Better Auth email/password authentication and session handling
+- Authenticated listing creation, editing, and deletion Route Handlers
+- Seller-profile onboarding and owner-scoped profile management
+- Review creation and public review reads through Route Handlers
+- Listing-media upload, verification/registration, and removal routes
 - Tailwind CSS and shadcn/ui styling
 
 ## Media and Image Delivery
@@ -134,8 +139,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 DIRECT_URL=
 DRIZZLE_DATABASE_URL=
 AUTH_DATABASE_URL=
+APP_DATABASE_URL=
 BETTER_AUTH_URL=http://localhost:3000
 BETTER_AUTH_SECRET=
+SUPABASE_SECRET_KEY=
 ```
 
 ### Configure the Drizzle runtime role
@@ -187,6 +194,20 @@ Run the production build locally:
 ```bash
 npm start
 ```
+
+### Configure the application-write role
+
+Authenticated mutation handlers use `APP_DATABASE_URL`, which must connect through the separate `evergreen_app` role. Do not reuse the read-only `DRIZZLE_DATABASE_URL`, auth-only `AUTH_DATABASE_URL`, or privileged `DIRECT_URL`.
+
+After the relevant migrations are applied, set a strong role password in the Supabase SQL Editor:
+
+```sql
+ALTER ROLE evergreen_app WITH PASSWORD '<your-strong-password>';
+```
+
+Configure `APP_DATABASE_URL` with the Supabase shared transaction-pooler details, username `evergreen_app.<project-ref>`, and the password above. Keep `SUPABASE_SECRET_KEY` server-only; it is used by authenticated server routes for private listing-media operations.
+
+Before running the developer-only population operation, confirm the current writer-policy migrations are applied and resolve the documented review seeding column privileges. Never run population against production or from application startup.
 
 ## Client Components
 
