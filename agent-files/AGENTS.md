@@ -34,9 +34,9 @@ Evergreen Estates is a full-stack real-estate web application using Next.js 16 A
 
 ## REST API and Route Handlers
 
-- Current listing endpoints are GET /api/v1/listings and GET /api/v1/listings/[id]. They are implemented in the corresponding route.ts files and currently support reads only.
-- Planned listing CRUD uses POST /api/v1/listings to create, PATCH /api/v1/listings/[id] for partial updates, and DELETE /api/v1/listings/[id] to delete. Add method exports to the existing route.ts files; do not create a separate file for each HTTP verb.
-- Seller onboarding must also use a Route Handler under /api/v1/seller-profiles; define its request contract before implementation.
+- Listing GET and POST /api/v1/listings and GET /api/v1/listings/[id] are present in the current checkout; listing PATCH/DELETE are not present.
+- Seller-profile GET/POST/PATCH/DELETE and review create/update/delete handlers are present in the current checkout. The review item route uses `[reviewId]`.
+- These files include uncommitted changes. Review and test them before treating behavior as complete or deployed. Do not implement another copy of an endpoint that already exists locally.
 - Treat every Route Handler as a public HTTP entry point. Authenticate and authorize each mutation on the server, validate the body and allowed fields, and return JSON using the existing { data: ... } success / { error: { code, message } } error shape.
 - Use status codes consistently: 201 for creation, 200 for reads/updates, 204 for a delete with no body, 400 for invalid input, 401 for missing/invalid sessions, 404 for missing or non-owned resources, 409 for business-rule conflicts, and a generic client-safe 500 for unexpected failures.
 - Resolve ownership from the verified Better Auth session, never request-body IDs. Reject or ignore client attempts to set seller_user_id, userId, or equivalent ownership fields.
@@ -49,8 +49,8 @@ Evergreen Estates is a full-stack real-estate web application using Next.js 16 A
 - `DRIZZLE_DATABASE_URL` / `evergreen_runtime` is read-only for application-table queries.
 - evergreen_read is the NOLOGIN shared-read role. RLS read policies in src/db/schema.ts target it; applied migration 0011 supplies grants and role memberships not fully expressed by Drizzle Kit.
 - evergreen_runtime and evergreen_app inherit evergreen_read with INHERIT TRUE and SET FALSE. The runtime role remains read-only.
-- Migration 0010 created the evergreen_app login and migration 0011 gave it shared reads. It still has no application-table write grants.
-- APP_DATABASE_URL and the dedicated app Drizzle client are not implemented yet. Do not enable mutations until the app connection/client, limited write grants, owner-aware RLS policies, and authorization tests are ready.
+- Migrations 0013–0018 add limited write grants and owner-aware policies in the current checkout; verify their application and the effective database privileges before relying on them.
+- APP_DATABASE_URL support and a dedicated app Drizzle client exist in the current checkout, along with local write grants and owner-aware policies. Verify the migrations are applied and authorization behavior is tested before relying on them; do not route writes through the read or auth connection.
 - DIRECT_URL is reserved for Drizzle Kit migrations; never use it in request handlers.
 - Never trust a user ID or ownership field from the request body. Resolve owner identity from the verified Better Auth session on the server.
 - Seller-profile onboarding must associate the profile with the authenticated canonical `users.id`.
@@ -77,7 +77,7 @@ Evergreen Estates is a full-stack real-estate web application using Next.js 16 A
 - The private Supabase `property-images` bucket last contained 15 objects totalling 39,998,905 bytes: 14 listing-folder objects and root object `home-image.jpg`. All 15 were reported downloaded and verified under `seed/images/`. Recheck live Storage before any destructive operation.
 - Keep the bucket private. Listing fixture media stores filenames; runtime resolves `listings/<listing-id>/<filename>` to signed URLs with `src/db/supabase/util/GetMediaUrls.ts`. Never replace this with public local media URLs.
 - Planned media source paths are `seed/images/listings/<listing-id>/<filename>`; align fixture filenames and Storage object paths exactly.
-- `scripts/populate.ts` has not been implemented. Do not implement/finalize population until listing CRUD, ownership enforcement, and dependent schema decisions are stable.
+- `scripts/populate.ts` has not been implemented. Fixture definitions and pure validation tests are not a database population mechanism.
 - The future developer-run population operation must provision seller identities through a supported Better Auth flow, resolve UUID relationships, safely repeat without duplicate seed-managed data, upload to private Storage, avoid deleting unrelated data by default, and include explicit production safeguards.
 - Never commit reusable seed passwords, password hashes, database URLs, sessions, auth secrets, or other credentials. Population must never run from application startup or a public route.
 - Before removing or changing any other schema field, search current source, types, fixtures, tests, and migrations for dependencies and plan a data-preserving migration.

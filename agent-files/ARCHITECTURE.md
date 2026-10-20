@@ -13,7 +13,7 @@ This is the authoritative record of finalized Evergreen Estates architecture. Pr
 
 Evergreen Estates is a real-estate marketplace built with Next.js 16.x App Router, React, TypeScript, Supabase/PostgreSQL and Storage, Drizzle ORM, Better Auth, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
-Implemented functionality includes public property browsing, listing details, URL-driven search/filtering, listing media and review display, and Better Auth email/password authentication. The listing API currently supports GET only; listing mutations and seller onboarding are not implemented.
+Implemented functionality includes public property browsing, listing details, URL-driven search/filtering, listing media and review display, Better Auth email/password authentication, seller-profile CRUD, listing creation, and review CRUD. Listing update/delete handlers, media upload completion integration, UI mutation flows, and the database population operation are not established as complete in this checkout. Treat working-tree changes as local, uncommitted implementation until independently validated and committed.
 
 ## 2. Application Structure and Boundaries
 
@@ -45,9 +45,9 @@ The application uses separate database credentials for distinct responsibilities
 | `DRIZZLE_DATABASE_URL` | `evergreen_runtime` | Read-only application-table queries | Implemented |
 | `AUTH_DATABASE_URL` | `evergreen_auth` | Better Auth user, account, session, and verification operations | Implemented |
 | `DIRECT_URL` | Privileged migration connection | Drizzle Kit migrations only | Implemented |
-| `APP_DATABASE_URL` | `evergreen_app` | Least-privilege application writes | Connection/client planned; role exists and inherits shared reads; no write grants yet |
+| `APP_DATABASE_URL` | `evergreen_app` | Least-privilege application writes | Client, grants, and owner-scoped policies exist in the current checkout; deployed role configuration is not verified here |
 
-The NOLOGIN role evergreen_read holds common SELECT privileges and is the target for shared-read RLS policies. Migration 0011 grants membership to evergreen_runtime and evergreen_app with INHERIT TRUE, SET FALSE. The runtime role remains read-only. The evergreen_app login currently inherits reads but has no table-write grants, and the app connection/client has not been implemented.
+The NOLOGIN role evergreen_read holds common SELECT privileges and is the target for shared-read RLS policies. Migration 0011 grants membership to evergreen_runtime and evergreen_app with INHERIT TRUE, SET FALSE. The runtime role remains read-only. The current checkout adds an app client and narrowly scoped table grants/policies in later migrations. The app client sets `app.current_user_id` transaction-locally from the verified Better Auth session before writes. These repository files do not prove the migrations have been applied to a live database.
 
 Migration 0010 creates evergreen_app with CONNECT only. Applied migration 0011 creates evergreen_read, grants common reads (only users.id and users.name in public.users), switches the read-policy targets, and removes runtime's duplicate direct read grants. Drizzle schema source controls role and policy declarations; 0011 also contains explicit GRANT/REVOKE and membership SQL that Drizzle Kit does not generate from the TypeScript schema.
 
@@ -133,9 +133,9 @@ Supabase PostgreSQL (grants + RLS)
 
 Filtering remains URL-driven: controls update search parameters, navigation renders server-side results, and Drizzle executes parameterized PostgreSQL queries. Server Components should call the query/data layer directly rather than making HTTP requests to this app's own public Route Handlers.
 
-## 6. Listing Write Architecture — Planned; Shared Read Role Prepared
+## 6. Application Write Architecture — Partially Implemented
 
-The evergreen_app login exists from migration 0010 and was added to evergreen_read in migration 0011. It inherits common reads but currently has no application-table write grants. APP_DATABASE_URL and a dedicated app Drizzle client are not implemented; listing mutations and seller onboarding do not exist yet.
+The evergreen_app login originates in migration 0010 and was added to evergreen_read in migration 0011. The current working tree includes APP_DATABASE_URL support, a dedicated app Drizzle client, owner-aware write policies, constrained grants, and migrations 0013–0018. The current branch also contains authenticated seller-profile CRUD, listing creation, and review CRUD. These are local implementation changes; no build, test, migration-application, or live permission verification was performed as part of this documentation audit.
 
 ### REST endpoint plan
 
@@ -144,13 +144,15 @@ Use Next.js App Router Route Handlers as the explicit HTTP API contract:
 | Method and path | Status | Responsibility |
 |---|---|---|
 | GET /api/v1/listings | Implemented | List/search/filter public listings |
-| POST /api/v1/listings | Planned | Create a listing for the current authenticated seller |
+| POST /api/v1/listings | Present locally | Create a listing for the current authenticated seller; enforce the three-listing cap in the database |
 | GET /api/v1/listings/[id] | Implemented | Read one listing; preserve existing 404 behavior |
-| PATCH /api/v1/listings/[id] | Planned | Partially update an owned listing |
-| DELETE /api/v1/listings/[id] | Planned | Delete an owned listing |
-| POST /api/v1/seller-profiles | Planned | Onboard the current authenticated user as a seller |
+| PATCH /api/v1/listings/[id] | Not present | Planned partial update for an owned listing |
+| DELETE /api/v1/listings/[id] | Not present | Planned deletion for an owned listing |
+| GET/POST/PATCH/DELETE /api/v1/seller-profiles | Present locally | Read/create/update/delete the authenticated user's profile |
+| POST /api/v1/listings/[id]/reviews | Present locally | Create the authenticated user's review |
+| PATCH/DELETE /api/v1/listings/[id]/reviews/[reviewId] | Present locally | Update/delete the authenticated user's review |
 
-Collection methods belong in src/app/api/v1/listings/route.ts; item methods belong in src/app/api/v1/listings/[id]/route.ts. Add exported POST, PATCH, or DELETE functions to those existing route files. PATCH is chosen for partial updates; add PUT only if full-resource replacement is deliberately designed.
+Collection methods belong in src/app/api/v1/listings/route.ts; item methods belong in src/app/api/v1/listings/[id]/route.ts. Review item routing uses the distinct `[reviewId]` parameter. Add listing PATCH/DELETE only after the current local handlers and policies have been reviewed and tested. PATCH is chosen for partial updates; add PUT only if full-resource replacement is deliberately designed.
 
 ### Target write request flow
 
@@ -179,7 +181,7 @@ Use the established JSON envelope: successful reads/updates return { data: ... }
 - Seller onboarding creates seller_profiles.user_id from the canonical users.id associated with the verified session.
 - A listing's seller_user_id is derived from the current session and an eligible seller profile; clients cannot choose or reassign ownership.
 - Only the owner may update or delete a listing. Existing unowned rows must remain immutable to ordinary users.
-- Shared reads of seller_profiles remain limited to published profiles. Add an app-specific owner policy before a seller must read or update their own unpublished profile.
+- Shared reads of seller_profiles remain limited to published profiles. The current schema has app-specific owner policies for a seller's own profile, including unpublished profiles.
 - Grant only the INSERT/UPDATE/DELETE and column privileges the handlers require. Keep users and Better Auth tables outside the app writer's write scope.
 - Enforce the three-active-listings-per-seller cap with concurrency-safe database logic; a plain count-then-insert check can race.
 - Test anonymous writes, invalid payloads, cross-user mutations, owner reassignment attempts, unpublished-profile access, concurrent creates, and listing-cap conflicts before enabling the UI.
@@ -235,7 +237,7 @@ In particular:
 
 ## 9. Supabase Storage and Media Model
 
-The listing `media` array stores filenames, not public URLs. Runtime media uses `src/db/supabase/util/GetMediaUrls.ts`, which reads filenames under `listings/<listing-id>/<filename>`, preserves the order of filenames already in the array, appends Storage files not listed in the array, and generates signed URLs. The bucket remains private; do not replace this with public local media paths.
+The listing `media` array stores filenames, not public URLs. Runtime media uses `src/db/supabase/util/GetMediaUrls.ts` and the server-only Storage admin helper. It preserves the database filename order, filters out filenames that do not exist in Storage, and generates signed URLs. The bucket remains private; migration 0018 removes the prior public-read policy. The repository does not establish whether that migration has been applied to production.
 
 There are exactly two media categories:
 
@@ -263,7 +265,8 @@ DRIZZLE_DATABASE_URL=   # read-only evergreen_runtime
 AUTH_DATABASE_URL=      # Better Auth / evergreen_auth
 BETTER_AUTH_URL=
 BETTER_AUTH_SECRET=
-APP_DATABASE_URL=       # future app writer; role exists but client/write grants are not ready
+APP_DATABASE_URL=       # server-only app writer using evergreen_app; present in current setup
+SUPABASE_SECRET_KEY=    # server-only Storage admin credential
 ```
 
 For Supabase shared transaction-pooler connections, use the Dashboard's copied host/port and role username format `<role>.<project-ref>`; postgres.js may require prepared statements disabled. Never expose database credentials or `BETTER_AUTH_SECRET` in client bundles or committed fixtures.
@@ -272,11 +275,11 @@ For Supabase shared transaction-pooler connections, use the Dashboard's copied h
 
 Historical checks after authentication and fixture setup included npx tsc --noEmit, npm run build, npx drizzle-kit check, npm run test:run, and npx drizzle-kit migrate. The fixture suite was previously reported as passing 9 tests and the full suite 11 tests across 2 files. Those results do not verify future CRUD handlers, the app writer connection, or population.
 
-Current plan (Sunday, 2026-10-18):
+Current follow-up work (audit snapshot, 2026-10-20):
 
-1. Finish the app-write database client/connection and owner-aware RLS/grants without changing the read, auth, or migration boundaries.
-2. Implement REST-style listing POST/PATCH/DELETE Route Handlers and seller-profile onboarding; preserve the existing GET handlers and GET-by-ID 404 behavior.
-3. Do a minimal local type-check/smoke pass on route contracts and security behavior. Do not populate the live database yet.
+1. Review the uncommitted app-write client, grants/policies, and handlers for correctness; no implementation completeness is assumed from file presence.
+2. Verify route contracts and authorization behavior with appropriate tests and confirm required migrations/role settings against the intended database before relying on these mutations.
+3. Keep listing update/delete, user-facing mutation flows, and population work explicitly planned until implemented and verified. Do not populate the live database during the documentation audit.
 
 Next work session (Monday, 2026-10-19):
 
@@ -299,11 +302,13 @@ Next.js App Router
   │   │   └─ AUTH_DATABASE_URL / evergreen_auth
   │   ├─ /api/v1/listings
   │   │   ├─ GET implemented
-  │   │   └─ POST planned
+   │   │   └─ POST present locally
   │   └─ /api/v1/listings/[id]
   │       ├─ GET implemented
-  │       ├─ PATCH planned
-  │       └─ DELETE planned
+   │       ├─ PATCH planned
+   │       └─ DELETE planned
+   ├─ /api/v1/seller-profiles → GET/POST/PATCH/DELETE present locally
+   └─ /api/v1/listings/[id]/reviews → POST; /[reviewId] → PATCH/DELETE present locally
   └─ Supabase JS Storage helper
       └─ private property-images bucket
           ├─ runtime: signed URLs

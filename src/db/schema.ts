@@ -145,6 +145,13 @@ export const sellerProfiles = pgTable(
       using: sql`${table.userId} = ${currentAppUserId}`,
       withCheck: sql`${table.userId} = ${currentAppUserId}`,
     }),
+
+    pgPolicy("Owners can delete their seller profile", {
+      as: "permissive",
+      for: "delete",
+      to: ["evergreen_app"],
+      using: sql`${table.userId} = ${currentAppUserId}`,
+    }),
   ],
 ).enableRLS();
 
@@ -268,6 +275,28 @@ export const reviews = pgTable(
       for: "select",
       to: evergreenReadRole,
       using: sql`true`,
+    }),
+
+    pgPolicy("Users can create their own reviews", {
+      as: "permissive",
+      for: "insert",
+      to: ["evergreen_app"],
+      withCheck: sql`${table.userId} = ${currentAppUserId}`,
+    }),
+
+    pgPolicy("Users can update their own reviews", {
+      as: "permissive",
+      for: "update",
+      to: ["evergreen_app"],
+      using: sql`${table.userId} = ${currentAppUserId}`,
+      withCheck: sql`${table.userId} = ${currentAppUserId}`,
+    }),
+
+    pgPolicy("Users can delete their own reviews", {
+      as: "permissive",
+      for: "delete",
+      to: ["evergreen_app"],
+      using: sql`${table.userId} = ${currentAppUserId}`,
     }),
 
     check(

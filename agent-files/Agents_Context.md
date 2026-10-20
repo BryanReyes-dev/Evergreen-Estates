@@ -14,7 +14,7 @@
 
 Evergreen Estates is a Next.js 16 App Router real-estate marketplace using TypeScript, React, Supabase/PostgreSQL and Storage, Drizzle ORM, Better Auth, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
-The working branch is `main`.
+The branch and working-tree state must be checked at the start of each task; this file does not record a durable current branch.
 
 Bryan prefers an incremental, local-first workflow:
 1. Explain one focused change and why it is needed.
@@ -34,19 +34,19 @@ Do not assume local edits are committed or pushed without confirmation.
 - `AUTH_DATABASE_URL` connects through the restricted `evergreen_auth` role.
 - Auth tables are `account`, `session`, and `verification`.
 - Auth endpoints live at `/api/auth/[...all]`.
-- Listing GET Route Handlers exist at `/api/v1/listings` and `/api/v1/listings/[id]`; no listing mutation handlers are implemented yet.
-- These route.ts files are the intended REST-style HTTP API boundary; use POST on the collection and PATCH/DELETE on an item URL for listing mutations.
+- Listing GET/POST handlers exist at `/api/v1/listings` and GET exists at `/api/v1/listings/[id]`; listing PATCH/DELETE are not present in the current checkout.
+- Seller-profile CRUD and review create/update/delete handlers are present locally. The review item parameter is `[reviewId]`.
 - Auth registration, sign-in, session retrieval, and sign-out were manually tested previously.
-- The evergreen_app login role exists and inherits common SELECT privileges, but APP_DATABASE_URL, the writer Drizzle client, application-table write grants, owner-aware write policies, and listing mutations are not implemented yet.
+- APP_DATABASE_URL support and a writer Drizzle client, grants, and owner-aware policies are present locally. Treat their deployment and behavior as unverified until migrations and authorization tests are confirmed.
 
 ## Database connections and security boundaries
 
 - `DRIZZLE_DATABASE_URL` → `evergreen_runtime`, read-only application-table access.
 - `AUTH_DATABASE_URL` → `evergreen_auth`, Better Auth identity and auth-table operations.
 - `DIRECT_URL` → privileged Drizzle Kit migrations only.
-- `APP_DATABASE_URL` → not configured/implemented yet; intended for app mutations using `evergreen_app`.
+- `APP_DATABASE_URL` → current local app write client uses `evergreen_app`; deployment configuration is unverified.
 
-The shared `evergreen_read` NOLOGIN role and the migration-defined memberships/grants are implemented. `evergreen_runtime` and `evergreen_app` inherit shared read access using `INHERIT TRUE, SET FALSE`. Migration `0011_shared_read_role.sql` grants SELECT on listings/reviews/seller_profiles and only users.id/users.name, and the RLS policies target the shared role (seller profiles require is_published = true). `evergreen_app` still has no table-write privileges, and no app Drizzle client currently exists.
+The shared `evergreen_read` NOLOGIN role and migration-defined memberships/grants are in repository history. `evergreen_runtime` and `evergreen_app` inherit shared reads using `INHERIT TRUE, SET FALSE`. Migration `0011_shared_read_role.sql` grants SELECT on listings/reviews/seller_profiles and only users.id/users.name. The current checkout adds app write grants/policies in migrations 0013–0018 and a transaction-scoped app client. These files do not establish which migrations are applied to a live service.
 
 PostgreSQL 17.6 verification on 2026-10-18 confirmed both login roles can read listings; the app role cannot INSERT or UPDATE listings; the runtime role cannot select users.email; all four shared-read policies target `evergreen_read`. The separate `evergreen_auth` policy on users remains in place.
 
@@ -172,9 +172,15 @@ The fixture-specific suite passed all 9 tests. The full suite passed 11 tests ac
 
 These are user-reported command results. Re-run relevant checks after additional edits.
 
-## Immediate work order
+## Current status and follow-up (2026-10-20)
 
-### Current focus — secure REST Route Handler CRUD (Sunday, 2026-10-18)
+This checkout has uncommitted implementation changes. It includes listing creation, seller-profile CRUD, review create/update/delete, the app writer client, migrations for scoped grants/policies, and migration 0018 removing public Storage reads. Listing PATCH/DELETE and `scripts/populate.ts` are absent. File presence does not establish that the changes are complete, tested, or deployed.
+
+Fixtures define four synthetic sellers, 12 listings (three each), and 48 reviews. `tests/data.test.ts` validates fixtures; there is no database population operation. The three-listing cap is implemented in migration 0013 with a database trigger and advisory lock, but runtime behavior was not verified during this documentation audit. Historical test results below are user-reported and were not rerun.
+
+Before relying on local write behavior, review its authorization and validation paths, test the handlers and role boundaries, and confirm the migrations and role settings against the target database. Do not populate a database as part of this status.
+
+### Historical next-work notes (2026-10-18/19)
 
 The current API already uses the correct Next.js App Router Route Handler convention for the GET endpoints. These are proper HTTP endpoints; a separate Express server is not needed. The remaining work is mutation handlers and security, not replacing the existing GET routes.
 
@@ -219,7 +225,7 @@ Before any write handler is enabled, verify anonymous writes fail, invalid input
 
 - Listing `media` arrays store filenames rather than public URLs.
 - Media remains categorized as `image` or `video`; GIF is an image.
-- `GetMediaUrls.ts` preserves database media order, appends files found in Storage but missing from the array, and generates signed URLs.
+- `GetMediaUrls.ts` preserves database media order, filters out filenames absent from Storage, and generates signed URLs through the server-only Storage admin helper.
 - Keep the Supabase Storage bucket private.
 - Keep `src/lib/netlifyImageLoader.ts` and the local-development versus production image optimization behavior intact.
 - Use the installed Next.js 16 documentation before framework-sensitive changes.
