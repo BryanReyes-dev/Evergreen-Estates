@@ -1,16 +1,16 @@
 import { and, arrayContains, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-
+import {
+  deleteListingMediaObjects,
+  isAllowedListingMediaFilename,
+} from "@/db/supabase/storage-admin";
 import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { listings } from "@/db/schema";
-import { deleteListingMediaObjects } from "@/db/supabase/storage-admin";
 import { getAuthenticatedUserId } from "@/lib/api/get-authenticated-user-id";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const MEDIA_FILENAME_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|avif|gif|mp4|webm|mov)$/i;
 
 type RouteContext = {
   params: Promise<{
@@ -41,7 +41,9 @@ export async function DELETE(
     );
   }
 
-  if (!MEDIA_FILENAME_PATTERN.test(filename)) {
+  
+
+  if (!isAllowedListingMediaFilename(filename)) {
     return NextResponse.json(
       { error: "INVALID_MEDIA_FILENAME" },
       { status: 400 },

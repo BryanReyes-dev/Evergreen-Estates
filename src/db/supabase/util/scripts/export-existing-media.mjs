@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  "..",
+  "../../../../../",
 );
 
 const mediaRoot = path.join(projectRoot, "seed", "images");
@@ -85,11 +85,11 @@ const objects = [
 ];
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error(
-    `Missing Supabase URL or anon key in ${envPath}.`,
+    `Missing Supabase URL or secret key in ${envPath}.`,
   );
 }
 

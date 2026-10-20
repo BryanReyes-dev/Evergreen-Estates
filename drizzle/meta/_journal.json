@@ -120,6 +120,20 @@
       "when": 1792360641442,
       "tag": "0016_enable_review_crud_and_seller_profile_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792452873924,
+      "tag": "0017_review-fixture-insert-permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792454378303,
+      "tag": "0018_remove_public_storage_read_policy",
+      "breakpoints": true
     }
   ]
 }

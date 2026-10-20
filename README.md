@@ -29,7 +29,14 @@ The project uses the Next.js App Router, Server Components for data fetching and
 - Responsive component-based UI
 - Accessibility and SEO considerations
 - Server-side data fetching with async Server Components
+- Better Auth email/password authentication with a canonical `public.users` table
+- Authenticated seller-profile creation, read, update, and deletion endpoints
+- Authenticated listing create, update, and delete endpoints
+- Review read, create, update, and delete endpoints
+- Listing media upload-url, completion, and file-delete endpoints
 - Tailwind CSS and shadcn/ui styling
+
+The current source includes authentication, listing, seller-profile, review, and listing-media Route Handlers. Their presence in source does not establish that every handler has been tested or deployed, and the UI mutation flows are not established as complete. The developer-run population script is not present. Fixture definitions and validation tests exist, but they do not populate a database.
 
 ## Media and Image Delivery
 
@@ -98,7 +105,7 @@ There is exactly one architecture document: `agent-files/ARCHITECTURE.md`. It is
 
 ## Project Architecture
 
-The application separates route/page composition, reusable UI, database operations, and shared utilities. Database-related logic is isolated in `src/db`.
+The application separates route/page composition, reusable UI, database access, and shared utilities. Listing read queries, schemas, Drizzle clients, and Storage helpers live under `src/db`. Current write Route Handlers issue Drizzle statements in the route files and use the shared transaction helper in `src/db/drizzle/app-client.ts`; dedicated mutation modules have not been extracted.
 
 Server Components handle property-data fetching and rendering by default. Client Components are used for browser-specific behavior such as interactive filtering, navigation state, animation, and Embla carousel interaction.
 
@@ -131,12 +138,16 @@ Create environment variables:
 ```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SECRET_KEY=
 DIRECT_URL=
 DRIZZLE_DATABASE_URL=
 AUTH_DATABASE_URL=
+APP_DATABASE_URL=
 BETTER_AUTH_URL=http://localhost:3000
 BETTER_AUTH_SECRET=
 ```
+
+`SUPABASE_SECRET_KEY` is server-only and is used by the Storage admin helper. `APP_DATABASE_URL` uses the restricted `evergreen_app` login for owner-scoped writes. Keep both, all database URLs, and `BETTER_AUTH_SECRET` out of client code and version control. See [agent-files/ARCHITECTURE.md](./agent-files/ARCHITECTURE.md) for the role boundaries and endpoint details.
 
 ### Configure the Drizzle runtime role
 
@@ -168,6 +179,16 @@ Configure `AUTH_DATABASE_URL` with the Supabase shared transaction pooler detail
 
 Set `BETTER_AUTH_URL=http://localhost:3000` locally and generate a strong `BETTER_AUTH_SECRET` (at least 32 characters). Keep the secret server-only and configure the production URL/secret in the deployment environment before enabling auth there.
 
+### Configure the application-write role
+
+The local schema and migrations define the restricted `evergreen_app` login. After applying migrations, set its password out of band in the Supabase SQL Editor:
+
+```sql
+ALTER ROLE evergreen_app WITH PASSWORD '<your-strong-password>';
+```
+
+Set `APP_DATABASE_URL` to the shared transaction pooler connection using username `evergreen_app.<project-ref>` and the generated password. The app client uses this connection only for owner-scoped writes; do not substitute the migration, read-only, or Better Auth database URL.
+
 Run the development server:
 
 ```bash
@@ -187,6 +208,8 @@ Run the production build locally:
 ```bash
 npm start
 ```
+
+Run the Vitest suite with `npm run test:run`. The database-permissions integration test requires `DRIZZLE_DATABASE_URL` to reach a database configured for the `evergreen_runtime` role; fixture tests do not populate a database.
 
 ## Client Components
 

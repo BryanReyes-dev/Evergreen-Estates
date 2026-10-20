@@ -38,6 +38,23 @@ export type ListingMediaKind = "image" | "video";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export function isAllowedListingMediaFilename(
+  filename: string,
+): boolean {
+  return (
+    filename.length > 0 &&
+    filename.length <= 255 &&
+    filename !== "." &&
+    filename !== ".." &&
+    !filename.includes("/") &&
+    !filename.includes("\\") &&
+    !/[\u0000-\u001f\u007f]/.test(filename) &&
+    /^[a-zA-Z0-9][a-zA-Z0-9 ._()-]*\.(jpg|png|webp|avif|gif|mp4|webm|mov)$/i.test(
+      filename,
+    )
+  );
+}
+
 function createStorageAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const secretKey = process.env.SUPABASE_SECRET_KEY;
@@ -218,13 +235,95 @@ export async function inspectListingMediaObject(input: {
   };
 }
 
+
+
+/**
+ * Creates signed URLs only for media filenames registered
+ * on the listing. Uses the server-only Storage admin client.
+*/
+
+export async function getListingMediaUrls(input: {
+  listingId: string;
+  filenames: string[];
+}): Promise<string[]> {
+  const { listingId, filenames } = input;
+
+  if (!UUID_PATTERN.test(listingId)) {
+    throw new Error("Invalid listing ID.");
+  }
+
+  if (filenames.length === 0) {
+    return [];
+  }
+
+  // Preserve legacy filenames, including spaces and parentheses,
+  // while rejecting path traversal and nested paths.
+  const safeFilenames = filenames.filter(
+    (filename) =>
+      typeof filename === "string" &&
+      filename.length > 0 &&
+      filename.length <= 255 &&
+      filename !== "." &&
+      filename !== ".." &&
+      !filename.includes("/") &&
+      !filename.includes("\\") &&
+      !/[\u0000-\u001f\u007f]/.test(filename),
+  );
+
+  const bucket = getStorageAdminClient()
+    .storage
+    .from(STORAGE_BUCKET);
+
+  const folderPath = `listings/${listingId}`;
+
+  const { data: files, error: listError } =
+    await bucket.list(folderPath, { limit: 1000 });
+
+  if (listError) {
+    console.error("Failed to list listing media:", listError);
+    return [];
+  }
+
+  const storageFilenames = new Set(
+    (files ?? [])
+      .map((file) => file.name)
+      .filter(Boolean),
+  );
+
+  // The database remains authoritative: do not serve files
+  // that aren't registered in the listing's media array.
+  const existingFilenames = safeFilenames.filter(
+    (filename) => storageFilenames.has(filename),
+  );
+
+  const results = await Promise.all(
+    existingFilenames.map(async (filename) => {
+      const filePath = `${folderPath}/${filename}`;
+
+      const { data, error } = await bucket.createSignedUrl(
+        filePath,
+        60 * 60,
+      );
+
+      if (error || !data?.signedUrl) {
+        console.error("Failed to sign listing media:", filePath);
+        return null;
+      }
+
+      return data.signedUrl;
+    }),
+  );
+
+  return results.filter(
+    (url): url is string => url !== null,
+  );
+}
 /**
  * Remove files associated with a listing.
  * The caller must first verify listing ownership or perform an
  * authorized listing deletion. This function only accepts filenames,
  * never arbitrary bucket paths.
 */
-
 export async function deleteListingMediaObjects(input: {
   listingId: string;
   filenames: string[];
@@ -235,27 +334,23 @@ export async function deleteListingMediaObjects(input: {
     throw new Error("Invalid listing ID.");
   }
 
-  const uniqueFilenames = [...new Set(filenames)];
-
-  for (const filename of uniqueFilenames) {
-    if (
-      typeof filename !== "string" ||
-      filename.length === 0 ||
-      filename.length > 255 ||
-      filename === "." ||
-      filename === ".." ||
-      !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(filename)
-    ) {
-      throw new Error("Invalid listing media filename.");
-    }
-  }
+  const uniqueFilenames: string[] = [...new Set(filenames)];
 
   if (uniqueFilenames.length === 0) {
     return;
   }
 
+  for (const filename of uniqueFilenames) {
+    if (
+      typeof filename !== "string" ||
+      !isAllowedListingMediaFilename(filename)
+    ) {
+      throw new Error("Invalid listing media filename.");
+    }
+  }
+
   const paths = uniqueFilenames.map(
-    (filename) => `listings/${listingId}/${filename}`,
+    (filename: string) => `listings/${listingId}/${filename}`,
   );
 
   const { error } = await getStorageAdminClient()
