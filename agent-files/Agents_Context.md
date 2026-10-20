@@ -34,8 +34,8 @@ Do not assume local edits are committed or pushed without confirmation.
 - `AUTH_DATABASE_URL` connects through the restricted `evergreen_auth` role.
 - Auth tables are `account`, `session`, and `verification`.
 - Auth endpoints live at `/api/auth/[...all]`.
-- Listing GET/POST handlers exist at `/api/v1/listings` and GET exists at `/api/v1/listings/[id]`; listing PATCH/DELETE are not present in the current checkout.
-- Seller-profile CRUD and review create/update/delete handlers are present locally. The review item parameter is `[reviewId]`.
+- Route Handlers present in source: listing collection GET/POST; listing item GET/PATCH/DELETE; seller-profile GET/POST/PATCH/DELETE; review collection GET/POST; review item PATCH/DELETE using `[reviewId]`; and listing-media upload-url POST, completion POST, and file DELETE.
+- The source inventory does not establish that every handler has been tested or deployed. User-facing mutation flows are not established as complete.
 - Auth registration, sign-in, session retrieval, and sign-out were manually tested previously.
 - APP_DATABASE_URL support and a writer Drizzle client, grants, and owner-aware policies are present locally. Treat their deployment and behavior as unverified until migrations and authorization tests are confirmed.
 
@@ -48,7 +48,7 @@ Do not assume local edits are committed or pushed without confirmation.
 
 The shared `evergreen_read` NOLOGIN role and migration-defined memberships/grants are in repository history. `evergreen_runtime` and `evergreen_app` inherit shared reads using `INHERIT TRUE, SET FALSE`. Migration `0011_shared_read_role.sql` grants SELECT on listings/reviews/seller_profiles and only users.id/users.name. The current checkout adds app write grants/policies in migrations 0013–0018 and a transaction-scoped app client. These files do not establish which migrations are applied to a live service.
 
-PostgreSQL 17.6 verification on 2026-10-18 confirmed both login roles can read listings; the app role cannot INSERT or UPDATE listings; the runtime role cannot select users.email; all four shared-read policies target `evergreen_read`. The separate `evergreen_auth` policy on users remains in place.
+PostgreSQL 17.6 verification on 2026-10-18 predates the app-write grants and policies in migrations 0013–0018. It confirmed shared reads and that `evergreen_runtime` could not select `users.email`; its finding that the app role lacked listing-write privileges is historical and should not be used to describe the current migration set. The four shared-read policies target `evergreen_read`, and the separate `evergreen_auth` policy on users remains in place. Current effective privileges still need verification against the target database.
 
 Never use the runtime or auth roles for migrations. Never use `DIRECT_URL` in request handlers. Keep credentials and Better Auth secrets server-only. Do not grant general listing-write permissions to `evergreen_runtime` or `evergreen_auth`.
 
@@ -174,52 +174,25 @@ These are user-reported command results. Re-run relevant checks after additional
 
 ## Current status and follow-up (2026-10-20)
 
-This checkout has uncommitted implementation changes. It includes listing creation, seller-profile CRUD, review create/update/delete, the app writer client, migrations for scoped grants/policies, and migration 0018 removing public Storage reads. Listing PATCH/DELETE and `scripts/populate.ts` are absent. File presence does not establish that the changes are complete, tested, or deployed.
+The current source includes listing create/update/delete handlers, seller-profile CRUD, review read/create/update/delete handlers, listing-media upload-url/completion/delete handlers, the app writer client, migrations for scoped grants/policies, and migration 0018 removing public Storage reads. `scripts/populate.ts` is absent. File presence does not establish that the handlers are complete, tested, or deployed. Before these documentation edits, `git status` showed no existing changes.
 
 Fixtures define four synthetic sellers, 12 listings (three each), and 48 reviews. `tests/data.test.ts` validates fixtures; there is no database population operation. The three-listing cap is implemented in migration 0013 with a database trigger and advisory lock, but runtime behavior was not verified during this documentation audit. Historical test results below are user-reported and were not rerun.
 
-Before relying on local write behavior, review its authorization and validation paths, test the handlers and role boundaries, and confirm the migrations and role settings against the target database. Do not populate a database as part of this status.
+Before relying on write behavior, review authorization and validation paths, test the handlers and role boundaries, and confirm migrations and role settings against the target database.
 
-### Historical next-work notes (2026-10-18/19)
+### Current follow-up (2026-10-20)
 
-The current API already uses the correct Next.js App Router Route Handler convention for the GET endpoints. These are proper HTTP endpoints; a separate Express server is not needed. The remaining work is mutation handlers and security, not replacing the existing GET routes.
+- Review and add targeted coverage for the current handlers, especially authentication, input validation, ownership boundaries, media upload lifecycle, and the three-listing cap. Existing tests cover fixtures and runtime database permissions; they do not establish those route behaviors.
+- Confirm the relevant migrations and database role settings in the target environment before relying on or deploying application writes.
+- Build user-facing mutation flows only after the corresponding API behavior is verified.
+- Implement the developer-run population script only after the write paths and ownership rules are stable. Keep it repeatable, protect production, and avoid deleting unrelated data.
+- Re-run type-checks, relevant Vitest suites, build, migration checks, and permission checks after implementation changes. Earlier passing results are historical until rerun.
 
-| Method and path | Status | Planned behavior |
-|---|---|---|
-| GET /api/v1/listings | Implemented | Public listing collection with price/query/tag filters |
-| POST /api/v1/listings | Planned | Create listing for the authenticated seller |
-| GET /api/v1/listings/[id] | Implemented | Public listing detail; preserve current 404 behavior |
-| PATCH /api/v1/listings/[id] | Planned | Partially update an owned listing |
-| DELETE /api/v1/listings/[id] | Planned | Delete an owned listing |
-| POST /api/v1/seller-profiles | Planned | Create a seller profile for the authenticated user |
-
-The collection methods belong in src/app/api/v1/listings/route.ts; item methods belong in src/app/api/v1/listings/[id]/route.ts. Add exported method functions to the existing route.ts files rather than creating one file per method. Use PATCH for partial updates; do not add PUT unless we intentionally design full replacement semantics.
-
-Implementation order:
-
-1. Add a server-only Drizzle app client using APP_DATABASE_URL and evergreen_app. The login already exists and inherits shared reads, but it currently has no table-write grants.
-2. Add the app-specific grants and owner-aware RLS policies for only the required INSERT/UPDATE/DELETE operations. Add a policy for a seller to read/manage their own unpublished profile without exposing all unpublished profiles. Keep users and Better Auth tables outside the app writer's write scope.
-3. Implement Route Handler session checks, payload validation, and JSON/status behavior, delegating SQL to src/db mutation modules. Derive seller identity from the verified Better Auth session, never request JSON. Reject or ignore ownership fields supplied by clients.
-4. Implement seller-profile onboarding tied to the canonical users.id; listing creation must require that profile.
-5. Enforce the three-active-listings-per-seller limit with concurrency-safe database logic rather than a client-only check or a plain count-then-insert.
-6. Preserve the current GET routes and GET-by-ID 404 behavior. Keep handlers thin; Server Component reads should go directly through the query layer instead of self-fetching the API.
-
-Use the established response envelope: { data: ... } for success and { error: { code, message } } for errors. Aim for 201 on creation, 200 on read/update, 204 for a delete with no body, 400 for invalid payloads, 401 for unauthenticated mutation requests, 404 for missing/non-owned listings, 409 for business-rule conflicts, and a generic client-safe 500 for unexpected failures.
-
-Before any write handler is enabled, verify anonymous writes fail, invalid input is rejected, cross-user update/delete and owner reassignment are blocked, own unpublished profiles are accessible only to that user, and concurrent creates cannot exceed the listing cap.
-
-### Next work session — Monday, 2026-10-19
-
-1. Expand/run Vitest tests for Route Handler payload/status behavior, authenticated session requirements, ownership isolation, database role grants/RLS, and concurrency-safe listing limits. The repository uses Vitest (npm run test:run).
-2. Implement scripts/populate.ts only once CRUD ownership/security and schema decisions are stable. Import fixtures from src/db/seed/data.ts; provision the four synthetic seller accounts through a supported Better Auth flow; resolve UUID relationships; insert/reconcile the twelve listings and 48 reviews; upload assets to the private property-images bucket.
-3. Make population repeatable without duplicate fixture-managed records; report inserts/updates/skips and validation failures; avoid deleting unrelated data by default; guard explicitly against production and never run from app startup/public routes.
-4. Re-run npx tsc --noEmit, relevant Vitest suites, npm run build, npx drizzle-kit check, and migration/permission checks after changes. Earlier passing test results are historical until rerun.
-
-### After REST CRUD and population
+### Other follow-up items
 
 - Audit ownership completeness before making listings.seller_user_id non-null.
 - Decide/implement rating aggregate queries for cards and search results.
-- Connect UI mutations to the tested endpoints and verify the end-to-end experience.
+- Build UI mutation flows against the verified endpoints and check the end-to-end experience.
 
 ## Media and implementation invariants
 

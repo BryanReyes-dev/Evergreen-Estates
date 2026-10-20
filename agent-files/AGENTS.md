@@ -23,7 +23,7 @@ Evergreen Estates is a full-stack real-estate web application using Next.js 16 A
 
 ## Project Boundaries
 
-- Keep application-table queries and writes behind the established `src/db` boundary.
+- Listing read queries, schemas, Drizzle clients, and Storage helpers live under `src/db`. Current mutation SQL is in the Route Handler files and uses `withAppUserTransaction` from `src/db/drizzle/app-client.ts`; do not assume dedicated mutation modules exist.
 - Preserve the Server Component / Client Component separation unless a feature requires browser interactivity.
 - Keep URL-driven filtering and the current server-side Drizzle GET path intact while implementing CRUD.
 - Use Next.js App Router Route Handlers under src/app/api/v1 for explicit REST-style HTTP endpoints; do not introduce a separate Express server or substitute Server Actions for the HTTP API.
@@ -34,13 +34,12 @@ Evergreen Estates is a full-stack real-estate web application using Next.js 16 A
 
 ## REST API and Route Handlers
 
-- Listing GET and POST /api/v1/listings and GET /api/v1/listings/[id] are present in the current checkout; listing PATCH/DELETE are not present.
-- Seller-profile GET/POST/PATCH/DELETE and review create/update/delete handlers are present in the current checkout. The review item route uses `[reviewId]`.
-- These files include uncommitted changes. Review and test them before treating behavior as complete or deployed. Do not implement another copy of an endpoint that already exists locally.
+- The source contains listing collection GET/POST and item GET/PATCH/DELETE handlers; seller-profile GET/POST/PATCH/DELETE handlers; review collection GET/POST and item PATCH/DELETE handlers; and listing-media upload-url, completion, and file-delete handlers. The review item route uses `[reviewId]`.
+- Treat this as a source inventory, not proof that every handler has been tested or deployed. Inspect existing handlers before adding endpoints so you do not duplicate a method already present.
 - Treat every Route Handler as a public HTTP entry point. Authenticate and authorize each mutation on the server, validate the body and allowed fields, and return JSON using the existing { data: ... } success / { error: { code, message } } error shape.
 - Use status codes consistently: 201 for creation, 200 for reads/updates, 204 for a delete with no body, 400 for invalid input, 401 for missing/invalid sessions, 404 for missing or non-owned resources, 409 for business-rule conflicts, and a generic client-safe 500 for unexpected failures.
 - Resolve ownership from the verified Better Auth session, never request-body IDs. Reject or ignore client attempts to set seller_user_id, userId, or equivalent ownership fields.
-- Keep handlers thin: delegate application-table operations to src/db query/mutation modules and use only the connection appropriate to the operation. Server Components should call the data layer directly instead of HTTP-fetching this app's own Route Handler.
+- Existing write handlers combine HTTP validation and Drizzle statements in the Route Handler, using the app transaction helper for owner-scoped writes. Preserve the connection and session boundaries when changing them. Server Components should call the read/query layer directly instead of HTTP-fetching this app's own Route Handler.
 
 ## Authentication and Database Security
 

@@ -31,10 +31,12 @@ The project uses the Next.js App Router, Server Components for data fetching and
 - Server-side data fetching with async Server Components
 - Better Auth email/password authentication with a canonical `public.users` table
 - Authenticated seller-profile creation, read, update, and deletion endpoints
-- Authenticated listing creation and review create/update/delete endpoints
+- Authenticated listing create, update, and delete endpoints
+- Review read, create, update, and delete endpoints
+- Listing media upload-url, completion, and file-delete endpoints
 - Tailwind CSS and shadcn/ui styling
 
-Authentication and mutation endpoints are present in the current local checkout. This repository snapshot does not establish that they have been fully tested or deployed. Listing update/delete handlers and the developer-run population script are not present. The intended fixture definitions and validation tests exist, but they do not populate a database.
+The current source includes authentication, listing, seller-profile, review, and listing-media Route Handlers. Their presence in source does not establish that every handler has been tested or deployed, and the UI mutation flows are not established as complete. The developer-run population script is not present. Fixture definitions and validation tests exist, but they do not populate a database.
 
 ## Media and Image Delivery
 
@@ -103,7 +105,7 @@ There is exactly one architecture document: `agent-files/ARCHITECTURE.md`. It is
 
 ## Project Architecture
 
-The application separates route/page composition, reusable UI, database operations, and shared utilities. Database-related logic is isolated in `src/db`.
+The application separates route/page composition, reusable UI, database access, and shared utilities. Listing read queries, schemas, Drizzle clients, and Storage helpers live under `src/db`. Current write Route Handlers issue Drizzle statements in the route files and use the shared transaction helper in `src/db/drizzle/app-client.ts`; dedicated mutation modules have not been extracted.
 
 Server Components handle property-data fetching and rendering by default. Client Components are used for browser-specific behavior such as interactive filtering, navigation state, animation, and Embla carousel interaction.
 
