@@ -2,13 +2,12 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { Upload } from "tus-js-client";
+import { MAX_MEDIA_FILE_BYTES } from "./file-limits";
 
 const BUCKET = "property-images";
 const TUS_THRESHOLD = 6 * 1024 * 1024;
 const TUS_CHUNK_SIZE = 6 * 1024 * 1024;
-
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 45_000_000;
+const maxBytes = MAX_MEDIA_FILE_BYTES;
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -147,9 +146,7 @@ export async function uploadListingMedia(
     ? "image"
     : "video";
 
-  const maxBytes = mediaKind === "image"
-    ? MAX_IMAGE_BYTES
-    : MAX_VIDEO_BYTES;
+  const maxBytes = MAX_MEDIA_FILE_BYTES;
 
   if (file.size <= 0 || file.size > maxBytes) {
     throw new Error(

@@ -7,12 +7,12 @@ import {
   createListingMediaUpload,
   type SupportedMediaContentType,
 } from "@/db/supabase/storage-admin";
+import { MAX_MEDIA_FILE_BYTES } from "@/lib/media/file-limits";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 45_000_000;
+const maxBytes = MAX_MEDIA_FILE_BYTES;
 const RESUMABLE_THRESHOLD_BYTES = 6 * 1024 * 1024;
 
 const ALLOWED_MEDIA_TYPES = new Set<SupportedMediaContentType>([
@@ -138,9 +138,7 @@ export async function POST(
     ? "image"
     : "video";
 
-  const maxBytes = mediaKind === "image"
-    ? MAX_IMAGE_BYTES
-    : MAX_VIDEO_BYTES;
+  const maxBytes = MAX_MEDIA_FILE_BYTES;
 
   if (size > maxBytes) {
     return Response.json(
