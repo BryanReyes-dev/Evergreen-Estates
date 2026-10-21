@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -18,6 +19,7 @@ type PublicSellerProfile = {
   userId: string;
   displayName: string;
   bio: string | null;
+  avatarUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
   preferredContactMethod: string;
@@ -52,6 +54,7 @@ export default async function PublicSellerPage({
         userId: sellerProfiles.userId,
         displayName: sellerProfiles.displayName,
         bio: sellerProfiles.bio,
+        avatarUrl: sellerProfiles.avatarUrl,
         contactEmail: sellerProfiles.contactEmail,
         contactPhone: sellerProfiles.contactPhone,
         preferredContactMethod: sellerProfiles.preferredContactMethod,
@@ -116,6 +119,16 @@ export default async function PublicSellerPage({
     <main className="min-h-screen bg-[#141616] px-4 py-8 text-white sm:px-6 sm:py-12">
       <div className="mx-auto w-full max-w-5xl">
         <header className="rounded-xl border border-white/10 bg-[#202324] p-5 sm:p-8">
+          {profile.avatarUrl && (
+            <Image
+              src={profile.avatarUrl}
+              alt={profile.displayName + " profile"}
+              width={96}
+              height={96}
+              unoptimized
+              className="mb-4 h-20 w-20 rounded-full border border-white/15 object-cover sm:h-24 sm:w-24"
+            />
+          )}
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a6d78f]">
             Seller profile
           </p>
