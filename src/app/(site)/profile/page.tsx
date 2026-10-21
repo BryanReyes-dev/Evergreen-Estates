@@ -70,7 +70,7 @@ export default async function ProfilePage() {
           </p>
         ) : ownedListings.length === 0 ? (
           <p className="mt-5 rounded-lg border border-dashed border-white/15 p-4 text-sm text-white/60">
-            You have not created any listings yet. Create a seller profile first, then add your first property.
+            You have not created any listings yet. Use Create listing to add your first property; your seller profile must be complete first.
           </p>
         ) : (
           <ul className="mt-5 divide-y divide-white/10">
