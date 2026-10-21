@@ -16,7 +16,7 @@ Automated test expansion, the final security audit, and Vite+ work remain deferr
 - Added seller-profile create/read/update/delete forms with validation for display name, bio length, HTTP(S) avatar URLs, email/phone formats, and the required preferred-contact detail.
 - Replaced the profile placeholder with a protected seller page listing only the signed-in seller's listings, plus links to view, edit, and manage media.
 - Added a public seller storefront at \`/sellers/[sellerId]\`. It returns only published profiles, lists their properties, and exposes only the seller's explicitly supplied contact details—not the private login email.
-- Added shared listing create/edit forms, a server-scoped edit route, and confirmed listing deletion. The existing API/database remain responsible for owner authorization, seller-profile eligibility, and the three-listing cap.
+- Added shared listing create/edit forms, a server-scoped edit route with a separate service-error state, and confirmed listing deletion. Aligned the listing PATCH route's server-side constraints with the create endpoint and form (title, price, beds/baths/sqft, address, description, and tags). The existing API/database remain responsible for owner authorization, seller-profile eligibility, and the three-listing cap.
 - Added review creation and author-only edit/delete controls using the existing review APIs. Added meaningful empty-review and unrated states.
 - Retained the existing listing media manager/upload helper; added owner controls beside the listing details.
 - Replaced the Saved page placeholder with an honest unavailable-state page. Saved homes remain intentionally unimplemented because the repository has no saved-homes persistence/API model.
