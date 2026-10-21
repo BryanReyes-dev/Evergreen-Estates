@@ -1899,8 +1899,6 @@ async function run(): Promise<void> {
   }
 
   const sellerPlans = await inspectSellerAccounts();
-  validateAuthProvisioningConfig(sellerPlans, options.mode);
-  const passwords = await readSellerCredentials(sellerPlans);
   const databasePlan = await inspectApplicationRecords(sellerPlans);
   const storagePlan = await inspectStorage(mediaManifest);
 
@@ -1915,10 +1913,21 @@ async function run(): Promise<void> {
     return;
   }
 
+  // Do not write while the previously observed 0011 migration checksum/provenance
+  // discrepancy is unresolved. The catalog checks are necessary, but not a
+  // substitute for reconciling that migration-history mismatch.
+  if (HISTORICAL_0011_CHECKSUM_UNRESOLVED) {
+    throw new PopulationError(
+      "Apply is blocked until migration 0011 provenance is reconciled and this guard is reviewed. Dry-run remains available.",
+    );
+  }
+
   if (options.confirmedProject !== EXPECTED_PROJECT_REF) {
     throw new PopulationError("Write mode lost its explicit target project confirmation.");
   }
 
+  validateAuthProvisioningConfig(sellerPlans, options.mode);
+  const passwords = await readSellerCredentials(sellerPlans);
   const userIds = await provisionSellerAccounts(sellerPlans, passwords);
   await createMissingProfiles(sellerPlans, userIds);
   await uploadMissingMedia(storagePlan);

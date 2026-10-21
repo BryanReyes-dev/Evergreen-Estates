@@ -152,7 +152,7 @@ All four sellers review all twelve listings, including their own listings. Self-
 
 Review fixture authors use stable seller keys. The population process must resolve those keys to the actual user UUIDs created for the Better Auth accounts.
 
-The first six listings preserve their historical IDs, core details, and media filenames. Six additional listings have stable fixture IDs. The new listings currently have empty media arrays; assets can be added later.
+The first six listings preserve their historical IDs, core details, and media filenames. Six additional listings have stable fixture IDs. All 12 fixture listings now reference four local media assets each: two JPGs, one GIF, and one MP4 (48 assets total).
 
 The intended dataset contains only the four seller identities as users. The three old reviewer identities and their three reviews remain archived, but are not duplicated into the new 48-review dataset.
 
@@ -172,27 +172,40 @@ The fixture-specific suite passed all 9 tests. The full suite passed 11 tests ac
 
 These are user-reported command results. Re-run relevant checks after additional edits.
 
-## Current status and follow-up (2026-10-20)
+## Current implementation status (2026-10-21)
 
-The current source includes listing create/update/delete handlers, seller-profile CRUD, review read/create/update/delete handlers, listing-media upload-url/completion/delete handlers, the app writer client, migrations for scoped grants/policies, and migration 0018 removing public Storage reads. `scripts/populate.ts` is absent. File presence does not establish that the handlers are complete, tested, or deployed. Before these documentation edits, `git status` showed no existing changes.
+The pushed repository now includes:
 
-Fixtures define four synthetic sellers, 12 listings (three each), and 48 reviews. `tests/data.test.ts` validates fixtures; there is no database population operation. The three-listing cap is implemented in migration 0013 with a database trigger and advisory lock, but runtime behavior was not verified during this documentation audit. Historical test results below are user-reported and were not rerun.
+- Public listing browsing, details, and URL-driven search/filtering.
+- Better Auth email/password backend plus user-facing sign-up/sign-in and session-aware account navigation.
+- Seller-profile create/read/update/delete UI connected to the existing seller-profile API, plus a public storefront page for profiles explicitly marked published.
+- Listing create/edit/delete UI connected to the existing listing Route Handlers, with owner-scoped edit access and a seller page listing the current user's properties.
+- Review create/edit/delete controls connected to the existing review Route Handlers; only the review author sees mutation controls, and the server remains authoritative.
+- Listing media upload, preview, reorder, and deletion UI connected to the media endpoints.
+- Synthetic fixtures and 48 local media files, plus scripts/populate.ts with read-only preflight and explicit write-mode safeguards.
 
-Before relying on write behavior, review authorization and validation paths, test the handlers and role boundaries, and confirm migrations and role settings against the target database.
+These source changes have not yet been type-checked, built, automated-tested, or manually verified as end-to-end workflows in this implementation pass. Do not describe them as validated until those steps run successfully.
 
-### Current follow-up (2026-10-20)
+### Population script status
 
-- Review and add targeted coverage for the current handlers, especially authentication, input validation, ownership boundaries, media upload lifecycle, and the three-listing cap. Existing tests cover fixtures and runtime database permissions; they do not establish those route behaviors.
-- Confirm the relevant migrations and database role settings in the target environment before relying on or deploying application writes.
-- Build user-facing mutation flows only after the corresponding API behavior is verified.
-- Implement the developer-run population script only after the write paths and ownership rules are stable. Keep it repeatable, protect production, and avoid deleting unrelated data.
-- Re-run type-checks, relevant Vitest suites, build, migration checks, and permission checks after implementation changes. Earlier passing results are historical until rerun.
+- npm run populate:dry-run invokes the population script in read-only mode.
+- Dry-run does not require the private synthetic-seller credentials file; credentials are read only when apply mode would need to create accounts.
+- Apply mode requires explicit project confirmation and remains blocked by the known unresolved 0011 shared-read migration checksum/provenance discrepancy. Do not bypass the guard or modify the Drizzle ledger to force population.
+- The dry-run must still be executed and its report reviewed. Existing Storage objects must be byte-compared with local fixtures, and unrelated Storage objects must remain untouched.
+- The database population operation has not been run by this pass.
 
-### Other follow-up items
+### Next work order
 
-- Audit ownership completeness before making listings.seller_user_id non-null.
-- Decide/implement rating aggregate queries for cards and search results.
-- Build UI mutation flows against the verified endpoints and check the end-to-end experience.
+1. Review this branch and run static checks (TypeScript, ESLint, production build) before merging.
+2. Manually verify authentication, profile, listing CRUD, review CRUD, media management, mobile navigation, and error states with at least two accounts.
+3. Run the documented population dry-run, reconcile migration 0011 provenance and any Storage byte conflicts, then decide whether the apply gate can safely be lifted. Do not perform apply until reviewed.
+4. Update any findings in this context/architecture documentation.
+5. Keep automated test expansion and Vite+ migration deferred as requested for the next work session. Preserve Next.js as the runtime unless a deliberate framework migration is separately approved.
+6. After the Vite+ work, add/expand automated tests and conduct the final security audit.
+
+Saved homes remain intentionally deferred: no persistence/API model exists, so navigation and listing details do not advertise a working save control. Public seller storefronts are implemented for profiles explicitly marked published. Rating aggregates on listing cards/search results also remain a separate UI/data enhancement; listing details calculate the average from the review records they load and display an unrated state when there are no reviews.
+
+agent-files/ARCHITECTURE.md remains the finalized architecture authority; this context records status and verification boundaries.
 
 ## Media and implementation invariants
 

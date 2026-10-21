@@ -27,6 +27,7 @@ The project uses the Next.js App Router, Server Components for data fetching and
 - Featured property listings
 - Loading, error, and data components
 - Responsive component-based UI
+- Seller storefront pages for profiles marked public
 - Accessibility and SEO considerations
 - Server-side data fetching with async Server Components
 - Better Auth email/password authentication with a canonical `public.users` table
@@ -36,7 +37,7 @@ The project uses the Next.js App Router, Server Components for data fetching and
 - Listing media upload-url, completion, and file-delete endpoints
 - Tailwind CSS and shadcn/ui styling
 
-The current source includes authentication, listing, seller-profile, review, and listing-media Route Handlers. Their presence in source does not establish that every handler has been tested or deployed, and the UI mutation flows are not established as complete. The developer-run population script is not present. Fixture definitions and validation tests exist, but they do not populate a database.
+The current source includes user-facing email/password authentication, seller-profile management, a published seller storefront, listing creation/edit/deletion, review creation/edit/deletion, and listing media management flows backed by the existing Route Handlers. These flows have been implemented in source but still require type-checking, automated tests, and manual end-to-end verification. Saved homes are intentionally not implemented because there is no persistence/API model for them yet. The developer-run population script is available as `npm run populate` (dry-run by default); applying data remains blocked until the known migration 0011 provenance discrepancy is reconciled.
 
 ## Media and Image Delivery
 
@@ -209,7 +210,17 @@ Run the production build locally:
 npm start
 ```
 
-Run the Vitest suite with `npm run test:run`. The database-permissions integration test requires `DRIZZLE_DATABASE_URL` to reach a database configured for the `evergreen_runtime` role; fixture tests do not populate a database.
+Run the Vitest suite with `npm run test:run`. The database-permissions integration test requires `DRIZZLE_DATABASE_URL` to reach a database configured for the `evergreen_runtime` role; fixture tests do not populate a database. Automated tests and the Vite+ toolchain migration are deliberately deferred to the next work session.
+
+### Review the demo-data population plan
+
+The population tool performs read-only preflight by default and does not write data unless explicitly run in apply mode. It checks the configured Supabase project, database-role grants/RLS policies, fixture records, listing cap, Storage bucket settings, and existing media bytes.
+
+```bash
+npm run populate:dry-run
+```
+
+The first run uses a pinned tsx runner and may need network access to download it. Do not run apply mode yet: scripts/populate.ts deliberately blocks writes while the recorded migration 0011 checksum/provenance discrepancy remains unresolved. Do not edit the migration ledger or bypass the guard just to seed data. See agent-files/IMPLEMENTATION_HANDOFF.md for the specific manual review items.
 
 ## Client Components
 

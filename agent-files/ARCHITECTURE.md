@@ -13,7 +13,7 @@ This is the authoritative record of finalized Evergreen Estates architecture. Pr
 
 Evergreen Estates is a real-estate marketplace built with Next.js 16.x App Router, React, TypeScript, Supabase/PostgreSQL and Storage, Drizzle ORM, Better Auth, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
-Implemented source includes public property browsing, listing details, URL-driven search/filtering, listing media and review display, Better Auth email/password authentication, and Route Handlers for listing CRUD, seller-profile CRUD, review read/CRUD, and listing-media upload and deletion operations. The handlers are present in source, but their full behavior and deployment have not been verified here. User-facing mutation flows and the database population operation are not established as complete. Before these documentation edits, `git status` showed no existing changes.
+Implemented source includes public property browsing, listing details, URL-driven search/filtering, Better Auth email/password sign-up/sign-in and account navigation, seller-profile forms and published public seller storefronts, owner-scoped listing create/edit/delete UI, review create/edit/delete UI, listing media management, and a developer-run population script. Source presence is not proof of type safety, runtime correctness, deployment, or end-to-end verification; the new UI and population workflow still require static checks and manual review.
 
 ## 2. Application Structure and Boundaries
 
@@ -26,7 +26,7 @@ src/
 
 agent-files/      coding-agent guidance, context, and architecture authority
 drizzle/          SQL migrations and Drizzle Kit metadata
-scripts/          not present; developer-run population entry point is planned
+scripts/          developer-run population/preflight scripts
 seed/
 ├── images/       downloaded source media
 └── snapshots/    immutable historical database snapshot
@@ -135,7 +135,7 @@ Filtering remains URL-driven: controls update search parameters, navigation rend
 
 ## 6. Application Write Architecture — Partially Implemented
 
-The evergreen_app login originates in migration 0010 and was added to evergreen_read in migration 0011. The source includes APP_DATABASE_URL support, a dedicated app Drizzle client, owner-aware write policies, constrained grants, and migrations 0013–0018. It also contains authenticated listing create/update/delete, seller-profile CRUD, review read/create/update/delete, and media upload-url/completion/file-delete handlers. These source files do not prove that every route has been tested or deployed; the corresponding UI mutation flows are not established as complete.
+The evergreen_app login originates in migration 0010 and was added to evergreen_read in migration 0011. The source includes APP_DATABASE_URL support, a dedicated app Drizzle client, owner-aware write policies, constrained grants, and migrations 0013–0018. It also contains authenticated listing create/update/delete, seller-profile CRUD, review read/create/update/delete, and media upload-url/completion/file-delete handlers. These source files do not prove that every route has been tested or deployed; the corresponding UI flows still need static and manual verification.
 
 ### Route Handlers present in source
 
@@ -206,26 +206,28 @@ Historical records and intended mock fixtures have different purposes and must r
 - `src/db/seed/data.ts` defines editable fixture data; it does not connect to or modify the database and does not provision authentication accounts.
 - `tests/data.test.ts` validates the fixture data and referenced local listing media.
 - The intended dataset currently contains four synthetic sellers/profiles, 12 listings, and 48 reviews. Each seller owns exactly three listings, and every seller reviews every listing, including their own; self-reviews are intentional for this mock dataset.
-- The first six listings preserve their historical IDs, core details, and media filenames. Six additional listings have stable fixture IDs and currently empty media arrays.
-- Review authors use stable seller keys, which a future population operation must resolve to the actual Better Auth user UUIDs.
+- The first six listings preserve their historical IDs, core details, and media filenames. Six additional listings have stable fixture IDs. All 12 listings currently reference four media files each: two JPGs, one GIF, and one MP4.
+- Review authors use stable seller keys, which scripts/populate.ts resolves to actual Better Auth user UUIDs.
 - The old reviewer identities/reviews remain in the archive and are not duplicated in the new fixture dataset.
 - Fixture data contains no passwords, password hashes, sessions, database URLs, or secrets. Do not add them.
 
 The last reported checks after fixture changes were `npx tsc --noEmit`, `npx vitest run tests/data.test.ts`, and `npm run test:run`; the fixture suite passed 9 tests and the full suite passed 11 tests across 2 files. These are historical, user-reported results, not a claim that code was rerun during this documentation change.
 
-### Planned population entry point
+### Developer-run population entry point — implemented, not yet verified
 
-Implement `scripts/populate.ts` only after CRUD, ownership enforcement, and relevant schema decisions are stable. Avoid a redundant `src/db/seed/populate.ts`; `data.ts` defines what should exist and `scripts/populate.ts` defines how to populate it.
+scripts/populate.ts defines a default read-only preflight and a separately gated apply mode. It checks the expected Supabase project, role attributes and memberships, relevant privileges, RLS policies, listing-cap trigger, fixture relationships, seller identity conflicts, existing rows, private Storage settings, local path safety, media sizes, and existing fixture media bytes.
 
-The future population operation must:
+The script can:
+- Provision fixture seller accounts through Better Auth without committing passwords.
+- Resolve canonical user UUIDs, then create matching seller profiles, listings, and reviews using the application writer's owner-scoped transaction helper.
+- Upload missing fixture media with upsert disabled, compare existing objects byte-for-byte, and preserve unknown/unrelated objects.
+- Be re-run after a partial failure without intentionally deleting or overwriting unrelated records.
 
-- Provision the four login-capable seed accounts through a supported server-side Better Auth flow without committing reusable credentials.
-- Resolve actual user UUIDs and create matching seller profiles.
-- Insert or safely reconcile listings and reviews while resolving fixture keys/foreign keys.
-- Upload bundled files to the private `property-images` bucket using `listings/<listing-id>/<filename>` paths; fixture media filenames must match object names.
-- Be safe to repeat without duplicating fixture-managed records and report inserts, updates, skips, and validation failures.
-- Avoid deleting unrelated data by default, include explicit safeguards against targeting production, and never run at app startup or through a public route.
-- Preserve the existing private-bucket and signed-URL design.
+Execution is exposed as npm run populate (dry-run by default) and npm run populate:dry-run. The pinned tsx runner is obtained through npx when needed. Dry-run must not require the private seed/credentials file; account passwords are loaded only for apply mode if new fixture accounts are required.
+
+**Write mode is currently blocked** by the recorded checksum/provenance discrepancy for 0011_shared_read_role.sql. The script's independent live catalog checks are necessary but do not resolve historical provenance. Reconcile the discrepancy before removing that guard. Do not modify old migration files or the Drizzle migration ledger merely to make the checksum match. Do not apply population during a dry-run review, and do not run it at app startup or through a public route.
+
+Existing fixture Storage ETags are not treated as proof of byte identity; expected existing objects are downloaded and compared with local fixture bytes. Unrelated Storage objects must remain untouched.
 
 ## 8. Schema Changes and Ownership Readiness
 
@@ -278,17 +280,18 @@ For Supabase shared transaction-pooler connections, use the Dashboard's copied h
 
 ## 11. Verification and Work Order
 
-Historical checks after authentication and fixture setup included npx tsc --noEmit, npm run build, npx drizzle-kit check, npm run test:run, and npx drizzle-kit migrate. The fixture suite was previously reported as passing 9 tests and the full suite 11 tests across 2 files. Those results do not verify the current CRUD/media handlers, the app writer connection, or population.
+The current source includes user-facing auth, profile, listing, review, and media-management flows, but this implementation pass has not run TypeScript, ESLint, a production build, automated tests, or end-to-end browser verification. Earlier user-reported passing test results apply to the earlier source state only.
 
-Current follow-up work (source and documentation audit, 2026-10-20):
+Immediate review and manual-verification tasks:
 
-1. Review and add targeted coverage for the current Route Handlers, especially authentication, input validation, ownership boundaries, the media upload lifecycle, and the three-listing cap. Existing tests cover fixture validation and runtime database permissions, not those route behaviors.
-2. Confirm required migrations and role settings in the target database before relying on or deploying application writes.
-3. Build user-facing mutation flows after the corresponding API behavior is verified.
-4. Implement the planned developer-run population operation after write paths and ownership rules are stable. Protect production and avoid deleting unrelated rows.
-5. Re-run type-checks, relevant tests, build, migration checks, and permission checks after implementation changes. Earlier passing results are historical until rerun.
+1. Run TypeScript, ESLint, and the Next.js production build on this branch. Resolve compile/configuration failures before merging.
+2. Verify authentication, profile create/update/delete, listing create/edit/delete, review create/update/delete, and upload/reorder/delete media flows in a browser. Include unauthorized/other-owner checks and validation/error states.
+3. Run npm run populate:dry-run and inspect the full report. Confirm it makes no writes and does not need credentials just to dry-run.
+4. Reconcile the 0011_shared_read_role.sql checksum/provenance discrepancy through read-only investigation before enabling apply mode. Resolve any real Storage byte conflicts without overwriting or deleting unrelated objects.
+5. Once implementation behavior is stable, complete the Vite+ toolchain work in a separate controlled change. Preserve Next.js as the application runtime unless a framework migration is explicitly chosen.
+6. As explicitly deferred to the following work session, expand automated route/integration/browser coverage and complete the security audit after Vite+.
 
-Do not let work on Vite or unrelated tooling distract from this API/security milestone. The current test runner is Vitest (npm run test:run). Consult installed Next.js 16 documentation under node_modules/next/dist/docs/ before framework-sensitive changes.
+Do not claim the app is release-validated until the post-migration automated suite and security findings have been reviewed and resolved. Consult installed Next.js 16 documentation under node_modules/next/dist/docs/ before framework-sensitive changes.
 
 ## 12. Architecture Overview
 
