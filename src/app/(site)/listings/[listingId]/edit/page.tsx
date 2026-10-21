@@ -17,32 +17,55 @@ export default async function EditListingPage({
   if (!session?.user?.id) redirect("/auth");
 
   // Read the edit payload only after checking that the signed-in user owns it.
-  const listing = await withAppUserTransaction(session.user.id, async (tx) => {
-    const [row] = await tx
-      .select({
-        id: listings.id,
-        title: listings.title,
-        price: listings.price,
-        beds: listings.beds,
-        baths: listings.baths,
-        sqft: listings.sqft,
-        address: listings.address,
-        description: listings.description,
-        tags: listings.tags,
-      })
-      .from(listings)
-      .where(
-        and(
-          eq(listings.id, listingId),
-          eq(listings.sellerUserId, session.user.id),
-        ),
-      )
-      .limit(1);
-    return row ?? null;
-  }).catch((error: unknown) => {
+  let listing:
+    | {
+        id: string;
+        title: string;
+        price: string;
+        beds: number;
+        baths: number;
+        sqft: number;
+        address: string;
+        description: string;
+        tags: string[];
+      }
+    | null;
+
+  try {
+    listing = await withAppUserTransaction(session.user.id, async (tx) => {
+      const [row] = await tx
+        .select({
+          id: listings.id,
+          title: listings.title,
+          price: listings.price,
+          beds: listings.beds,
+          baths: listings.baths,
+          sqft: listings.sqft,
+          address: listings.address,
+          description: listings.description,
+          tags: listings.tags,
+        })
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, listingId),
+            eq(listings.sellerUserId, session.user.id),
+          ),
+        )
+        .limit(1);
+      return row ?? null;
+    });
+  } catch (error) {
     console.error("Could not load listing for editing.", error);
-    return null;
-  });
+    return (
+      <main className="mx-auto min-h-[60vh] w-full max-w-2xl px-4 py-10 text-white sm:px-6">
+        <h1 className="text-2xl font-semibold">Listing editor unavailable</h1>
+        <p className="mt-3 text-sm leading-6 text-white/65">
+          We could not load this listing for editing. No changes were made. Try again shortly.
+        </p>
+      </main>
+    );
+  }
 
   // Do not reveal whether another user's listing exists through the edit route.
   if (!listing) notFound();
