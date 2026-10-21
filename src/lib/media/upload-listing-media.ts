@@ -5,11 +5,9 @@ import { Upload } from "tus-js-client";
 import { MAX_MEDIA_FILE_BYTES } from "./file-limits";
 
 const BUCKET = "property-images";
-const TUS_THRESHOLD = 6 * 1024 * 1024;
 const TUS_CHUNK_SIZE = 6 * 1024 * 1024;
-const maxBytes = MAX_MEDIA_FILE_BYTES;
 
-const ALLOWED_TYPES = new Set([
+export const SUPPORTED_LISTING_MEDIA_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
@@ -18,7 +16,31 @@ const ALLOWED_TYPES = new Set([
   "video/mp4",
   "video/webm",
   "video/quicktime",
-]);
+] as const;
+
+const ALLOWED_TYPES = new Set<string>(SUPPORTED_LISTING_MEDIA_TYPES);
+
+export function validateListingMediaFile(
+  file: Pick<File, "type" | "size">,
+): string | null {
+  if (!ALLOWED_TYPES.has(file.type)) {
+    return "Choose a supported image or video format.";
+  }
+
+  const mediaKind = file.type.startsWith("image/")
+    ? "image"
+    : "video";
+
+  if (file.size <= 0) {
+    return "The selected file is empty.";
+  }
+
+  if (file.size > MAX_MEDIA_FILE_BYTES) {
+    return `This ${mediaKind} must be no larger than ${MAX_MEDIA_FILE_BYTES.toLocaleString()} bytes.`;
+  }
+
+  return null;
+}
 
 type UploadGrant = {
   bucket: string;
@@ -138,20 +160,10 @@ export async function uploadListingMedia(
   file: File,
   onProgress?: (percent: number) => void,
 ) {
-  if (!ALLOWED_TYPES.has(file.type)) {
-    throw new Error("Choose a supported image or video format.");
-  }
+  const validationError = validateListingMediaFile(file);
 
-  const mediaKind = file.type.startsWith("image/")
-    ? "image"
-    : "video";
-
-  const maxBytes = MAX_MEDIA_FILE_BYTES;
-
-  if (file.size <= 0 || file.size > maxBytes) {
-    throw new Error(
-      `This ${mediaKind} must not exceed ${maxBytes} bytes.`,
-    );
+  if (validationError) {
+    throw new Error(validationError);
   }
 
   // Ask our API to authenticate the user, check listing ownership,

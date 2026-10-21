@@ -318,6 +318,71 @@ export async function getListingMediaUrls(input: {
     (url): url is string => url !== null,
   );
 }
+
+export type ListingMediaPreview = {
+  filename: string;
+  previewUrl: string | null;
+  mediaKind: ListingMediaKind;
+};
+
+/**
+ * Signs previews for registered filenames while preserving their order and
+ * retaining rows whose Storage object is unavailable.
+ */
+export async function getListingMediaPreviews(input: {
+  listingId: string;
+  filenames: string[];
+}): Promise<ListingMediaPreview[]> {
+  const { listingId, filenames } = input;
+
+  if (!UUID_PATTERN.test(listingId)) {
+    throw new Error("Invalid listing ID.");
+  }
+
+  if (filenames.length === 0) {
+    return [];
+  }
+
+  const safeFilenames = new Set(
+    filenames.filter(isAllowedListingMediaFilename),
+  );
+  const bucket = safeFilenames.size > 0
+    ? getStorageAdminClient().storage.from(STORAGE_BUCKET)
+    : null;
+
+  return Promise.all(
+    filenames.map(async (filename): Promise<ListingMediaPreview> => {
+      const extension = filename.split(".").pop()?.toLowerCase() ?? "";
+      const mediaKind = ["mp4", "webm", "mov"].includes(extension)
+        ? "video"
+        : "image";
+
+      if (!bucket || !safeFilenames.has(filename)) {
+        return { filename, previewUrl: null, mediaKind };
+      }
+
+      const path = `listings/${listingId}/${filename}`;
+      try {
+        const { data, error } = await bucket.createSignedUrl(path, 60 * 60);
+
+        if (error || !data?.signedUrl) {
+          console.error("Failed to sign listing media preview:", path, error);
+          return { filename, previewUrl: null, mediaKind };
+        }
+
+        return {
+          filename,
+          previewUrl: data.signedUrl,
+          mediaKind,
+        };
+      } catch (error) {
+        console.error("Failed to sign listing media preview:", path, error);
+        return { filename, previewUrl: null, mediaKind };
+      }
+    }),
+  );
+}
+
 /**
  * Remove files associated with a listing.
  * The caller must first verify listing ownership or perform an

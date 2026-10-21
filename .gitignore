@@ -20,6 +20,9 @@
 # production
 /build
 
+# local-only synthetic seller credentials
+/seed/credentials
+
 # misc
 .DS_Store
 *.pem

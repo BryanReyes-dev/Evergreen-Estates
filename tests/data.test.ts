@@ -4,8 +4,8 @@
  * These tests do not connect to or modify the database.
  */
 
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readdirSync } from "node:fs";
+import { extname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -120,23 +120,53 @@ describe("Evergreen Estates seed fixtures", () => {
     }
   });
 
-  it("can find every referenced listing media file locally", () => {
+  it("manifests every listing media file with the required image and video types", () => {
     for (const listing of seedListings) {
+      const mediaDirectory = resolve(
+        process.cwd(),
+        "seed",
+        "images",
+        "listings",
+        listing.id,
+      );
+
+      expect(listing.media).toHaveLength(4);
+      expect(new Set(listing.media).size).toBe(4);
+      expect(extname(listing.media[0]).toLowerCase()).toBe(".jpg");
+      expect(extname(listing.media[1]).toLowerCase()).toBe(".jpg");
+      expect(
+        listing.media.filter(
+          (filename) => extname(filename).toLowerCase() === ".jpg",
+        ),
+      ).toHaveLength(2);
+      expect(
+        listing.media.filter(
+          (filename) => extname(filename).toLowerCase() === ".gif",
+        ),
+      ).toHaveLength(1);
+      expect(
+        listing.media.filter(
+          (filename) => extname(filename).toLowerCase() === ".mp4",
+        ),
+      ).toHaveLength(1);
+
       for (const filename of listing.media) {
-        const mediaPath = resolve(
-          process.cwd(),
-          "seed",
-          "images",
-          "listings",
-          listing.id,
-          filename,
-        );
+        const mediaPath = resolve(mediaDirectory, filename);
 
         expect(
           existsSync(mediaPath),
           `Missing media file: ${mediaPath}`,
         ).toBe(true);
       }
+
+      const directoryFiles = readdirSync(mediaDirectory, {
+        withFileTypes: true,
+      })
+        .filter((entry) => entry.isFile())
+        .map((entry) => entry.name)
+        .sort();
+
+      expect([...listing.media].sort()).toEqual(directoryFiles);
     }
   });
 });

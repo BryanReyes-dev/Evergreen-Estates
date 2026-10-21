@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { listings } from "@/db/schema";
 import { getAuthenticatedUserId } from "@/lib/api/get-authenticated-user-id";
+import { MAX_MEDIA_FILE_BYTES } from "@/lib/media/file-limits";
 import { inspectListingMediaObject } from "@/db/supabase/storage-admin";
 
 const UUID_PATTERN =
@@ -10,9 +11,6 @@ const UUID_PATTERN =
 
 const MEDIA_PATH_PATTERN =
   /^listings\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|avif|gif|mp4|webm|mov)$/i;
-
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 45_000_000;
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -143,17 +141,13 @@ export async function POST(
       );
     }
 
-    const maxBytes = object.mediaKind === "image"
-      ? MAX_IMAGE_BYTES
-      : MAX_VIDEO_BYTES;
-
-    if (object.size > maxBytes) {
+    if (object.size > MAX_MEDIA_FILE_BYTES) {
       return Response.json(
         {
           error: {
             code: "MEDIA_TOO_LARGE",
             message: "The stored media exceeds the allowed file size.",
-            maxBytes,
+            maxBytes: MAX_MEDIA_FILE_BYTES,
           },
         },
         { status: 413 },

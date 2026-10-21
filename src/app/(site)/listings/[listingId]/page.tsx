@@ -1,10 +1,44 @@
 import { getListingById } from "@/db/queries/listings";
+import { headers } from "next/headers";
+import Link from "next/link";
 import Image from "next/image";
+import { and, eq } from "drizzle-orm";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { HeartIcon } from "@hugeicons/core-free-icons";
 import { ListingMediaCarousel } from "@/components/ListingMediaCarousel";
 import { getMediaType } from "@/db/supabase/util/MediaType";
 import { ReviewsSection } from "@/components/ReviewsSection";
+import { withAppUserTransaction } from "@/db/drizzle/app-client";
+import { listings } from "@/db/schema";
+import { getAuth } from "@/lib/auth";
+
+async function canManageListingMedia(listingId: string): Promise<boolean> {
+  try {
+    const session = await getAuth().api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user.id) return false;
+
+    return withAppUserTransaction(session.user.id, async (tx) => {
+      const [listing] = await tx
+        .select({ id: listings.id })
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, listingId),
+            eq(listings.sellerUserId, session.user.id),
+          ),
+        )
+        .limit(1);
+
+      return Boolean(listing);
+    });
+  } catch (error) {
+    console.error("Could not verify listing media ownership:", error);
+    return false;
+  }
+}
 
 const ListingDetails = async ({
   params,
@@ -17,6 +51,8 @@ const ListingDetails = async ({
   if (!listing) {
     return <div>No listing details found.</div>;
   }
+
+  const canManageMedia = await canManageListingMedia(listing.id);
 
   const averageRating =
     listing.reviews.length > 0
@@ -74,6 +110,14 @@ const ListingDetails = async ({
         <h1 className="ml-2 bg-inherit font-kanit text-[1rem] text-[#474848]">
           {listing.address}
         </h1>
+        {canManageMedia && (
+          <Link
+            href={`/listings/${listing.id}/media`}
+            className="ml-2 mt-4 inline-flex min-h-11 items-center rounded-full border border-[#78b75c]/60 bg-[#202324] px-5 text-sm font-medium text-white transition-colors hover:bg-[#78b75c]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]"
+          >
+            Manage listing media
+          </Link>
+        )}
         <p className="p-2 text-white">{listing.description}</p>
       </div>
 

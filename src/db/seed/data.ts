@@ -118,12 +118,9 @@ export interface SeedListing {
 }
 
 /**
- * First six listings preserve their archived IDs, details, and media names.
- * The six additional listings use stable IDs for repeatable seeding.
- *
- * New listings currently have no media. Add image files under
- * seed/images/listings/<listing-id>/ and list their filenames here
- * when those assets are ready.
+ * First six listings preserve their archived IDs, details, and original
+ * photo names. The six additional listings use stable IDs and their assigned
+ * media assets for repeatable seeding.
  */
 export const seedListings = [
   {
@@ -150,7 +147,12 @@ export const seedListings = [
   {
     id: "3843291e-e94b-4ec1-b26e-b191455c8e53",
     sellerKey: "daniel",
-    media: ["house2.jpg", "houseinterior2.jpg"],
+    media: [
+      "house2.jpg",
+      "houseinterior2.jpg",
+      "ezgif-41b8278b3e41a3cc.gif",
+      "4301618-hd_1920_1080_30fps.mp4",
+    ],
     tags: [
       "estate",
       "large-land",
@@ -173,7 +175,12 @@ export const seedListings = [
   {
     id: "8fca3710-cda9-4ed4-8dba-113cb686dcaf",
     sellerKey: "maya",
-    media: ["house3.jpg", "houseinterior3.jpg"],
+    media: [
+      "house3.jpg",
+      "houseinterior3.jpg",
+      "ezgif-49fb9833472a2f2b.gif",
+      "15694639_1080_1920_30fps.mp4",
+    ],
     tags: ["cozy", "family", "suburban", "fireplace", "hardwood floors"],
     title: "Cozy Suburban Family Home",
     price: 410000,
@@ -189,7 +196,12 @@ export const seedListings = [
   {
     id: "abc12623-5fe6-471e-9683-160b9b4f3fcd",
     sellerKey: "maya",
-    media: ["house4.jpg", "houseinterior4.jpg"],
+    media: [
+      "house4.jpg",
+      "houseinterior4.jpg",
+      "ezgif-4e8fdbdd9bc1dfc3.gif",
+      "4301615-hd_1920_1080_30fps.mp4",
+    ],
     tags: ["modern", "townhouse", "garage", "attic", "hardwood floors"],
     title: "Modern Townhouse with Garage",
     price: 520000,
@@ -205,7 +217,12 @@ export const seedListings = [
   {
     id: "bfc338aa-93c5-474d-a9dd-d45859a601f5",
     sellerKey: "jordan",
-    media: ["house5.jpg", "houseinterior5.jpg"],
+    media: [
+      "house5.jpg",
+      "houseinterior5.jpg",
+      "ezgif-495da2625ad7c5dc.gif",
+      "15641149_1920_1080_60fps.mp4",
+    ],
     tags: ["starter", "affordable", "city", "heating system", "basement"],
     title: "Affordable City Apartment",
     price: 280000,
@@ -221,7 +238,12 @@ export const seedListings = [
   {
     id: "dd90c583-f2d0-4276-8e5d-fa424592cdf3",
     sellerKey: "priya",
-    media: ["house6.jpg", "houseinterior6.jpg"],
+    media: [
+      "house6.jpg",
+      "houseinterior6.jpg",
+      "ezgif-48c46f6d315d6b04.gif",
+      "6003895-uhd_2160_3840_30fps.mp4",
+    ],
     tags: ["modern", "downtown", "condo", "air conditioning", "balcony"],
     title: "Downtown Skyline Condo",
     price: 620000,
@@ -237,7 +259,12 @@ export const seedListings = [
   {
     id: "a0000000-0000-4000-8000-000000000001",
     sellerKey: "daniel",
-    media: [],
+    media: [
+      "pexels-makayla-asuncion-2155237133-34625609.jpg",
+      "pexels-furkanfdemir-5816563.jpg",
+      "ezgif-4251dd0cd6760234.gif",
+      "15887076-uhd_3840_2160_60fps (1).mp4",
+    ],
     tags: ["craftsman", "garden", "hardwood floors", "garage"],
     title: "Craftsman Bungalow with Garden",
     price: 465000,
@@ -253,7 +280,12 @@ export const seedListings = [
   {
     id: "a0000000-0000-4000-8000-000000000002",
     sellerKey: "maya",
-    media: [],
+    media: [
+      "pexels-nicole-king-206551188-36793072.jpg",
+      "pexels-artbovich-6527069.jpg",
+      "ezgif-43d896c1006bf7f2.gif",
+      "14950807_2160_3840_60fps (1).mp4",
+    ],
     tags: ["lakefront", "contemporary", "deck", "open floor plan"],
     title: "Lakeside Contemporary Retreat",
     price: 975000,
@@ -269,7 +301,12 @@ export const seedListings = [
   {
     id: "a0000000-0000-4000-8000-000000000003",
     sellerKey: "jordan",
-    media: [],
+    media: [
+      "pexels-masonamccall-12168579.jpg",
+      "pexels-nadin-sh-78971847-16451357.jpg",
+      "ezgif-4bb74493579852a2.gif",
+      "3769951-hd_1920_1080_25fps.mp4",
+    ],
     tags: ["loft", "urban", "transit", "exposed brick"],
     title: "Urban Loft near Transit",
     price: 365000,
@@ -285,7 +322,12 @@ export const seedListings = [
   {
     id: "a0000000-0000-4000-8000-000000000004",
     sellerKey: "jordan",
-    media: [],
+    media: [
+      "pexels-lucky-camera-1300296351-28468114.jpg",
+      "pexels-maorattias-5192377.jpg",
+      "ezgif-495d034a717c5e7b.gif",
+      "6010497-uhd_3840_2160_25fps.mp4",
+    ],
     tags: ["courtyard", "patio", "solar panels", "pool"],
     title: "Mediterranean Courtyard Home",
     price: 745000,
@@ -301,7 +343,12 @@ export const seedListings = [
   {
     id: "a0000000-0000-4000-8000-000000000005",
     sellerKey: "priya",
-    media: [],
+    media: [
+      "pexels-matreding-11299546.jpg",
+      "pexels-artbovich-6077368.jpg",
+      "ezgif-44bcbfdb5fd212d1.gif",
+      "15386844_3840_2160_60fps.mp4",
+    ],
     tags: ["penthouse", "balcony", "downtown", "natural light"],
     title: "Bright Corner Penthouse",
     price: 890000,
@@ -317,7 +364,12 @@ export const seedListings = [
   {
     id: "a0000000-0000-4000-8000-000000000006",
     sellerKey: "priya",
-    media: [],
+    media: [
+      "pexels-kaue-barbier-710715348-33799052.jpg",
+      "pexels-introspectivedsgn-9890644.jpg",
+      "ezgif-4d5e0c65d62d9736.gif",
+      "3785183-hd_1920_1080_25fps.mp4",
+    ],
     tags: ["cabin", "mountain views", "fireplace", "deck"],
     title: "Mountain View Cabin",
     price: 540000,
