@@ -35,7 +35,7 @@ Do not assume local edits are committed or pushed without confirmation.
 - Auth tables are `account`, `session`, and `verification`.
 - Auth endpoints live at `/api/auth/[...all]`.
 - Route Handlers present in source: listing collection GET/POST; listing item GET/PATCH/DELETE; seller-profile GET/POST/PATCH/DELETE; review collection GET/POST; review item PATCH/DELETE using `[reviewId]`; and listing-media upload-url POST, completion POST, and file DELETE.
-- The source inventory does not establish that every handler has been tested or deployed. User-facing mutation flows are not established as complete.
+- The current branch connects the user-facing auth, profile, listing CRUD, review CRUD, media management, and published seller storefront flows to these APIs. Source presence does not establish successful runtime behavior or deployment; static and manual verification remain outstanding.
 - Auth registration, sign-in, session retrieval, and sign-out were manually tested previously.
 - APP_DATABASE_URL support and a writer Drizzle client, grants, and owner-aware policies are present locally. Treat their deployment and behavior as unverified until migrations and authorization tests are confirmed.
 
