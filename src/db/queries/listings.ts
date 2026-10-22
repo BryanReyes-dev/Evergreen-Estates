@@ -11,7 +11,8 @@ import {
 
 import type { Houselisting, filters as Filters } from "@/app/types";
 import { getDrizzleDb } from "@/db/drizzle/client";
-import { listings, reviews, users } from "@/db/schema";
+import { listings, reviews, sellerProfiles, users } from "@/db/schema";
+import { MAX_LISTING_PRICE, MIN_LISTING_PRICE } from "@/lib/listing-constants";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
 
 const UUID_PATTERN =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -31,6 +32,7 @@ export async function getListingById(
     const [listing] = await db
       .select({
         id: listings.id,
+        sellerUserId: listings.sellerUserId,
         media: listings.media,
         tags: listings.tags,
         title: listings.title,
@@ -43,7 +45,20 @@ export async function getListingById(
         createdAt: listings.createdAt,
       })
       .from(listings)
-      .where(eq(listings.id, id))
+      .innerJoin(
+        sellerProfiles,
+        and(
+          eq(listings.sellerUserId, sellerProfiles.userId),
+          eq(sellerProfiles.isPublished, true),
+        ),
+      )
+      .where(
+        and(
+          eq(listings.id, id),
+          gte(listings.price, String(MIN_LISTING_PRICE)),
+          lte(listings.price, String(MAX_LISTING_PRICE)),
+        ),
+      )
       .limit(1);
 
     if (!listing) {
@@ -75,6 +90,7 @@ export async function getListingById(
 
     return {
       id: listing.id,
+      sellerUserId: listing.sellerUserId,
       media,
       tags: listing.tags,
       title: listing.title,
@@ -109,7 +125,10 @@ export async function getFilteredListings(
   filters: Filters,
 ): Promise<Houselisting[]> {
   const db = getDrizzleDb();
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [
+    gte(listings.price, String(MIN_LISTING_PRICE)),
+    lte(listings.price, String(MAX_LISTING_PRICE)),
+  ];
 
   if (filters.price !== null) {
     const [minPrice, maxPrice] = filters.price;
@@ -154,11 +173,19 @@ export async function getFilteredListings(
         createdAt: listings.createdAt,
       })
       .from(listings)
+      .innerJoin(
+        sellerProfiles,
+        and(
+          eq(listings.sellerUserId, sellerProfiles.userId),
+          eq(sellerProfiles.isPublished, true),
+        ),
+      )
       .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     return await Promise.all(
       rows.map(async (row): Promise<Houselisting> => ({
         id: row.id,
+        sellerUserId: row.sellerUserId,
         media: await getMediaUrls(row.id, row.media),
         tags: row.tags,
         title: row.title,
