@@ -7,26 +7,8 @@ import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { Button, buttonVariants } from './ui/button';
-
-
-
-
-
-
-const tags = [
-"Swimming Pool",
-"Garage",
-"Basement",
-"Attic",
-"Fireplace",
-"Garden",
-"Balcony",
-"Patio",
-"Air Conditioning",
-"Heating System",
-"Hardwood Floors",
-"Carpeted Floors"]
+import { Button } from './ui/button';
+import { MAX_LISTING_PRICE, MIN_LISTING_PRICE, SUPPORTED_LISTING_TAGS } from "@/lib/listing-constants";
 
 
 
@@ -67,7 +49,7 @@ export const Filters =() => {
 
 
 
-    const [value, setValue] = useState([10000, 3000000])
+    const [value, setValue] = useState([MIN_LISTING_PRICE, MAX_LISTING_PRICE])
 
 
   const formatPrice = (price: number) => {
@@ -133,7 +115,7 @@ export const Filters =() => {
         params.delete('price');
         params.delete('query');
         router.replace(`${pathname}?${params.toString()}`);
-        setValue([10000, 3000000]);
+        setValue([MIN_LISTING_PRICE, MAX_LISTING_PRICE]);
     }
 
 
@@ -153,7 +135,7 @@ export const Filters =() => {
                 
 
                 <form  className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-5 p-3 text-[.9rem]">
-                    {tags.map(tag => ( 
+                    {SUPPORTED_LISTING_TAGS.map(tag => ( 
                         <div key={tag} className="flex items-center gap-2" >
                             <Checkbox 
                             className="w-5 h-5" 
@@ -198,8 +180,8 @@ export const Filters =() => {
                             id="price-channel"
                             value={value}
                             onValueChange={(value) => handlePriceChange(value as number[])}
-                            min={10000}
-                            max={3000000}
+                            min={MIN_LISTING_PRICE}
+                            max={MAX_LISTING_PRICE}
                             step={10000}
                         />
                         </div>
