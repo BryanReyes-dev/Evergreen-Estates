@@ -67,7 +67,8 @@ function parseCreateListingInput(
     description.length > 10_000 ||
     typeof price !== "number" ||
     !Number.isFinite(price) ||
-    price <= 0 ||
+    price < MIN_LISTING_PRICE ||
+    price > MAX_LISTING_PRICE ||
     !Number.isSafeInteger(beds) ||
     (beds as number) < 0 ||
     !Number.isSafeInteger(baths) ||
@@ -82,12 +83,13 @@ function parseCreateListingInput(
 
   if (
     !Array.isArray(normalizedTags) ||
-    normalizedTags.length > 30 ||
+    normalizedTags.length > SUPPORTED_LISTING_TAG_VALUES.length ||
     !normalizedTags.every(
       (tag) =>
         typeof tag === "string" &&
         tag.trim().length > 0 &&
-        tag.trim().length <= 64,
+        tag.trim().length <= 40 &&
+        SUPPORTED_LISTING_TAG_VALUES.includes(tag.trim().toLowerCase()),
     )
   ) {
     return null;
@@ -101,7 +103,7 @@ function parseCreateListingInput(
     sqft: sqft as number,
     address: address.trim(),
     description: description.trim(),
-    tags: normalizedTags.map((tag) => (tag as string).trim()),
+    tags: normalizedTags.map((tag) => (tag as string).trim().toLowerCase()),
   };
 }
 
