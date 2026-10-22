@@ -8,6 +8,8 @@ import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { sellerProfiles } from "@/db/schema";
 import { getAuth } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export default async function NewListingPage() {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session?.user?.id) redirect("/auth");
