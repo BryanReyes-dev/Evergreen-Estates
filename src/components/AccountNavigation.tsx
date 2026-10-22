@@ -132,7 +132,7 @@ export function AccountNavigation({
       className="group relative"
       onClick={(event) => {
         const target = event.target;
-        if (target instanceof HTMLElement && target.closest("a, button")) {
+        if (target instanceof HTMLElement && target.closest("a")) {
           event.currentTarget.open = false;
         }
       }}
