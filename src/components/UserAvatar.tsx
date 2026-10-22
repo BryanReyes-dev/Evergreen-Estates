@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const AVATAR_COLORS = [
   "#4263a8",
@@ -34,7 +34,7 @@ export function UserAvatar({
   identity?: string | null;
   className?: string;
 }) {
-  const [imageFailed, setImageFailed] = useState(false);
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   const safeImageUrl = (() => {
     if (!imageUrl) return null;
     try {
@@ -45,7 +45,7 @@ export function UserAvatar({
     }
   })();
 
-  useEffect(() => setImageFailed(false), [safeImageUrl]);
+  const imageFailed = safeImageUrl !== null && failedImageUrl === safeImageUrl;
 
   const label = name.trim() || "Evergreen Estates member";
   const initial = Array.from(label)[0]?.toLocaleUpperCase("en-US") ?? "?";
@@ -68,7 +68,7 @@ export function UserAvatar({
           unoptimized
           sizes="96px"
           className="object-cover"
-          onError={() => setImageFailed(true)}
+          onError={() => setFailedImageUrl(safeImageUrl)}
         />
       ) : (
         <span aria-hidden="true">{initial}</span>
