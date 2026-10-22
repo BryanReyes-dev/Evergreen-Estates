@@ -14,17 +14,17 @@ export default async function NewListingPage() {
 
   // The API still validates eligibility. Redirecting here guides the seller
   // through profile setup before displaying a form that cannot yet be saved.
-  let hasProfile = false;
+  let profilePublished: boolean | null = null;
   try {
     const profile = await withAppUserTransaction(session.user.id, async (tx) => {
       const [row] = await tx
-        .select({ userId: sellerProfiles.userId })
+        .select({ userId: sellerProfiles.userId, isPublished: sellerProfiles.isPublished })
         .from(sellerProfiles)
         .where(eq(sellerProfiles.userId, session.user.id))
         .limit(1);
       return row ?? null;
     });
-    hasProfile = Boolean(profile);
+    profilePublished = profile?.isPublished ?? null;
   } catch (error) {
     console.error("Could not verify seller eligibility for listing creation.", error);
     return (
@@ -43,7 +43,24 @@ export default async function NewListingPage() {
     );
   }
 
-  if (!hasProfile) redirect("/profile");
+  if (profilePublished === null) redirect("/profile");
+
+  if (!profilePublished) {
+    return (
+      <main className="mx-auto min-h-[60vh] w-full max-w-2xl px-4 py-10 text-white sm:px-6">
+        <h1 className="text-2xl font-semibold">Publish your seller profile first</h1>
+        <p className="mt-3 text-sm leading-6 text-white/65">
+          Listings are displayed alongside a public seller profile. Publish your profile to create a listing.
+        </p>
+        <Link
+          href="/profile"
+          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-md border border-white/20 px-4 text-sm font-medium hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]"
+        >
+          Publish seller profile
+        </Link>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-[70vh] px-4 py-6 sm:px-6 sm:py-10">
