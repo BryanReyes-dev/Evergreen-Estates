@@ -10,6 +10,7 @@ export type PublicUserData = Pick<User, "id" | "name">;
 
 export interface Houselisting {
   id: string;
+  sellerUserId?: string | null;
   media: string[];
   tags: string[];
   title: string;
