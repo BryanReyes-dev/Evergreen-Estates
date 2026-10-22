@@ -203,15 +203,15 @@ export function ListingForm({ initial }: { initial?: ListingFormInitial }) {
                 const tagValue = tag.toLowerCase();
                 const tagId = "listing-tag-" + tagValue.replace(/[^a-z0-9]+/g, "-");
                 return (
-                  <label key={tagValue} htmlFor={tagId} className="flex min-h-11 items-center gap-2 rounded-md border border-white/10 bg-[#141616] px-3 py-2 text-sm text-white">
+                  <div key={tagValue} className="flex min-h-11 items-center gap-2 rounded-md border border-white/10 bg-[#141616] px-3 py-2 text-sm text-white">
                     <Checkbox
                       id={tagId}
                       checked={selectedTags.includes(tagValue)}
                       disabled={pending}
                       onCheckedChange={(checked) => toggleTag(tag, checked === true)}
                     />
-                    {tag}
-                  </label>
+                    <label htmlFor={tagId}>{tag}</label>
+                  </div>
                 );
               })}
             </div>
