@@ -7,7 +7,7 @@ import { SaveListingButton } from "@/components/SaveListingButton";
 export interface ListingProps {
   listing: Pick<
     Houselisting,
-    "id" | "media" | "title" | "price" | "description"
+    "id" | "sellerUserId" | "media" | "title" | "price" | "description"
   >;
 }
 
@@ -54,6 +54,16 @@ const Listing = ({ listing }: ListingProps) => {
         <p className="text-sm text-white">{listing.description}</p>
       </div>
       </Link>
+      {listing.sellerUserId && (
+        <div className="border-t border-white/10 px-4 py-3">
+          <Link
+            href={"/sellers/" + encodeURIComponent(listing.sellerUserId)}
+            className="inline-flex min-h-10 items-center text-sm font-medium text-[#a6d78f] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]"
+          >
+            View seller profile
+          </Link>
+        </div>
+      )}
     </article>
   );
 };
