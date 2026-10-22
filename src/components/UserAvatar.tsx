@@ -39,7 +39,7 @@ export function UserAvatar({
     if (!imageUrl) return null;
     try {
       const url = new URL(imageUrl);
-      return url.protocol === "https:" || url.protocol === "http:" ? imageUrl : null;
+      return url.protocol === "https:" || url.protocol === "http:" || url.protocol === "blob:" ? imageUrl : null;
     } catch {
       return null;
     }
