@@ -1,18 +1,30 @@
 -- Account preferences are owner-private. Public reads may resolve only the user's avatar.
+-- IF NOT EXISTS makes this safe to reconcile after the Supabase migration was applied
+-- outside Drizzle's own migrator; normal Drizzle migration execution can still record it.
 ALTER TABLE public.users
-  ADD COLUMN preferences jsonb NOT NULL
+  ADD COLUMN IF NOT EXISTS preferences jsonb NOT NULL
   DEFAULT '{"defaultSort":"newest","viewMode":"grid"}'::jsonb;
 --> statement-breakpoint
 
-ALTER TABLE public.users
-  ADD CONSTRAINT users_preferences_valid_check
-  CHECK (
-    jsonb_typeof(preferences) = 'object'
-    AND preferences ? 'defaultSort'
-    AND preferences ? 'viewMode'
-    AND preferences->>'defaultSort' IN ('newest', 'price-low', 'price-high')
-    AND preferences->>'viewMode' IN ('grid', 'list')
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.users'::regclass
+      AND conname = 'users_preferences_valid_check'
+  ) THEN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_preferences_valid_check
+      CHECK (
+        jsonb_typeof(preferences) = 'object'
+        AND preferences ? 'defaultSort'
+        AND preferences ? 'viewMode'
+        AND preferences->>'defaultSort' IN ('newest', 'price-low', 'price-high')
+        AND preferences->>'viewMode' IN ('grid', 'list')
+      );
+  END IF;
+END $$;
 --> statement-breakpoint
 
 -- Preserve legacy seller photos only when the storefront was already public.
