@@ -153,9 +153,15 @@ export function AccountSettingsForm() {
       setSelectedFile(null);
       if (fileInput.current) fileInput.current.value = "";
 
-      const sessionUpdate = await authClient.updateUser({ image: saved.image });
-      setNotice(sessionUpdate.error
-        ? "Your avatar was saved. Refresh the page if your navigation still shows the previous image."
+      let sessionRefreshFailed = false;
+      try {
+        const sessionUpdate = await authClient.updateUser({ image: saved.image });
+        sessionRefreshFailed = Boolean(sessionUpdate.error);
+      } catch {
+        sessionRefreshFailed = true;
+      }
+      setNotice(sessionRefreshFailed
+        ? "Your avatar was saved. Your account menu will refresh its image from your profile."
         : "Your avatar has been updated.");
       window.dispatchEvent(new Event("evergreen:account-updated"));
       router.refresh();
@@ -181,9 +187,15 @@ export function AccountSettingsForm() {
       setAccount((current) => current ? { ...current, image: null, imageUrl: null } : current);
       setSelectedFile(null);
       if (fileInput.current) fileInput.current.value = "";
-      const sessionUpdate = await authClient.updateUser({ image: null });
-      setNotice(sessionUpdate.error
-        ? "Your photo was removed. Refresh the page if your navigation still shows the previous image."
+      let sessionRefreshFailed = false;
+      try {
+        const sessionUpdate = await authClient.updateUser({ image: null });
+        sessionRefreshFailed = Boolean(sessionUpdate.error);
+      } catch {
+        sessionRefreshFailed = true;
+      }
+      setNotice(sessionRefreshFailed
+        ? "Your photo was removed. Your account menu will refresh to use initials."
         : "Your photo was removed. Your initials avatar is back.");
       window.dispatchEvent(new Event("evergreen:account-updated"));
       router.refresh();
