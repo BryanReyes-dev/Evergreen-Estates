@@ -185,7 +185,7 @@ export function SellerProfileForm() {
       );
       setProfile(saved);
       setValues(valuesFromProfile(saved));
-      setNotice(profile ? "Profile changes saved." : "Seller profile created. You can now create listings.");
+      setNotice(profile ? "Profile changes saved." : "Seller profile created. Publish it to make it public before creating listings.");
       router.refresh();
     } catch (caught) {
       if (profile) {
@@ -232,7 +232,7 @@ export function SellerProfileForm() {
         <div>
           <h1 className="text-2xl font-semibold">{profile ? "Your seller profile" : "Create a seller profile"}</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-white/70">
-            A seller profile is required before you can create listings. Publish it before listing a property; profiles with existing listings cannot be made private. Your contact preference must have a matching contact detail.
+            A seller profile must be public before you can create listings. Profiles with existing listings cannot be made private. Your contact preference must have a matching contact detail.
           </p>
         </div>
         {profile && (
