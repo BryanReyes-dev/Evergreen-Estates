@@ -163,7 +163,7 @@ export async function getFilteredListings(
   }
 
   if (filters.tags && filters.tags.length > 0) {
-    const canonicalTags = new Map(SUPPORTED_LISTING_TAGS.map((tag) => [tag.toLowerCase(), tag]));
+    const canonicalTags = new Map(SUPPORTED_LISTING_TAGS.map((tag) => [tag.toLowerCase(), tag.toLowerCase()]));
     const selectedTags = filters.tags
       .map((tag) => canonicalTags.get(tag.trim().toLowerCase()))
       .filter((tag): tag is string => Boolean(tag));
