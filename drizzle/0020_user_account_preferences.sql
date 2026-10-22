@@ -15,19 +15,15 @@ ALTER TABLE public.users
   );
 --> statement-breakpoint
 
--- Preserve legacy seller photos as account avatars when the account has no image yet.
+-- Preserve legacy seller photos only when the storefront was already public.
 UPDATE public.users AS account_user
-SET image = seller_profiles.avatar_url
+SET image = seller_profiles.avatar_url,
+    updated_at = now()
 FROM public.seller_profiles
 WHERE seller_profiles.user_id = account_user.id
+  AND seller_profiles.is_published = true
   AND account_user.image IS NULL
-  AND seller_profiles.avatar_url ~* '^https?://[^[:space:]]+
-GRANT SELECT (id, name, image) ON TABLE public.users TO evergreen_read;
---> statement-breakpoint
-GRANT SELECT (preferences) ON TABLE public.users TO evergreen_app;
---> statement-breakpoint
-GRANT UPDATE (image, preferences, updated_at) ON TABLE public.users TO evergreen_app;
-;
+  AND seller_profiles.avatar_url ~* '^https?://[^[:space:]]+$';
 --> statement-breakpoint
 
 -- Public identity includes only name and avatar; preferences remain private to the owner.
