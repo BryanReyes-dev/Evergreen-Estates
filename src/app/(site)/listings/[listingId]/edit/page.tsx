@@ -7,6 +7,8 @@ import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { listings } from "@/db/schema";
 import { getAuth } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export default async function EditListingPage({
   params,
 }: {
