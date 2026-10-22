@@ -1186,7 +1186,7 @@ async function verifyLiveSchemaContract(): Promise<void> {
           : row.with_check === null);
     });
 
-  const authExpected = [  const authExpected = [
+  const authExpected = [
     ["users", "Evergreen auth can manage users"],
     ["account", "Evergreen auth can manage accounts"],
     ["session", "Evergreen auth can manage sessions"],
