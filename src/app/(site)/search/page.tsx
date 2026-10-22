@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { Suspense } from "react";
 
 import { Filters } from "@/components/Filters";
+import { LoadingState } from "@/components/ui/loading-state";
 import { ResultsDisplay } from "@/components/ResultsDisplay";
 import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { users } from "@/db/schema";
@@ -49,7 +50,7 @@ const Search = async ({
   return (
     <div className="mx-auto w-full max-w-[1140px]">
       <Filters />
-      <Suspense fallback={<div className="px-4 py-8 text-sm text-white/60" role="status">Loading results…</div>}>
+      <Suspense fallback={<LoadingState label="Loading homes…" size="lg" />}>
         <ResultsDisplay
           searchParams={params}
           defaultSort={preferences.defaultSort}
