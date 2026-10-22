@@ -844,7 +844,7 @@ async function verifyLiveSchemaContract(): Promise<void> {
     throw new PopulationError("Could not inspect saved-list schema; verify migration 0019 and database access.");
   }
 
-  let roles: RoleRow[];  let roles: RoleRow[];
+  let roles: RoleRow[];
   let memberships: MembershipRow[];
   let grants: GrantRow[];
   let policies: PolicyRow[];
@@ -1218,7 +1218,7 @@ async function verifyLiveSchemaContract(): Promise<void> {
     normalizedSavedCleanupFunction.includes("array_remove(saved_listings, old.id)") &&
     normalizedSavedCleanupFunction.includes("saved_listings @> array[old.id]::uuid[]");
 
-  const capTriggers = triggers.filter((row) => row.trigger_name === "listings_enforce_max_three_per_seller");  const capTriggers = triggers.filter((row) => row.trigger_name === "listings_enforce_max_three_per_seller");
+  const capTriggers = triggers.filter((row) => row.trigger_name === "listings_enforce_max_three_per_seller");
   const capTrigger = capTriggers[0];
   const normalizedTrigger = capTrigger?.definition.toLowerCase().replace(/\s+/g, " ") ?? "";
   const normalizedFunction = capTrigger?.function_definition.toLowerCase().replace(/\s+/g, " ") ?? "";
