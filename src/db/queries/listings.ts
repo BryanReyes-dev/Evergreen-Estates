@@ -12,12 +12,15 @@ import {
 import type { Houselisting, filters as Filters } from "@/app/types";
 import { getDrizzleDb } from "@/db/drizzle/client";
 import { listings, reviews, sellerProfiles, users } from "@/db/schema";
-import { MAX_LISTING_PRICE, MIN_LISTING_PRICE } from "@/lib/listing-constants";
+import {
+  MAX_LISTING_PRICE,
+  MIN_LISTING_PRICE,
+  SUPPORTED_LISTING_TAG_VALUES,
+} from "@/lib/listing-constants";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
 import { getUserAvatarUrl } from "@/db/supabase/storage-admin";
-import { SUPPORTED_LISTING_TAG_VALUES } from "@/lib/listing-constants";
 
-const UUID_PATTERN =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 
 export async function getListingById(
