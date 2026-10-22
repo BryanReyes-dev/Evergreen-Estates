@@ -1,6 +1,6 @@
 
 import { sql } from "drizzle-orm";
-import type { AccountPreferences } from "@/lib/account-preferences";
+import type { AccountPreferences } from "../lib/account-preferences";
 import {
   boolean,
   check,
