@@ -61,6 +61,7 @@ Migration `0009_remove_redundant_schema_fields.sql` was generated, reviewed, and
 - Canonical Better Auth identity table.
 - `id` is the UUID primary key.
 - `name`, `email`, `email_verified`, `image`, `created_at`, and `updated_at` remain.
+- Migration 0019 adds private `saved_listings uuid[]` with a database-enforced 100-ID maximum; it is not yet applied to the live database.
 - `email` is unique.
 - Removed `auth_user_id`; Better Auth uses `users.id`.
 
@@ -182,13 +183,15 @@ The pushed repository now includes:
 - Listing create/edit/delete UI connected to the existing listing Route Handlers, with owner-scoped edit access and a seller page listing the current user's properties.
 - Review create/edit/delete controls connected to the existing review Route Handlers; only the review author sees mutation controls, and the server remains authoritative.
 - Listing media upload, preview, reorder, and deletion UI connected to the media endpoints.
+- Saved-home buttons on listing cards and details, Saved homes page, and GET/PATCH `/api/v1/users/me/saved-listings` backed by migration 0019.
 - Synthetic fixtures and 48 local media files, plus scripts/populate.ts with read-only preflight and explicit write-mode safeguards.
 
 These source changes have not yet been type-checked, built, automated-tested, or manually verified as end-to-end workflows in this implementation pass. Do not describe them as validated until those steps run successfully.
 
 ### Population script status
 
-- npm run populate:dry-run invokes the population script in read-only mode.
+- `npm run populate:dry-run` invokes the population script in read-only mode.
+- The updated preflight requires migration 0019's saved-list column and 100-item CHECK constraint, verifies app/auth role grants and saved-list RLS policies, and verifies the listing-delete cleanup trigger. It will stop against the live database until migration 0019 is applied.
 - Dry-run does not require the private synthetic-seller credentials file; credentials are read only when apply mode would need to create accounts.
 - Apply mode requires explicit project confirmation and remains blocked by the known unresolved 0011 shared-read migration checksum/provenance discrepancy. Do not bypass the guard or modify the Drizzle ledger to force population.
 - The dry-run must still be executed and its report reviewed. Existing Storage objects must be byte-compared with local fixtures, and unrelated Storage objects must remain untouched.
@@ -196,14 +199,15 @@ These source changes have not yet been type-checked, built, automated-tested, or
 
 ### Next work order
 
-1. Review this branch and run static checks (TypeScript, ESLint, production build) before merging.
-2. Manually verify authentication, profile, listing CRUD, review CRUD, media management, mobile navigation, and error states with at least two accounts.
-3. Run the documented population dry-run, reconcile migration 0011 provenance and any Storage byte conflicts, then decide whether the apply gate can safely be lifted. Do not perform apply until reviewed.
+1. Review this branch and run TypeScript, ESLint, and the production build; these were not run in this pass.
+2. Review and apply migration 0019 through the normal migration workflow in the intended environment, then manually verify saved homes.
+3. Manually verify auth, profile, listing CRUD, reviews, saved-home save/unsave/persistence, Saved page states, media management, mobile navigation, and error states with at least two accounts.
+4. Run the documented population dry-run after migration 0019 is applied. Keep population apply blocked until migration 0011 provenance and any genuine Storage byte conflicts are resolved.
 4. Update any findings in this context/architecture documentation.
-5. Keep automated test expansion and Vite+ migration deferred as requested for the next work session. Preserve Next.js as the runtime unless a deliberate framework migration is separately approved.
+5. Keep Vite+ as the last implementation-stage change. Automated tests and the final security audit remain deferred until after Vite+ as requested; preserve Next.js as the runtime unless a separate framework conversion is approved.
 6. After the Vite+ work, add/expand automated tests and conduct the final security audit.
 
-Saved homes remain intentionally deferred: no persistence/API model exists, so navigation and listing details do not advertise a working save control. Public seller storefronts are implemented for profiles explicitly marked published. Rating aggregates on listing cards/search results also remain a separate UI/data enhancement; listing details calculate the average from the review records they load and display an unrated state when there are no reviews.
+Saved homes source is now implemented in this branch: migration 0019, GET/PATCH route, shared saved-state provider, card/detail save controls, and Saved homes page. Migration 0019 has not been applied to live Supabase, and the workflow has not been manually verified. Public seller storefronts are implemented for profiles explicitly marked published. Rating aggregates on listing cards/search results also remain a separate UI/data enhancement; listing details calculate the average from the review records they load and display an unrated state when there are no reviews.
 
 agent-files/ARCHITECTURE.md remains the finalized architecture authority; this context records status and verification boundaries.
 

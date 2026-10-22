@@ -35,9 +35,10 @@ The project uses the Next.js App Router, Server Components for data fetching and
 - Authenticated listing create, update, and delete endpoints
 - Review read, create, update, and delete endpoints
 - Listing media upload-url, completion, and file-delete endpoints
+- Saved-home GET/PATCH persistence for authenticated users
 - Tailwind CSS and shadcn/ui styling
 
-The current source includes user-facing email/password authentication, seller-profile management, a published seller storefront, listing creation/edit/deletion, review creation/edit/deletion, and listing media management flows backed by the existing Route Handlers. These flows have been implemented in source but still require type-checking, automated tests, and manual end-to-end verification. Saved homes are intentionally not implemented because there is no persistence/API model for them yet. The developer-run population script is available as `npm run populate` (dry-run by default); applying data remains blocked until the known migration 0011 provenance discrepancy is reconciled.
+The current source includes email/password authentication, seller-profile management, published seller storefronts, listing create/edit/delete, saved-home add/remove and listing, review create/edit/delete, and listing media management. Source still requires TypeScript, lint, production build, automated tests, and manual end-to-end verification. Saved-home persistence is defined in migration 0019_saved_listings_on_users.sql, but that migration has not been applied to the live database. The developer-run population script is available as npm run populate (dry-run by default); population apply remains blocked by the unresolved migration 0011 provenance discrepancy.
 
 ## Media and Image Delivery
 

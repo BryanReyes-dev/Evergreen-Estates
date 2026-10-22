@@ -63,9 +63,18 @@ src/db/schema.ts declares evergreenReadRole via pgRole and targets it from the f
 ### `users`
 
 - Canonical Better Auth identity table; there is no separate Better Auth user table.
-- UUID `id` primary key; `name`, unique `email`, `email_verified`, nullable `image`, `created_at`, and `updated_at`.
+- UUID `id` primary key; `name`, unique `email`, `email_verified`, nullable `image`, `saved_listings uuid[]`, `created_at`, and `updated_at`. The saved list defaults to an empty array and has a database CHECK constraint limiting it to 100 IDs.
 - `users.auth_user_id` was removed by migration `0009_remove_redundant_schema_fields.sql`. Do not refer to it as a current column or reintroduce it.
 - Runtime column grants restrict user identity reads; the application should return only public fields needed by the caller.
+
+### Saved listings
+
+- Migration `0019_saved_listings_on_users.sql` adds `public.users.saved_listings uuid[] NOT NULL DEFAULT ARRAY[]::uuid[]` and the `users_saved_listings_max_100` CHECK constraint.
+- GET/PATCH `/api/v1/users/me/saved-listings` derives identity from the verified Better Auth session; neither URL nor request body accepts a user ID. PATCH changes one listing ID at a time.
+- `evergreen_app` has column-level SELECT/UPDATE on `saved_listings`, a permissive owner-only SELECT policy, a restrictive owner-only SELECT policy (to clamp inherited `evergreen_read` visibility), and an owner-scoped UPDATE policy. `evergreen_runtime` and `evergreen_auth` cannot SELECT `saved_listings`.
+- Better Auth uses a dedicated Drizzle user projection that omits `saved_listings`. Migration 0019 replaces broad table-level user grants with explicit column grants for supported auth fields.
+- A fixed-search-path SECURITY DEFINER trigger removes deleted listing IDs from saved arrays. Direct execution of the trigger function is revoked from PUBLIC.
+- Migration 0019 is in source only; it has not been applied to the live database. Review and apply through the normal migration workflow before relying on this feature.
 
 ### `seller_profiles`
 
@@ -225,7 +234,7 @@ The script can:
 
 Execution is exposed as npm run populate (dry-run by default) and npm run populate:dry-run. The pinned tsx runner is obtained through npx when needed. Dry-run must not require the private seed/credentials file; account passwords are loaded only for apply mode if new fixture accounts are required.
 
-**Write mode is currently blocked** by the recorded checksum/provenance discrepancy for 0011_shared_read_role.sql. The script's independent live catalog checks are necessary but do not resolve historical provenance. Reconcile the discrepancy before removing that guard. Do not modify old migration files or the Drizzle migration ledger merely to make the checksum match. Do not apply population during a dry-run review, and do not run it at app startup or through a public route.
+**Write mode is currently blocked** by the recorded checksum/provenance discrepancy for 0011_shared_read_role.sql. Read-only Git history shows the current file is identical to its only recorded version, but its LF and CRLF SHA-256 hashes both differ from the live ledger value. The ledger does not store the applied SQL body, so exact migration provenance remains unverified. Reconcile the discrepancy before removing that guard. Do not modify old migration files or the Drizzle migration ledger merely to make the checksum match. Do not apply population during a dry-run review, and do not run it at app startup or through a public route.
 
 Existing fixture Storage ETags are not treated as proof of byte identity; expected existing objects are downloaded and compared with local fixture bytes. Unrelated Storage objects must remain untouched.
 
@@ -280,18 +289,14 @@ For Supabase shared transaction-pooler connections, use the Dashboard's copied h
 
 ## 11. Verification and Work Order
 
-The current source includes user-facing auth, profile, listing, review, and media-management flows, but this implementation pass has not run TypeScript, ESLint, a production build, automated tests, or end-to-end browser verification. Earlier user-reported passing test results apply to the earlier source state only.
+The saved-home migration and UI/API are present in this branch. TypeScript, ESLint, production build, automated tests, browser checks, and database writes have not been run in this pass.
 
-Immediate review and manual-verification tasks:
-
-1. Run TypeScript, ESLint, and the Next.js production build on this branch. Resolve compile/configuration failures before merging.
-2. Verify authentication, profile create/update/delete, listing create/edit/delete, review create/update/delete, and upload/reorder/delete media flows in a browser. Include unauthorized/other-owner checks and validation/error states.
-3. Run npm run populate:dry-run and inspect the full report. Confirm it makes no writes and does not need credentials just to dry-run.
-4. Reconcile the 0011_shared_read_role.sql checksum/provenance discrepancy through read-only investigation before enabling apply mode. Resolve any real Storage byte conflicts without overwriting or deleting unrelated objects.
-5. Once implementation behavior is stable, complete the Vite+ toolchain work in a separate controlled change. Preserve Next.js as the application runtime unless a framework migration is explicitly chosen.
-6. As explicitly deferred to the following work session, expand automated route/integration/browser coverage and complete the security audit after Vite+.
-
-Do not claim the app is release-validated until the post-migration automated suite and security findings have been reviewed and resolved. Consult installed Next.js 16 documentation under node_modules/next/dist/docs/ before framework-sensitive changes.
+1. Review migration 0019's explicit Better Auth grants, owner-only permissive/restrictive SELECT policies, owner-scoped UPDATE policy, 100-item CHECK constraint, and listing-delete cleanup trigger.
+2. Apply migration 0019 through the normal workflow in the intended environment after review. It has not been applied to the live database.
+3. Manually verify save/unsave on cards and detail pages, persistence after refresh and re-authentication, anonymous/empty/populated/error Saved homes states, the 100-item cap, and cleanup after listing deletion.
+4. Run `npm run populate:dry-run` after migration 0019 is applied to the intended database; verify saved-list column/grant/policy/check/trigger assertions and no-write behavior.
+5. Reconcile the migration 0011 provenance discrepancy before enabling population apply. Do not rewrite the historical migration or ledger to force a match.
+6. Keep Vite+ as the last implementation-stage change; automated tests and the final security audit remain deferred until after Vite+ as requested.
 
 ## 12. Architecture Overview
 
