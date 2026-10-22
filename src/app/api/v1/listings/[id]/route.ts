@@ -252,8 +252,8 @@ export async function PATCH(
     updates.tags = [
       ...new Map(
         input.tags.map((tag) => {
-          const normalized = tag.trim();
-          return [normalized.toLowerCase(), normalized] as const;
+          const normalized = tag.trim().toLowerCase();
+          return [normalized, normalized] as const;
         }),
       ).values(),
     ];
