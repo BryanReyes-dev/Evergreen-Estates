@@ -2,7 +2,7 @@
 import { useDebouncedCallback } from 'use-debounce';
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox"
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -44,12 +44,34 @@ export const Filters =() => {
     const pathname = usePathname();
     
     const currentSearchQuery = searchParams.get('query');
+    const currentPriceRange = searchParams.get("price");
     const selectedTags = searchParams.getAll("tag");
     const router = useRouter();
 
 
 
-    const [value, setValue] = useState([MIN_LISTING_PRICE, MAX_LISTING_PRICE])
+    const [value, setValue] = useState([MIN_LISTING_PRICE, MAX_LISTING_PRICE]);
+
+    useEffect(() => {
+        if (!currentPriceRange) {
+            setValue([MIN_LISTING_PRICE, MAX_LISTING_PRICE]);
+            return;
+        }
+
+        const parsed = currentPriceRange.split("-").map(Number);
+        if (
+            parsed.length !== 2 ||
+            !parsed.every(Number.isFinite) ||
+            parsed[0] > parsed[1]
+        ) {
+            setValue([MIN_LISTING_PRICE, MAX_LISTING_PRICE]);
+            return;
+        }
+
+        const min = Math.max(MIN_LISTING_PRICE, Math.min(MAX_LISTING_PRICE, parsed[0]));
+        const max = Math.max(MIN_LISTING_PRICE, Math.min(MAX_LISTING_PRICE, parsed[1]));
+        setValue(min <= max ? [min, max] : [MIN_LISTING_PRICE, MAX_LISTING_PRICE]);
+    }, [currentPriceRange]);
 
 
   const formatPrice = (price: number) => {
