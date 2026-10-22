@@ -24,7 +24,6 @@ type SellerProfile = {
 type ProfileValues = {
   displayName: string;
   bio: string;
-  avatarUrl: string;
   contactEmail: string;
   contactPhone: string;
   preferredContactMethod: ContactMethod;
@@ -37,7 +36,6 @@ const fieldClassName =
 const EMPTY_VALUES: ProfileValues = {
   displayName: "",
   bio: "",
-  avatarUrl: "",
   contactEmail: "",
   contactPhone: "",
   preferredContactMethod: "email",
@@ -48,7 +46,6 @@ function valuesFromProfile(profile: SellerProfile): ProfileValues {
   return {
     displayName: profile.displayName,
     bio: profile.bio ?? "",
-    avatarUrl: profile.avatarUrl ?? "",
     contactEmail: profile.contactEmail ?? "",
     contactPhone: profile.contactPhone ?? "",
     preferredContactMethod: profile.preferredContactMethod,
@@ -125,7 +122,6 @@ export function SellerProfileForm() {
     const displayName = values.displayName.trim();
     const email = values.contactEmail.trim().toLowerCase();
     const phone = values.contactPhone.trim();
-    const avatarUrl = values.avatarUrl.trim();
 
     if (!displayName || displayName.length > 100) {
       setError("Display name must be between 1 and 100 characters.");
@@ -134,15 +130,6 @@ export function SellerProfileForm() {
     if (values.bio.length > (profile ? 2000 : 1000)) {
       setError(profile ? "Your bio must be 2,000 characters or fewer." : "Your bio must be 1,000 characters or fewer.");
       return;
-    }
-    if (avatarUrl) {
-      try {
-        const url = new URL(avatarUrl);
-        if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error();
-      } catch {
-        setError("Enter a valid HTTP or HTTPS avatar URL, or leave it blank.");
-        return;
-      }
     }
     if (values.preferredContactMethod === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Enter a valid contact email for your preferred contact method.");
@@ -164,7 +151,6 @@ export function SellerProfileForm() {
     const body = {
       displayName,
       bio: values.bio.trim() || null,
-      avatarUrl: avatarUrl || null,
       contactEmail: email || null,
       contactPhone: phone || null,
       preferredContactMethod: values.preferredContactMethod,
