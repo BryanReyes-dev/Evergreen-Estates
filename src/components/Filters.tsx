@@ -2,7 +2,7 @@
 import { useDebouncedCallback } from 'use-debounce';
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox"
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -33,6 +33,28 @@ const tags = [
 
 
 
+type SearchInputProps = {
+    currentSearchQuery: string | null;
+    onSearch: (term: string) => void;
+};
+
+function SearchInput({ currentSearchQuery, onSearch }: SearchInputProps) {
+    const [search, setSearch] = useState(currentSearchQuery ?? "");
+
+    return (
+        <Input
+            className="w-full border-[4px] rounded-lg text-white bg-transparent border-[#228000]"
+            type="search"
+            placeholder="Search homes..."
+            value={search}
+            onChange={(event) => {
+                setSearch(event.target.value);
+                onSearch(event.target.value);
+            }}
+        />
+    );
+}
+
 export const Filters =() => {
 
     
@@ -41,19 +63,12 @@ export const Filters =() => {
     
     const currentSearchQuery = searchParams.get('query');
     const selectedTags = searchParams.getAll("tag");
-    const [search, setSearch] = useState(currentSearchQuery ?? "");
     const router = useRouter();
 
 
 
     const [value, setValue] = useState([10000, 3000000])
 
-
-    useEffect(() => {
-        if (currentSearchQuery !== null) {
-            setSearch(currentSearchQuery);
-        }
-    }, [currentSearchQuery]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -119,7 +134,6 @@ export const Filters =() => {
         params.delete('query');
         router.replace(`${pathname}?${params.toString()}`);
         setValue([10000, 3000000]);
-        setSearch("");
     }
 
 
@@ -164,18 +178,10 @@ export const Filters =() => {
                 
 
                     <div className="col-span-2 xs:col-span-3 sm:col-span-4 mt-2">
-                        <Input
-                        className="w-full border-[4px] rounded-lg text-white bg-transparent border-[#228000]   "
-                        type='search'
-                        placeholder="Search homes..."
-                        value={search}
-                        onChange={(e) => {
-                        setSearch(e.target.value);
-                        handleSearch(e.target.value);
-                        }}
-
-
-
+                        <SearchInput
+                            key={currentSearchQuery ?? ""}
+                            currentSearchQuery={currentSearchQuery}
+                            onSearch={handleSearch}
                         />
                     </div>
 
