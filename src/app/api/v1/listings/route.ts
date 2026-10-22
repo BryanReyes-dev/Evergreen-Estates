@@ -460,6 +460,7 @@ export async function POST(request: Request) {
           .select({ userId: sellerProfiles.userId, isPublished: sellerProfiles.isPublished })
           .from(sellerProfiles)
           .where(eq(sellerProfiles.userId, userId))
+          .for("update")
           .limit(1);
 
         if (!profile) {
