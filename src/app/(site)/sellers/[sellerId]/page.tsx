@@ -20,6 +20,7 @@ export const dynamic = "force-dynamic";
 type PublicSellerProfile = {
   userId: string;
   displayName: string;
+  accountName: string;
   bio: string | null;
   avatarUrl: string | null;
   contactEmail: string | null;
@@ -57,6 +58,7 @@ export default async function PublicSellerPage({
         displayName: sellerProfiles.displayName,
         bio: sellerProfiles.bio,
         avatarUrl: sellerProfiles.avatarUrl,
+        accountName: users.name,
         userImage: users.image,
         contactEmail: sellerProfiles.contactEmail,
         contactPhone: sellerProfiles.contactPhone,
@@ -78,6 +80,7 @@ export default async function PublicSellerPage({
     profile = {
       userId: seller.userId,
       displayName: seller.displayName,
+      accountName: seller.accountName,
       bio: seller.bio,
       avatarUrl: resolvedUserAvatar ?? seller.avatarUrl,
       contactEmail: seller.contactEmail,
@@ -140,7 +143,7 @@ export default async function PublicSellerPage({
       <div className="mx-auto w-full max-w-5xl">
         <header className="rounded-xl border border-white/10 bg-[#202324] p-5 sm:p-8">
           <UserAvatar
-            name={profile.displayName}
+            name={profile.accountName}
             imageUrl={profile.avatarUrl}
             identity={profile.userId}
             className="mb-4 h-20 w-20 text-2xl sm:h-24 sm:w-24"
