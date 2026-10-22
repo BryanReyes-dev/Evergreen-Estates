@@ -6,7 +6,7 @@ export interface User {
   email: string;
 }
 
-export type PublicUserData = Pick<User, "id" | "name">;
+export type PublicUserData = Pick<User, "id" | "name"> & { image?: string | null };
 
 export interface Houselisting {
   id: string;
