@@ -51,6 +51,7 @@ export async function POST(request: Request) {
   }
 
   let uploadedPath: string | null = null;
+  let attached = false;
   try {
     uploadedPath = await uploadUserAvatar({ userId, contentType: actualType, bytes });
     const result = await withAppUserTransaction(userId, async (tx) => {
@@ -76,6 +77,8 @@ export async function POST(request: Request) {
       return errorResponse("USER_NOT_FOUND", "Your account could not be found.", 404);
     }
 
+    attached = true;
+
     try {
       if (result.oldImage && result.oldImage !== uploadedPath) {
         await deleteUserAvatarObject({ userId, path: result.oldImage });
@@ -84,14 +87,18 @@ export async function POST(request: Request) {
       console.error("Old avatar cleanup failed after a successful replacement.", error);
     }
 
+    let imageUrl: string | null = null;
+    try {
+      imageUrl = await getUserAvatarUrl({ userId, image: result.image });
+    } catch (error) {
+      console.error("Avatar uploaded but signed URL generation failed.", error);
+    }
+
     return NextResponse.json({
-      data: {
-        image: result.image,
-        imageUrl: await getUserAvatarUrl({ userId, image: result.image }),
-      },
+      data: { image: result.image, imageUrl },
     }, { status: 200 });
   } catch (error) {
-    if (uploadedPath) {
+    if (uploadedPath && !attached) {
       try { await deleteUserAvatarObject({ userId, path: uploadedPath }); } catch { /* best-effort orphan cleanup */ }
     }
     console.error("Avatar upload failed:", error);
@@ -111,16 +118,16 @@ export async function DELETE(request: Request) {
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
-      if (!current) return null;
+      if (!current) return { found: false as const };
 
       await tx.update(users)
         .set({ image: null, updatedAt: new Date().toISOString() })
         .where(eq(users.id, userId));
-      return current.image;
+      return { found: true as const, image: current.image };
     });
 
-    if (result === null) return errorResponse("USER_NOT_FOUND", "Your account could not be found.", 404);
-    await deleteUserAvatarObject({ userId, path: result });
+    if (!result.found) return errorResponse("USER_NOT_FOUND", "Your account could not be found.", 404);
+    await deleteUserAvatarObject({ userId, path: result.image });
     return NextResponse.json({ data: { image: null, imageUrl: null } }, { status: 200 });
   } catch (error) {
     console.error("Avatar removal failed:", error);
