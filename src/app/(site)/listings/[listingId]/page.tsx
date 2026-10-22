@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 
 import { ListingMediaCarousel } from "@/components/ListingMediaCarousel";
 import { ListingOwnerActions } from "@/components/ListingOwnerActions";
+import { SaveListingButton } from "@/components/SaveListingButton";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { getMediaType } from "@/db/supabase/util/MediaType";
 import { withAppUserTransaction } from "@/db/drizzle/app-client";
@@ -122,17 +123,20 @@ export default async function ListingDetails({
             )}
           </div>
 
-          {canManage && (
-            <div className="flex flex-col gap-2 sm:min-w-52">
-              <ListingOwnerActions listingId={listing.id} />
-              <Link
-                href={"/listings/" + encodeURIComponent(listing.id) + "/media"}
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/20 px-4 text-sm font-medium text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]"
-              >
-                Manage listing media
-              </Link>
-            </div>
-          )}
+          <div className="flex flex-col items-start gap-3 sm:min-w-52">
+            <SaveListingButton listingId={listing.id} />
+            {canManage && (
+              <>
+                <ListingOwnerActions listingId={listing.id} />
+                <Link
+                  href={"/listings/" + encodeURIComponent(listing.id) + "/media"}
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/20 px-4 text-sm font-medium text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]"
+                >
+                  Manage listing media
+                </Link>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="mt-6 grid grid-cols-3 gap-2 rounded-xl border border-white/10 bg-[#202324] p-3 text-center sm:gap-4 sm:p-4">

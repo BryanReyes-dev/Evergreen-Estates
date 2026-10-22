@@ -62,6 +62,9 @@ export function AccountNavigation({
           <Link href="/profile" className={linkClass} onClick={onNavigate}>
             Seller profile
           </Link>
+          <Link href="/Saved" className={linkClass} onClick={onNavigate}>
+            Saved homes
+          </Link>
           <Link href="/listings/new" className={linkClass} onClick={onNavigate}>
             Create listing
           </Link>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Houselisting } from "@/app/types";
 import { getMediaType } from "@/db/supabase/util/MediaType";
+import { SaveListingButton } from "@/components/SaveListingButton";
 
 export interface ListingProps {
   listing: Pick<
@@ -17,11 +18,10 @@ const Listing = ({ listing }: ListingProps) => {
     : null;
 
   return (
-    <Link
-      href={`/listings/${listing.id}`}
-      className="m-4 block max-w-[25rem] overflow-hidden rounded-lg bg-[#202324] shadow-md"
-    >
-      <div className="relative aspect-[4/3] w-full">
+    <article className="relative m-4 block w-full max-w-[25rem] overflow-hidden rounded-lg bg-[#202324] shadow-md">
+      <div className="absolute right-3 top-3 z-10"><SaveListingButton listingId={listing.id} /></div>
+      <Link href={`/listings/${listing.id}`} className="block">
+      <div className="relative aspect-[4/3] w-full>
         {featuredMedia && featuredMediaType === "video" ? (
           <video
             src={featuredMedia}
@@ -53,7 +53,8 @@ const Listing = ({ listing }: ListingProps) => {
 
         <p className="text-sm text-white">{listing.description}</p>
       </div>
-    </Link>
+      </Link>
+    </article>
   );
 };
 

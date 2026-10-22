@@ -33,6 +33,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   REVIEW_CREATE_FAILED: "Your review could not be saved. Try again.",
   REVIEW_UPDATE_FAILED: "Your review could not be updated. Try again.",
   REVIEW_DELETE_FAILED: "Your review could not be deleted. Try again.",
+  SAVED_LISTINGS_LIMIT_REACHED: "You can save up to 100 homes. Remove a saved home before adding another.",
+  SAVED_LISTINGS_READ_FAILED: "Your saved homes could not be loaded. Try again.",
+  SAVED_LISTINGS_UPDATE_FAILED: "Your saved homes could not be updated. Try again.",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
