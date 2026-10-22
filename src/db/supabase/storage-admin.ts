@@ -427,3 +427,105 @@ export async function deleteListingMediaObjects(input: {
     throw new Error("Failed to remove listing media from Storage.");
   }
 }
+
+
+const AVATAR_EXTENSIONS = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/avif": "avif",
+  "image/gif": "gif",
+} as const;
+
+export type SupportedAvatarContentType = keyof typeof AVATAR_EXTENSIONS;
+export const MAX_USER_AVATAR_BYTES = 5 * 1024 * 1024;
+
+/** Only owner-scoped avatar objects in the private property-images bucket are accepted. */
+function isOwnedUserAvatarPath(userId: string, path: string): boolean {
+  if (!UUID_PATTERN.test(userId)) return false;
+  const safeUserId = userId.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(
+    "^avatars/" + safeUserId +
+      "/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(jpg|png|webp|avif|gif)$",
+    "i",
+  ).test(path);
+}
+
+/** Uploads a small, validated profile image to a user-owned private Storage path. */
+export async function uploadUserAvatar(input: {
+  userId: string;
+  contentType: string;
+  bytes: Uint8Array;
+}): Promise<string> {
+  const { userId, contentType, bytes } = input;
+  if (!UUID_PATTERN.test(userId)) throw new Error("Invalid authenticated user ID.");
+  if (!Object.hasOwn(AVATAR_EXTENSIONS, contentType)) {
+    throw new Error("Unsupported avatar image format.");
+  }
+  if (bytes.byteLength < 1 || bytes.byteLength > MAX_USER_AVATAR_BYTES) {
+    throw new Error("Avatar images must be 5 MB or smaller.");
+  }
+
+  const path = `avatars/${userId.toLowerCase()}/${randomUUID()}.${AVATAR_EXTENSIONS[contentType as SupportedAvatarContentType]}`;
+  const { error } = await getStorageAdminClient()
+    .storage
+    .from(STORAGE_BUCKET)
+    .upload(path, bytes, {
+      contentType,
+      cacheControl: "3600",
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error("The avatar image could not be uploaded.");
+  }
+  return path;
+}
+
+/** Resolves a safe public avatar URL or signs an owned private Storage path. */
+export async function getUserAvatarUrl(input: {
+  userId: string;
+  image: string | null | undefined;
+}): Promise<string | null> {
+  const { userId, image } = input;
+  if (!image) return null;
+
+  let externalUrl: URL | null = null;
+  try {
+    externalUrl = new URL(image);
+  } catch {
+    externalUrl = null;
+  }
+  if (externalUrl && (externalUrl.protocol === "http:" || externalUrl.protocol === "https:")) {
+    return image;
+  }
+
+  if (!isOwnedUserAvatarPath(userId, image)) return null;
+
+  const { data, error } = await getStorageAdminClient()
+    .storage
+    .from(STORAGE_BUCKET)
+    .createSignedUrl(image, 60 * 60);
+
+  if (error || !data?.signedUrl) {
+    console.error("Failed to sign user avatar URL.");
+    return null;
+  }
+  return data.signedUrl;
+}
+
+/** Deletes only a user's own generated avatar object; external URLs are never touched. */
+export async function deleteUserAvatarObject(input: {
+  userId: string;
+  path: string | null | undefined;
+}): Promise<void> {
+  const { userId, path } = input;
+  if (!path || !isOwnedUserAvatarPath(userId, path)) return;
+
+  const { error } = await getStorageAdminClient()
+    .storage
+    .from(STORAGE_BUCKET)
+    .remove([path]);
+
+  if (error) throw new Error("The previous avatar could not be removed.");
+}
