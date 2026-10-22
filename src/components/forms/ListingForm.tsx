@@ -69,6 +69,9 @@ export function ListingForm({ initial }: { initial?: ListingFormInitial }) {
         )
       : [],
   );
+  const unsupportedExistingTags = (initial?.tags ?? []).filter(
+    (tag) => !SUPPORTED_LISTING_TAG_VALUES.includes(tag.trim().toLowerCase()),
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -197,7 +200,12 @@ export function ListingForm({ initial }: { initial?: ListingFormInitial }) {
           </div>
           <fieldset className="space-y-3 sm:col-span-2">
             <legend className="text-sm font-medium">Property tags</legend>
-            <p className="text-xs text-white/50">Choose from the supported tags. Fields not selected will not be added.</p>
+            <p className="text-xs text-white/50">Choose from the supported tags. Only checked tags are saved.</p>
+            {unsupportedExistingTags.length > 0 && (
+              <p role="note" className="rounded-md border border-amber-300/25 bg-amber-950/30 p-3 text-xs leading-5 text-amber-100">
+                These existing tags are not supported by the current options and will be removed if you save: {unsupportedExistingTags.join(", ")}.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {SUPPORTED_LISTING_TAGS.map((tag) => {
                 const tagValue = tag.toLowerCase();
