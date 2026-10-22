@@ -167,7 +167,11 @@ export async function getFilteredListings(
     const selectedTags = filters.tags
       .map((tag) => canonicalTags.get(tag.trim().toLowerCase()))
       .filter((tag): tag is string => Boolean(tag));
-    if (selectedTags.length > 0) conditions.push(arrayContains(listings.tags, selectedTags));
+    // Never let an unsupported URL filter silently broaden the result set.
+    if (selectedTags.length !== filters.tags.length || selectedTags.length === 0) {
+      return [];
+    }
+    conditions.push(arrayContains(listings.tags, selectedTags));
   }
 
   try {
