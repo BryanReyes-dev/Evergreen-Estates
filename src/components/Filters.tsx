@@ -145,7 +145,7 @@ export const Filters =() => {
         params.delete('price');
         params.delete('query');
         router.replace(`${pathname}?${params.toString()}`);
-        setPriceState({ range: null, value: [MIN_LISTING_PRICE, MAX_LISTING_PRICE] });
+        setPriceState({ range: currentPriceRange, value: [MIN_LISTING_PRICE, MAX_LISTING_PRICE] });
     }
 
 
