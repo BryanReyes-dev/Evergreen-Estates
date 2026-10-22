@@ -23,7 +23,13 @@ function detectedContentType(bytes: Uint8Array): string | null {
   const ascii = (start: number, length: number) => String.fromCharCode(...bytes.slice(start, start + length));
   if (bytes.length >= 12 && ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") return "image/webp";
   if (bytes.length >= 6 && (ascii(0, 6) === "GIF87a" || ascii(0, 6) === "GIF89a")) return "image/gif";
-  if (bytes.length >= 12 && ascii(4, 4) === "ftyp" && ["avif", "avis"].includes(ascii(8, 4))) return "image/avif";
+  if (bytes.length >= 16 && ascii(4, 4) === "ftyp") {
+    const brands = [ascii(8, 4)];
+    for (let offset = 16; offset + 4 <= Math.min(bytes.length, 64); offset += 4) {
+      brands.push(ascii(offset, 4));
+    }
+    if (brands.some((brand) => brand === "avif" || brand === "avis")) return "image/avif";
+  }
   return null;
 }
 
