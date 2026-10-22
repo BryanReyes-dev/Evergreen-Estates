@@ -1,4 +1,4 @@
-# Implementation handoff — 2026-10-21
+# Implementation handoff — 2026-10-22
 
 ## Scope of this branch
 
@@ -6,7 +6,7 @@ Branch: `feature/ui-workflows-and-populate-fix`
 
 This branch connects existing Next.js user-facing pages to the authentication, seller-profile, listing, review, and media APIs. It also fixes dry-run credential handling in the population script and refreshes project documentation.
 
-Automated test expansion, the final security audit, and Vite+ work remain deferred to the next work session. No live database or Storage writes were run.
+Saved-homes migration 0019 has been applied to the configured Evergreen Estates Supabase project and its column, CHECK constraint, owner policies, role grants, and listing-delete trigger were verified with read-only catalog checks. No fixture/user/auth/Storage population writes were run. Automated test expansion and the final security audit remain deferred until after Vite+.
 
 ## Implemented in source
 
@@ -23,6 +23,7 @@ Automated test expansion, the final security audit, and Vite+ work remain deferr
 - Added `npm run populate` and `npm run populate:dry-run`, pinning the `tsx@4.20.6` runner through `npx`.
 - Corrected population preflight so dry-run does not read the private seller credentials file. Credentials are read only on apply mode after the live preflight and explicit apply safety gate.
 - Made the unresolved migration 0011 checksum/provenance issue a hard apply blocker instead of a log-only warning.
+- Corrected duplicate declarations found during source inspection in the population preflight script.
 - Updated README, agent context, architecture, and this handoff document so code presence, verified behavior, and deferred work are distinct.
 
 ## Libraries and implementation choices
@@ -35,11 +36,11 @@ The pinned runner is downloaded by `npx` on first use if it is not already cache
 
 - The source changes have not been run through TypeScript, ESLint, a production build, automated tests, or browser-level end-to-end checks in this pass. Do not treat the branch as validated before those checks.
 - The population dry-run has not been executed. Run `npm run populate:dry-run` and inspect its report. It is intended to remain read-only and independent of the seller password file.
-- Apply mode remains intentionally blocked until the previously observed checksum/provenance discrepancy for `drizzle/0011_shared_read_role.sql` is reconciled. The script's independent live catalog checks do not resolve historical provenance. Do not bypass the code guard, edit the old migration, or alter the Drizzle migration ledger as a shortcut.
+- Apply mode remains intentionally blocked until the provenance discrepancy for `drizzle/0011_shared_read_role.sql` is reconciled. Git history does not contain the version that produced the live 0011 checksum, so current catalog similarity alone is not proof of provenance. Do not bypass the code guard, edit the old migration, or rewrite the existing 0011 ledger row. The new 0019 entry tracks the migration that was actually applied.
 - A prior read-only audit saw one existing fixture Storage ETag mismatch. An ETag mismatch alone does not establish different file bytes. The population script downloads expected existing objects for byte comparison; resolve any actual conflict without overwriting it.
 - The known existing unrelated Storage objects must be preserved. Population must not delete unknown objects or non-fixture rows.
 - `seed/credentials` must remain local/ignored. Never commit synthetic passwords or env secrets.
-- Migration 0019 is source-only and has not been applied to live Supabase. Saved-home source is not browser-verified.
+- Migration 0019 has been applied and registered in the Drizzle migration ledger. Saved-home source is still not browser-verified.
 - Seller listing-card rating aggregates are not implemented; listing detail calculates an average from loaded reviews.
 - A published seller storefront is implemented and uses the shared read role/row-level policy to restrict public visibility to profiles with `is_published = true`. Verify publication and privacy behavior manually before enabling it in a live environment.
 
@@ -60,8 +61,8 @@ The pinned runner is downloaded by `npx` on first use if it is not already cache
 - [ ] Verify anonymous, empty, populated, and error states on Saved homes and the 100-item cap.
 - [ ] Delete a listing and confirm the trigger removes the deleted ID from saved arrays.
 - [ ] Check mobile widths and keyboard-only navigation, focus movement, Escape dismissal, validation states, and pending states.
-- [ ] Review migration 0019's Better Auth grants, owner policies, CHECK constraint, and listing-delete cleanup trigger.
-- [ ] After migration 0019 is applied in the intended test database, run `npm run populate:dry-run`; confirm the saved-list contract checks and no writes.
+- [x] Apply migration 0019 and verify its column, CHECK constraint, owner policies, grants, and listing-delete cleanup trigger through catalog checks.
+- [ ] Run `npm run populate:dry-run` against the configured project; confirm the saved-list contract checks and read-only behavior.
 - [ ] Do not run apply mode until migration 0011 provenance and any genuine Storage byte conflicts have been resolved.
 
 ## Deferred until after Vite+ tomorrow
