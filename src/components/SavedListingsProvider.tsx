@@ -16,6 +16,7 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const userId = session?.user?.id;
   const [savedListingIds, setSavedListingIds] = useState<string[]>([]);
+  const [savedForUserId, setSavedForUserId] = useState<string | null>(null);
   const [pendingListingIds, setPendingListingIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -25,6 +26,7 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
     if (sessionPending) return;
     let cancelled = false;
     setSavedListingIds([]);
+    setSavedForUserId(null);
     if (!userId) {
       setPendingListingIds([]);
       setLoadError(null);
@@ -39,7 +41,10 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
           await fetch("/api/v1/users/me/saved-listings", { credentials: "same-origin", cache: "no-store" }),
           "Your saved homes could not be loaded.",
         );
-        if (!cancelled) setSavedListingIds(result.savedListingIds);
+        if (!cancelled) {
+          setSavedListingIds(result.savedListingIds);
+          setSavedForUserId(userId);
+        }
       } catch (error) {
         if (!cancelled) setLoadError(error instanceof Error ? error.message : "Your saved homes could not be loaded. Try again.");
       } finally {
@@ -77,8 +82,11 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
     }
   }, [router, savedListingIds, userId]);
 
+  const visibleSavedListingIds = savedForUserId === userId ? savedListingIds : [];
+
   return <SavedListingsContext.Provider value={{
-    savedListingIds, pendingListingIds, isLoading, loadError, retryLoad, toggleSavedListing,
+    savedListingIds: visibleSavedListingIds,
+    pendingListingIds, isLoading, loadError, retryLoad, toggleSavedListing,
   }}>{children}</SavedListingsContext.Provider>;
 }
 export function useSavedListings() {
