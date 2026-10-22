@@ -153,7 +153,7 @@ export const seedListings = [
       "ezgif-41b8278b3e41a3cc.gif",
       "4301618-hd_1920_1080_30fps.mp4",
     ],
-    tags: ["garden", "fireplace", "garage"]
+    tags: ["garden", "fireplace", "garage"],
     title: "Private Country Estate",
     price: 1200000,
     beds: 6,
