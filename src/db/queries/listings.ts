@@ -15,7 +15,7 @@ import { listings, reviews, sellerProfiles, users } from "@/db/schema";
 import { MAX_LISTING_PRICE, MIN_LISTING_PRICE } from "@/lib/listing-constants";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
 import { getUserAvatarUrl } from "@/db/supabase/storage-admin";
-import { SUPPORTED_LISTING_TAGS } from "@/lib/listing-constants";
+import { SUPPORTED_LISTING_TAG_VALUES } from "@/lib/listing-constants";
 
 const UUID_PATTERN =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -163,10 +163,10 @@ export async function getFilteredListings(
   }
 
   if (filters.tags && filters.tags.length > 0) {
-    const canonicalTags = new Map(SUPPORTED_LISTING_TAGS.map((tag) => [tag.toLowerCase(), tag.toLowerCase()]));
+    const supportedTags = new Set(SUPPORTED_LISTING_TAG_VALUES);
     const selectedTags = filters.tags
-      .map((tag) => canonicalTags.get(tag.trim().toLowerCase()))
-      .filter((tag): tag is string => Boolean(tag));
+      .map((tag) => tag.trim().toLowerCase())
+      .filter((tag) => supportedTags.has(tag));
     // Never let an unsupported URL filter silently broaden the result set.
     if (selectedTags.length !== filters.tags.length || selectedTags.length === 0) {
       return [];
