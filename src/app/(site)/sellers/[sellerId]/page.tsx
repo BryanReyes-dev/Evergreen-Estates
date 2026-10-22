@@ -142,6 +142,9 @@ export default async function PublicSellerPage({
           )}
 
           <div className="mt-5 flex flex-col gap-2 border-t border-white/10 pt-5 text-sm sm:flex-row sm:flex-wrap sm:gap-5">
+            <span className="inline-flex min-h-11 items-center text-white/70">
+              Preferred contact: {profile.preferredContactMethod === "email" ? "Email" : "Phone"}
+            </span>
             {profile.preferredContactMethod === "email" && profile.contactEmail && (
               <a className="inline-flex min-h-11 items-center underline underline-offset-4" href={"mailto:" + profile.contactEmail}>
                 Contact by email
