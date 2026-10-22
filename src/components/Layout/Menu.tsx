@@ -48,7 +48,7 @@ export default function Menu() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 bg-black/70 p-3 lg:hidden">
+        <div className="fixed inset-0 z-50 bg-black/70 p-3 md:hidden">
           <button
             type="button"
             tabIndex={-1}
@@ -61,7 +61,7 @@ export default function Menu() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="mobile-navigation-title"
-            className="relative ml-auto flex min-h-full w-full max-w-sm flex-col rounded-xl border border-white/10 bg-[#202324] p-4 shadow-2xl"
+            className="relative ml-auto flex h-[calc(100dvh-1.5rem)] w-full max-w-sm flex-col overflow-y-auto rounded-xl border border-white/10 bg-[#202324] p-4 shadow-2xl"
             onKeyDown={(event) => {
               if (event.key !== "Tab") return;
               const focusable = event.currentTarget.querySelectorAll<HTMLElement>(
