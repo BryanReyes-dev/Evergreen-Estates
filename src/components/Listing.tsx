@@ -18,7 +18,7 @@ const Listing = ({ listing }: ListingProps) => {
     : null;
 
   return (
-    <article className="relative m-4 block w-full max-w-[25rem] overflow-hidden rounded-lg bg-[#202324] shadow-md">
+    <article className="relative m-0 block w-full max-w-[25rem] overflow-hidden rounded-lg bg-[#202324] shadow-md">
       <div className="absolute right-3 top-3 z-10"><SaveListingButton listingId={listing.id} /></div>
       <Link href={`/listings/${listing.id}`} className="block">
       <div className="relative aspect-[4/3] w-full">
