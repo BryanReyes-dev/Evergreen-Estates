@@ -1,11 +1,13 @@
 
 import { sql } from "drizzle-orm";
+import type { AccountPreferences } from "@/lib/account-preferences";
 import {
   boolean,
   check,
   foreignKey,
   index,
   integer,
+  jsonb,
   numeric,
   pgPolicy,
   pgTable,
@@ -31,6 +33,7 @@ export const users = pgTable(
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
     savedListings: uuid("saved_listings").array().notNull().default(sql`ARRAY[]::uuid[]`),
+    preferences: jsonb("preferences").$type<AccountPreferences>().notNull().default(sql`'{"defaultSort":"newest","viewMode":"grid"}'::jsonb`),
 
 
     createdAt: timestamp("created_at", {
@@ -52,8 +55,8 @@ export const users = pgTable(
     check("users_saved_listings_max_100", sql`cardinality(${table.savedListings}) <= 100`),
 
 
-    // Server-side read visibility. SQL column grants restrict the runtime
-    // connection to id and name; public clients use the Route Handlers.
+    // Public reads may access a user's name and avatar; preferences are owner-private.
+    // SQL column grants remain the boundary in addition to RLS.
     pgPolicy("Shared read role can read application user identity", {
       as: "permissive",
       for: "select",
