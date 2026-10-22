@@ -30,6 +30,7 @@ export const users = pgTable(
     email: text().notNull(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
+    savedListings: uuid("saved_listings").array().notNull().default(sql`ARRAY[]::uuid[]`),
 
 
     createdAt: timestamp("created_at", {
@@ -48,6 +49,7 @@ export const users = pgTable(
   },
   (table) => [
     unique("users_email_key").on(table.email),
+    check("users_saved_listings_max_100", sql`cardinality(${table.savedListings}) <= 100`),
 
 
     // Server-side read visibility. SQL column grants restrict the runtime
@@ -65,6 +67,29 @@ export const users = pgTable(
       to: ["evergreen_auth"],
       using: sql`true`,
       withCheck: sql`true`,
+    }),
+
+    pgPolicy("App can read own saved listings", {
+      as: "permissive",
+      for: "select",
+      to: ["evergreen_app"],
+      using: sql`${table.id} = ${currentAppUserId}`,
+    }),
+
+    // Clamp the inherited evergreen_read permissive policy to the current owner.
+    pgPolicy("App can only read own users row", {
+      as: "restrictive",
+      for: "select",
+      to: ["evergreen_app"],
+      using: sql`${table.id} = ${currentAppUserId}`,
+    }),
+
+    pgPolicy("App can update own saved listings", {
+      as: "permissive",
+      for: "update",
+      to: ["evergreen_app"],
+      using: sql`${table.id} = ${currentAppUserId}`,
+      withCheck: sql`${table.id} = ${currentAppUserId}`,
     }),
   ],
 ).enableRLS();
