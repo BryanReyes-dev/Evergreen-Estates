@@ -16,6 +16,8 @@ type OwnedListing = {
   updatedAt: string;
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function ProfilePage() {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session?.user?.id) redirect("/auth");
