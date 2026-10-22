@@ -114,6 +114,14 @@ export default async function ListingDetails({
             <p className="mt-4 text-2xl font-semibold text-[#a6d78f]">
               {"$" + listing.price.toLocaleString()}
             </p>
+            {listing.sellerUserId && (
+              <Link
+                href={"/sellers/" + encodeURIComponent(listing.sellerUserId)}
+                className="mt-3 inline-flex min-h-10 items-center text-sm font-medium text-[#a6d78f] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]"
+              >
+                View seller profile
+              </Link>
+            )}
             {averageRating === null ? (
               <p className="mt-2 text-sm text-white/60">Not yet rated · No reviews yet</p>
             ) : (
