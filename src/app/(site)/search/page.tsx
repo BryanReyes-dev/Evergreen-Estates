@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { Suspense } from "react";
 
 import { Filters } from "@/components/Filters";
@@ -10,6 +10,7 @@ import { getAuth } from "@/lib/auth";
 import {
   DEFAULT_ACCOUNT_PREFERENCES,
   normalizeAccountPreferences,
+  type AccountPreferences,
 } from "@/lib/account-preferences";
 
 interface SearchParams {
@@ -27,7 +28,7 @@ const Search = async ({
   searchParams: Promise<SearchParams>;
 }) => {
   const params = await searchParams;
-  let preferences = DEFAULT_ACCOUNT_PREFERENCES;
+  let preferences: AccountPreferences = DEFAULT_ACCOUNT_PREFERENCES;
 
   try {
     const session = await getAuth().api.getSession({ headers: await headers() });
