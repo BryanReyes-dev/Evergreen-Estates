@@ -25,11 +25,12 @@ const Listing = ({ listing }: ListingProps) => {
         {featuredMedia && featuredMediaType === "video" ? (
           <video
             src={featuredMedia}
-            controls
+            muted
             playsInline
             preload="metadata"
+            tabIndex={-1}
             className="h-full w-full object-cover"
-            aria-label={`${listing.title} video`}
+            aria-hidden="true"
           />
         ) : featuredMedia ? (
           <Image
@@ -40,18 +41,18 @@ const Listing = ({ listing }: ListingProps) => {
             className="w-full object-cover"
           />
         ) : (
-          <div className="h-full w-full bg-[#3A3F42]" aria-label="No listing media" />
+          <div role="img" aria-label="No listing media available" className="h-full w-full bg-[#3A3F42]" />
         )}
       </div>
 
       <div className="p-4">
-        <h2 className="mb-2 text-xl font-semibold">{listing.title}</h2>
+        <h2 className="mb-2 break-words text-xl font-semibold">{listing.title}</h2>
 
         <span className="font-bold text-green-600">
           ${listing.price.toLocaleString()}
         </span>
 
-        <p className="text-sm text-white">{listing.description}</p>
+        <p className="break-words text-sm text-white">{listing.description}</p>
       </div>
       </Link>
       {listing.sellerUserId && (
