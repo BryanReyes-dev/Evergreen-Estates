@@ -2,6 +2,7 @@ import { getListingById } from "@/db/queries/listings"
 import { and, eq } from "drizzle-orm";
 import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { listings } from "@/db/schema";
+import { MAX_LISTING_PRICE, MIN_LISTING_PRICE, SUPPORTED_LISTING_TAG_VALUES } from "@/lib/listing-constants";
 import { deleteListingMediaObjects } from "@/db/supabase/storage-admin";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/api/get-authenticated-user-id";
@@ -167,7 +168,7 @@ export async function PATCH(
 
     const price = Number(priceString);
 
-    if (!Number.isFinite(price) || price <= 0 || price > 1_000_000_000_000) {
+    if (!Number.isFinite(price) || price < MIN_LISTING_PRICE || price > MAX_LISTING_PRICE) {
       return NextResponse.json(
         { error: "INVALID_PRICE" },
         { status: 400 },
@@ -238,7 +239,8 @@ export async function PATCH(
         (tag) =>
           typeof tag === "string" &&
           tag.trim().length > 0 &&
-          tag.trim().length <= 40,
+          tag.trim().length <= 40 &&
+          SUPPORTED_LISTING_TAG_VALUES.includes(tag.trim().toLowerCase()),
       )
     ) {
       return NextResponse.json(
