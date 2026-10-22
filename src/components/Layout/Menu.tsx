@@ -9,6 +9,15 @@ export default function Menu() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    const desktopViewport = window.matchMedia("(min-width: 768px)");
+    const closeWhenDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setOpen(false);
+    };
+    desktopViewport.addEventListener("change", closeWhenDesktop);
+    return () => desktopViewport.removeEventListener("change", closeWhenDesktop);
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
 
     const previousOverflow = document.body.style.overflow;
