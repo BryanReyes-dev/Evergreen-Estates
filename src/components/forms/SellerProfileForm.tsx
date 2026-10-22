@@ -31,6 +31,9 @@ type ProfileValues = {
   isPublished: boolean;
 };
 
+const fieldClassName =
+  "w-full rounded-lg border-[3px] border-[#228000] bg-[#141616] text-white placeholder:text-white/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]";
+
 const EMPTY_VALUES: ProfileValues = {
   displayName: "",
   bio: "",
@@ -226,7 +229,7 @@ export function SellerProfileForm() {
         <div>
           <h1 className="text-2xl font-semibold">{profile ? "Your seller profile" : "Create a seller profile"}</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-white/70">
-            A seller profile is required before you can publish listings. Your contact preference must have a matching contact detail.
+            A seller profile is required before you can create listings. Publish it before listing a property; profiles with existing listings cannot be made private. Your contact preference must have a matching contact detail.
           </p>
         </div>
         {profile && (
@@ -240,31 +243,31 @@ export function SellerProfileForm() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2">
             <label htmlFor="profile-display-name" className="text-sm font-medium">Display name *</label>
-            <Input id="profile-display-name" value={values.displayName} onChange={(event) => update("displayName", event.target.value)} maxLength={100} required disabled={pending} autoComplete="name" />
+            <Input id="profile-display-name" className={fieldClassName} value={values.displayName} onChange={(event) => update("displayName", event.target.value)} maxLength={100} required disabled={pending} autoComplete="name" />
           </div>
           <div className="space-y-2 sm:col-span-2">
             <label htmlFor="profile-bio" className="text-sm font-medium">About you</label>
-            <textarea id="profile-bio" value={values.bio} onChange={(event) => update("bio", event.target.value)} rows={4} maxLength={profile ? 2000 : 1000} disabled={pending} className="w-full rounded-md border border-white/20 bg-[#141616] px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]" />
+            <textarea id="profile-bio" value={values.bio} onChange={(event) => update("bio", event.target.value)} rows={4} maxLength={profile ? 2000 : 1000} disabled={pending} className={fieldClassName + " px-3 py-2 text-sm"} />
             <p className="text-right text-xs text-white/50">{values.bio.length}/{profile ? 2000 : 1000}</p>
           </div>
           <div className="space-y-2 sm:col-span-2">
             <label htmlFor="profile-avatar" className="text-sm font-medium">Avatar URL</label>
-            <Input id="profile-avatar" type="url" inputMode="url" value={values.avatarUrl} onChange={(event) => update("avatarUrl", event.target.value)} maxLength={2048} disabled={pending} placeholder="https://example.com/avatar.jpg" />
+            <Input id="profile-avatar" className={fieldClassName} type="url" inputMode="url" value={values.avatarUrl} onChange={(event) => update("avatarUrl", event.target.value)} maxLength={2048} disabled={pending} placeholder="https://example.com/avatar.jpg" />
           </div>
           <div className="space-y-2">
             <label htmlFor="profile-contact-method" className="text-sm font-medium">Preferred contact method *</label>
-            <select id="profile-contact-method" value={values.preferredContactMethod} onChange={(event) => update("preferredContactMethod", event.target.value as ContactMethod)} disabled={pending} className="min-h-11 w-full rounded-md border border-white/20 bg-[#141616] px-3 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]">
+            <select id="profile-contact-method" value={values.preferredContactMethod} onChange={(event) => update("preferredContactMethod", event.target.value as ContactMethod)} disabled={pending} className={fieldClassName + " min-h-11 px-3"}>
               <option value="email">Email</option>
               <option value="phone">Phone</option>
             </select>
           </div>
           <div className="space-y-2">
             <label htmlFor="profile-contact-email" className="text-sm font-medium">Contact email {values.preferredContactMethod === "email" ? "*" : ""}</label>
-            <Input id="profile-contact-email" type="email" autoComplete="email" value={values.contactEmail} onChange={(event) => update("contactEmail", event.target.value)} maxLength={254} required={values.preferredContactMethod === "email"} disabled={pending} />
+            <Input id="profile-contact-email" className={fieldClassName} type="email" autoComplete="email" value={values.contactEmail} onChange={(event) => update("contactEmail", event.target.value)} maxLength={254} required={values.preferredContactMethod === "email"} disabled={pending} />
           </div>
           <div className="space-y-2 sm:col-span-2">
             <label htmlFor="profile-contact-phone" className="text-sm font-medium">Contact phone {values.preferredContactMethod === "phone" ? "*" : ""}</label>
-            <Input id="profile-contact-phone" type="tel" autoComplete="tel" value={values.contactPhone} onChange={(event) => update("contactPhone", event.target.value)} maxLength={32} required={values.preferredContactMethod === "phone"} disabled={pending} />
+            <Input id="profile-contact-phone" className={fieldClassName} type="tel" autoComplete="tel" value={values.contactPhone} onChange={(event) => update("contactPhone", event.target.value)} maxLength={32} required={values.preferredContactMethod === "phone"} disabled={pending} />
           </div>
         </div>
 
