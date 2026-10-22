@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,6 +7,7 @@ import Listing from "@/components/Listing";
 import { getDrizzleDb } from "@/db/drizzle/client";
 import { listings, sellerProfiles } from "@/db/schema";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
+import { MAX_LISTING_PRICE, MIN_LISTING_PRICE } from "@/lib/listing-constants";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -81,7 +82,13 @@ export default async function PublicSellerPage({
         description: listings.description,
       })
       .from(listings)
-      .where(eq(listings.sellerUserId, sellerId))
+      .where(
+        and(
+          eq(listings.sellerUserId, sellerId),
+          gte(listings.price, String(MIN_LISTING_PRICE)),
+          lte(listings.price, String(MAX_LISTING_PRICE)),
+        ),
+      )
       .orderBy(desc(listings.createdAt));
 
     sellerListings = await Promise.all(
