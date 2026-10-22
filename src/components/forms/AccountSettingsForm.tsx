@@ -377,16 +377,16 @@ export function AccountSettingsForm() {
         <form onSubmit={changePassword} className="mt-5 space-y-4">
           <div className="space-y-2">
             <label htmlFor="account-current-password" className="text-sm font-medium">Current password</label>
-            <Input id="account-current-password" inputType="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} disabled={passwordPending} className={fieldClass} required />
+            <Input id="account-current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} disabled={passwordPending} className={fieldClass} required />
           </div>
           <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2">
             <div className="space-y-2">
               <label htmlFor="account-new-password" className="text-sm font-medium">New password</label>
-              <Input id="account-new-password" inputType="password" autoComplete="new-password" minLength={8} maxLength={128} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} disabled={passwordPending} className={fieldClass} required />
+              <Input id="account-new-password" type="password" autoComplete="new-password" minLength={8} maxLength={128} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} disabled={passwordPending} className={fieldClass} required />
             </div>
             <div className="space-y-2">
               <label htmlFor="account-confirm-password" className="text-sm font-medium">Confirm new password</label>
-              <Input id="account-confirm-password" inputType="password" autoComplete="new-password" minLength={8} maxLength={128} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} disabled={passwordPending} className={fieldClass} required />
+              <Input id="account-confirm-password" type="password" autoComplete="new-password" minLength={8} maxLength={128} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} disabled={passwordPending} className={fieldClass} required />
             </div>
           </div>
           {passwordError && <p role="alert" className="rounded-md border border-red-400/30 bg-red-950/40 p-3 text-sm text-red-200">{passwordError}</p>}
