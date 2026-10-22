@@ -1,11 +1,12 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
-import Image from "next/image";
+import { UserAvatar } from "@/components/UserAvatar";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import Listing from "@/components/Listing";
 import { getDrizzleDb } from "@/db/drizzle/client";
-import { listings, sellerProfiles } from "@/db/schema";
+import { listings, sellerProfiles, users } from "@/db/schema";
+import { getUserAvatarUrl } from "@/db/supabase/storage-admin";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
 import { MAX_LISTING_PRICE, MIN_LISTING_PRICE } from "@/lib/listing-constants";
 
@@ -56,12 +57,14 @@ export default async function PublicSellerPage({
         displayName: sellerProfiles.displayName,
         bio: sellerProfiles.bio,
         avatarUrl: sellerProfiles.avatarUrl,
+        userImage: users.image,
         contactEmail: sellerProfiles.contactEmail,
         contactPhone: sellerProfiles.contactPhone,
         preferredContactMethod: sellerProfiles.preferredContactMethod,
         isPublished: sellerProfiles.isPublished,
       })
       .from(sellerProfiles)
+      .innerJoin(users, eq(sellerProfiles.userId, users.id))
       .where(
         and(
           eq(sellerProfiles.userId, sellerId),
@@ -71,7 +74,17 @@ export default async function PublicSellerPage({
       .limit(1);
 
     if (!seller) notFound();
-    profile = seller;
+    const resolvedUserAvatar = await getUserAvatarUrl({ userId: seller.userId, image: seller.userImage });
+    profile = {
+      userId: seller.userId,
+      displayName: seller.displayName,
+      bio: seller.bio,
+      avatarUrl: resolvedUserAvatar ?? seller.avatarUrl,
+      contactEmail: seller.contactEmail,
+      contactPhone: seller.contactPhone,
+      preferredContactMethod: seller.preferredContactMethod,
+      isPublished: seller.isPublished,
+    };
 
     const rows = await db
       .select({
@@ -126,16 +139,12 @@ export default async function PublicSellerPage({
     <main className="min-h-screen bg-[#141616] px-4 py-8 text-white sm:px-6 sm:py-12">
       <div className="mx-auto w-full max-w-5xl">
         <header className="rounded-xl border border-white/10 bg-[#202324] p-5 sm:p-8">
-          {profile.avatarUrl && (
-            <Image
-              src={profile.avatarUrl}
-              alt={profile.displayName + " profile"}
-              width={96}
-              height={96}
-              unoptimized
-              className="mb-4 h-20 w-20 rounded-full border border-white/15 object-cover sm:h-24 sm:w-24"
-            />
-          )}
+          <UserAvatar
+            name={profile.displayName}
+            imageUrl={profile.avatarUrl}
+            identity={profile.userId}
+            className="mb-4 h-20 w-20 text-2xl sm:h-24 sm:w-24"
+          />
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a6d78f]">
             Seller profile
           </p>
