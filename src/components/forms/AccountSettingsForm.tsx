@@ -56,6 +56,7 @@ export function AccountSettingsForm() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reloadAttempt, setReloadAttempt] = useState(0);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -91,7 +92,7 @@ export function AccountSettingsForm() {
     }
     void loadAccount();
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadAttempt]);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -293,7 +294,7 @@ export function AccountSettingsForm() {
       <section className="rounded-xl border border-white/10 bg-[#202324] p-5 text-white">
         <h1 className="text-xl font-semibold">Account settings unavailable</h1>
         <p className="mt-2 text-sm text-white/65" role="alert">{error || "Your account settings could not be loaded."}</p>
-        <Button type="button" className="mt-4 min-h-11" onClick={() => router.refresh()}>Try again</Button>
+        <Button type="button" className="mt-4 min-h-11" onClick={() => { setError(null); setLoading(true); setReloadAttempt((attempt) => attempt + 1); }}>Try again</Button>
       </section>
     );
   }
