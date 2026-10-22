@@ -13,7 +13,7 @@ This is the authoritative record of finalized Evergreen Estates architecture. Pr
 
 Evergreen Estates is a real-estate marketplace built with Next.js 16.x App Router, React, TypeScript, Supabase/PostgreSQL and Storage, Drizzle ORM, Better Auth, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
-Implemented source includes public property browsing, listing details, URL-driven search/filtering, Better Auth email/password sign-up/sign-in and account navigation, seller-profile forms and published public seller storefronts, owner-scoped listing create/edit/delete UI, review create/edit/delete UI, listing media management, and a developer-run population script. Source presence is not proof of type safety, runtime correctness, deployment, or end-to-end verification; the new UI and population workflow still require static checks and manual review.
+Implemented source includes public property browsing, listing details, URL-driven search/filtering, Better Auth email/password auth, account settings for name/avatar/password and browsing preferences, seller-profile editing and published storefronts, owner-scoped listing CRUD, review CRUD, listing media management, and a guarded population script. Account avatars use initials with stable per-user color fallbacks or uploaded images, and are rendered in navigation, published seller storefronts, and reviews. Source presence is not proof of type safety, runtime correctness, deployment, or end-to-end verification; the account/avatar migration and new UI still require static checks and manual review.
 
 ## 2. Application Structure and Boundaries
 
@@ -63,9 +63,9 @@ src/db/schema.ts declares evergreenReadRole via pgRole and targets it from the f
 ### `users`
 
 - Canonical Better Auth identity table; there is no separate Better Auth user table.
-- UUID `id` primary key; `name`, unique `email`, `email_verified`, nullable `image`, `saved_listings uuid[]`, `created_at`, and `updated_at`. The saved list defaults to an empty array and has a database CHECK constraint limiting it to 100 IDs.
+- UUID `id` primary key; `name`, unique `email`, `email_verified`, nullable `image`, `saved_listings uuid[]`, `preferences jsonb`, `created_at`, and `updated_at`. Saved listings default to an empty array and have a database CHECK constraint limiting them to 100 IDs. Migration `0020_user_account_preferences.sql` adds validated `defaultSort` (`newest`, `price-low`, `price-high`) and `viewMode` (`grid`, `list`) preferences; the migration is in source and its live application status is not verified.
 - `users.auth_user_id` was removed by migration `0009_remove_redundant_schema_fields.sql`. Do not refer to it as a current column or reintroduce it.
-- Runtime column grants restrict user identity reads; the application should return only public fields needed by the caller.
+- Runtime column grants restrict user identity reads; after migration 0020, the public shared-read role may read only `id`, `name`, and `image`. Account `preferences` remain available only through the owner-scoped `evergreen_app` path.
 
 ### Saved listings
 
@@ -116,7 +116,7 @@ The shared-read policy contract is:
 - listings: evergreen_read can SELECT all listing rows.
 - reviews: evergreen_read can SELECT review rows.
 - seller_profiles: evergreen_read can SELECT published profiles only (is_published = true).
-- users: the shared SELECT policy permits visible rows, but SQL column grants expose only id and name; email is not accessible through the shared permissions.
+- users: the shared SELECT policy permits visible rows. Migration 0011 grants shared `id` and `name`; migration 0020 additionally grants shared `image` for public avatars. `email` and private `preferences` are not exposed through shared permissions.
 
 Implemented listing Route Handlers:
 
@@ -251,7 +251,7 @@ In particular:
 
 ## 9. Supabase Storage and Media Model
 
-The listing `media` array stores filenames, not public URLs. Runtime media uses `src/db/supabase/util/GetMediaUrls.ts` and the server-only Storage admin helper. It preserves the database filename order, filters out filenames that do not exist in Storage, and generates signed URLs. The bucket remains private; migration 0018 removes the prior public-read policy. The repository does not establish whether that migration has been applied to production.
+The listing `media` array stores filenames, not public URLs. Runtime media uses `src/db/supabase/util/GetMediaUrls.ts` and the server-only Storage admin helper. It preserves database filename order, filters out missing filenames, and generates signed URLs. User-uploaded avatars are stored under owner-scoped `avatars/{userId}/{uuid}.{ext}` paths in the same private `property-images` bucket and are resolved to signed URLs; users without an image render their name initial with a stable generated color. Migration 0018 removes the prior public-read policy, but the repository does not establish whether it has been applied to production. Migration 0020 adds avatar column permissions and private account preferences, and is not verified as applied.
 
 Source Route Handlers provide POST endpoints for requesting an upload URL and completing/registering a listing-media upload, plus a DELETE endpoint for a listing media file. Their presence does not establish that the full upload lifecycle has been verified or deployed.
 
