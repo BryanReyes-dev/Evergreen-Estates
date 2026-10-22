@@ -174,13 +174,13 @@ The fixture-specific suite passed all 9 tests. The full suite passed 11 tests ac
 
 These are user-reported command results. Re-run relevant checks after additional edits.
 
-## Current implementation status (2026-10-21)
+## Current implementation status (2026-10-22)
 
 The pushed repository now includes:
 
 - Public listing browsing, details, and URL-driven search/filtering.
 - Better Auth email/password backend plus user-facing sign-up/sign-in and session-aware account navigation with initials/photo avatars.
-- New `/account` settings UI for personal name, uploaded avatar, password changes, default listing sort, and results layout; seller storefronts and reviews use the account avatar. These changes and migration 0020 remain unvalidated until lint/type/build and browser checks run.
+- New `/account` settings UI for personal name, uploaded avatar, password changes, default listing sort, and results layout; seller storefronts and reviews use the account avatar. ESLint, TypeScript, and the production build passed GitHub Actions run 21 on 2026-10-22. Migration 0020 remains source-only and browser/responsive end-to-end checks have not been run.
 - Seller-profile create/read/update/delete UI connected to the existing seller-profile API, plus a public storefront page for profiles explicitly marked published.
 - Listing create/edit/delete UI connected to the existing listing Route Handlers, with owner-scoped edit access and a seller page listing the current user's properties.
 - Review create/edit/delete controls connected to the existing review Route Handlers; only the review author sees mutation controls, and the server remains authoritative.
@@ -188,7 +188,7 @@ The pushed repository now includes:
 - Saved-home buttons on listing cards and details, Saved homes page, and GET/PATCH `/api/v1/users/me/saved-listings` backed by migration 0019.
 - Synthetic fixtures and 48 local media files, plus scripts/populate.ts with read-only preflight and explicit write-mode safeguards.
 
-These source changes—including the new account-settings/avatar work—have not yet been type-checked, built, automated-tested, or manually verified as end-to-end workflows in this implementation pass. Do not describe them as validated until those steps run successfully. The account settings and private avatar upload paths depend on migration 0020 being applied safely first.
+Static checks (ESLint, `npx tsc --noEmit`, and production build) passed in GitHub Actions run 21 on 2026-10-22. Automated tests remain deferred until after Vite+, as planned, and browser/responsive user flows have not yet been manually verified. Account settings and private avatar upload require migration 0020 to be applied safely before runtime use.
 
 ### Population script status
 
