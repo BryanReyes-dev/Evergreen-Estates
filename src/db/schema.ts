@@ -53,6 +53,14 @@ export const users = pgTable(
   (table) => [
     unique("users_email_key").on(table.email),
     check("users_saved_listings_max_100", sql`cardinality(${table.savedListings}) <= 100`),
+    check(
+      "users_preferences_valid_check",
+      sql`jsonb_typeof(${table.preferences}) = 'object'
+        AND ${table.preferences} ? 'defaultSort'
+        AND ${table.preferences} ? 'viewMode'
+        AND ${table.preferences}->>'defaultSort' IN ('newest', 'price-low', 'price-high')
+        AND ${table.preferences}->>'viewMode' IN ('grid', 'list')`,
+    ),
 
 
     // Public reads may access a user's name and avatar; preferences are owner-private.
