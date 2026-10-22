@@ -3,6 +3,7 @@ import type { filters as ListingFilters } from "@/app/types";
 import { eq } from "drizzle-orm";
 import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { listings, sellerProfiles } from "@/db/schema";
+import { MAX_LISTING_PRICE, MIN_LISTING_PRICE, SUPPORTED_LISTING_TAG_VALUES } from "@/lib/listing-constants";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
 import { getAuthenticatedUserId } from "@/lib/api/get-authenticated-user-id";
 
@@ -148,14 +149,15 @@ export async function GET(request: Request) {
     if (
         !Number.isFinite(minPrice) ||
         !Number.isFinite(maxPrice) ||
-        minPrice < 0 ||
+        minPrice < MIN_LISTING_PRICE ||
+        maxPrice > MAX_LISTING_PRICE ||
         maxPrice < minPrice
     ) {
         return Response.json(
         {
             error: {
             code: "INVALID_PRICE_RANGE",
-            message: "Provide a valid minimum and maximum price.",
+            message: "Choose a price range between $10,000 and $10,000,000.",
             },
         },
         { status: 400 },
@@ -317,14 +319,14 @@ export async function POST(request: Request) {
   if (
     typeof price !== "number" ||
     !Number.isFinite(price) ||
-    price <= 0 ||
-    price > 1_000_000_000_000
+    price < MIN_LISTING_PRICE ||
+    price > MAX_LISTING_PRICE
   ) {
     return Response.json(
       {
         error: {
           code: "INVALID_PRICE",
-          message: "Provide a valid positive listing price.",
+          message: "Listing price must be between $10,000 and $10,000,000.",
         },
       },
       { status: 400 },
@@ -423,7 +425,8 @@ export async function POST(request: Request) {
         (tag) =>
           typeof tag === "string" &&
           tag.trim().length >= 1 &&
-          tag.trim().length <= 40,
+          tag.trim().length <= 40 &&
+          SUPPORTED_LISTING_TAG_VALUES.includes(tag.trim().toLowerCase()),
       )
     )
   ) {
@@ -431,7 +434,7 @@ export async function POST(request: Request) {
       {
         error: {
           code: "INVALID_TAGS",
-          message: "Provide at most 20 tags, each 1–40 characters.",
+          message: "Choose only supported property tags.",
         },
       },
       { status: 400 },
@@ -442,7 +445,7 @@ export async function POST(request: Request) {
     ...new Map(
       ((rawTags ?? []) as string[])
         .map((tag) => tag.trim())
-        .map((tag) => [tag.toLowerCase(), tag] as const),
+        .map((tag) => [tag.toLowerCase(), tag.toLowerCase()] as const),
     ).values(),
   ];
 
@@ -452,13 +455,16 @@ export async function POST(request: Request) {
       async (tx) => {
         // Seller eligibility must be established before listing creation.
         const [profile] = await tx
-          .select({ userId: sellerProfiles.userId })
+          .select({ userId: sellerProfiles.userId, isPublished: sellerProfiles.isPublished })
           .from(sellerProfiles)
           .where(eq(sellerProfiles.userId, userId))
           .limit(1);
 
         if (!profile) {
           return { kind: "seller-profile-required" as const };
+        }
+        if (!profile.isPublished) {
+          return { kind: "seller-profile-private" as const };
         }
 
         const [created] = await tx
@@ -507,6 +513,18 @@ export async function POST(request: Request) {
           error: {
             code: "SELLER_PROFILE_REQUIRED",
             message: "Create a seller profile before creating listings.",
+          },
+        },
+        { status: 409 },
+      );
+    }
+
+    if (result.kind === "seller-profile-private") {
+      return Response.json(
+        {
+          error: {
+            code: "SELLER_PROFILE_NOT_PUBLIC",
+            message: "Publish your seller profile before creating a listing.",
           },
         },
         { status: 409 },
