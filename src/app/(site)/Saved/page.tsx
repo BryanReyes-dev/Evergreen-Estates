@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import Listing from "@/components/Listing";
 import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { getDrizzleDb } from "@/db/drizzle/client";
-import { listings, users } from "@/db/schema";
+import { listings, sellerProfiles, users } from "@/db/schema";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
 import { getAuth } from "@/lib/auth";
+import { MAX_LISTING_PRICE, MIN_LISTING_PRICE } from "@/lib/listing-constants";
 
 export const dynamic = "force-dynamic";
-type SavedCard = { id: string; media: string[]; title: string; price: number; description: string };
+type SavedCard = { id: string; sellerUserId: string | null; media: string[]; title: string; price: number; description: string };
 
 export default async function SavedHomesPage() {
   const session = await getAuth().api.getSession({ headers: await headers() });
@@ -41,13 +42,31 @@ export default async function SavedHomesPage() {
   if (savedListingIds.length > 0) {
     try {
       const rows = await getDrizzleDb().select({
-        id: listings.id, media: listings.media, title: listings.title, price: listings.price, description: listings.description,
-      }).from(listings).where(inArray(listings.id, savedListingIds));
+        id: listings.id,
+        sellerUserId: listings.sellerUserId,
+        media: listings.media,
+        title: listings.title,
+        price: listings.price,
+        description: listings.description,
+      })
+        .from(listings)
+        .innerJoin(
+          sellerProfiles,
+          and(
+            eq(listings.sellerUserId, sellerProfiles.userId),
+            eq(sellerProfiles.isPublished, true),
+          ),
+        )
+        .where(and(
+          inArray(listings.id, savedListingIds),
+          gte(listings.price, String(MIN_LISTING_PRICE)),
+          lte(listings.price, String(MAX_LISTING_PRICE)),
+        ));
       const byId = new Map(rows.map((row) => [row.id, row]));
       savedListings = (await Promise.all(savedListingIds.map(async (id) => {
         const row = byId.get(id);
         if (!row) return null;
-        return { id: row.id, media: await getMediaUrls(row.id, row.media), title: row.title, price: Number(row.price), description: row.description };
+        return { id: row.id, sellerUserId: row.sellerUserId, media: await getMediaUrls(row.id, row.media), title: row.title, price: Number(row.price), description: row.description };
       }))).filter((row): row is SavedCard => row !== null);
     } catch (error) {
       console.error("Could not load saved listing cards.", error);
