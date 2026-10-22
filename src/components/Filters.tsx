@@ -2,7 +2,7 @@
 import { useDebouncedCallback } from 'use-debounce';
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox"
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -37,6 +37,23 @@ function SearchInput({ currentSearchQuery, onSearch }: SearchInputProps) {
     );
 }
 
+function parsePriceRange(priceRange: string | null): number[] {
+    if (!priceRange) return [MIN_LISTING_PRICE, MAX_LISTING_PRICE];
+
+    const parsed = priceRange.split("-").map(Number);
+    if (
+        parsed.length !== 2 ||
+        !parsed.every(Number.isFinite) ||
+        parsed[0] > parsed[1]
+    ) {
+        return [MIN_LISTING_PRICE, MAX_LISTING_PRICE];
+    }
+
+    const min = Math.max(MIN_LISTING_PRICE, Math.min(MAX_LISTING_PRICE, parsed[0]));
+    const max = Math.max(MIN_LISTING_PRICE, Math.min(MAX_LISTING_PRICE, parsed[1]));
+    return min <= max ? [min, max] : [MIN_LISTING_PRICE, MAX_LISTING_PRICE];
+}
+
 export const Filters =() => {
 
     
@@ -50,28 +67,19 @@ export const Filters =() => {
 
 
 
-    const [value, setValue] = useState([MIN_LISTING_PRICE, MAX_LISTING_PRICE]);
+    const [priceState, setPriceState] = useState(() => ({
+        range: currentPriceRange,
+        value: parsePriceRange(currentPriceRange),
+    }));
 
-    useEffect(() => {
-        if (!currentPriceRange) {
-            setValue([MIN_LISTING_PRICE, MAX_LISTING_PRICE]);
-            return;
-        }
-
-        const parsed = currentPriceRange.split("-").map(Number);
-        if (
-            parsed.length !== 2 ||
-            !parsed.every(Number.isFinite) ||
-            parsed[0] > parsed[1]
-        ) {
-            setValue([MIN_LISTING_PRICE, MAX_LISTING_PRICE]);
-            return;
-        }
-
-        const min = Math.max(MIN_LISTING_PRICE, Math.min(MAX_LISTING_PRICE, parsed[0]));
-        const max = Math.max(MIN_LISTING_PRICE, Math.min(MAX_LISTING_PRICE, parsed[1]));
-        setValue(min <= max ? [min, max] : [MIN_LISTING_PRICE, MAX_LISTING_PRICE]);
-    }, [currentPriceRange]);
+    // Reset from URL changes (including browser back/forward) without syncing state in an effect.
+    if (priceState.range !== currentPriceRange) {
+        setPriceState({
+            range: currentPriceRange,
+            value: parsePriceRange(currentPriceRange),
+        });
+    }
+    const value = priceState.value;
 
 
   const formatPrice = (price: number) => {
@@ -82,7 +90,7 @@ export const Filters =() => {
     }).format(price);};
 
    const handlePriceChange = (newValue: number[]) => {
-    setValue(newValue);
+    setPriceState({ range: currentPriceRange, value: newValue });
     updatePriceURL(newValue);
     };
    
@@ -137,7 +145,7 @@ export const Filters =() => {
         params.delete('price');
         params.delete('query');
         router.replace(`${pathname}?${params.toString()}`);
-        setValue([MIN_LISTING_PRICE, MAX_LISTING_PRICE]);
+        setPriceState({ range: null, value: [MIN_LISTING_PRICE, MAX_LISTING_PRICE] });
     }
 
 
