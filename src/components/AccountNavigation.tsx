@@ -8,7 +8,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
-type AccountSummary = { name: string; imageUrl: string | null };
+type AccountSummary = { userId: string; name: string; imageUrl: string | null };
 
 function isHttpUrl(value: string | null | undefined): value is string {
   if (!value) return false;
@@ -52,6 +52,7 @@ export function AccountNavigation({
       const data = (payload as { data?: { name?: unknown; imageUrl?: unknown } }).data;
       if (typeof data?.name === "string") {
         setSummary({
+          userId,
           name: data.name,
           imageUrl: typeof data.imageUrl === "string" ? data.imageUrl : null,
         });
@@ -92,8 +93,11 @@ export function AccountNavigation({
     return <span aria-label="Loading account" className="inline-flex min-h-11 items-center px-3 text-sm text-white/60">Loading account…</span>;
   }
 
-  const userName = summary?.name || session?.user?.name || session?.user?.email || "Account";
-  const imageUrl = summary?.imageUrl || (isHttpUrl(session?.user?.image) ? session.user.image : null);
+  const accountMatchesSession = Boolean(userId && summary?.userId === userId);
+  const userName = (accountMatchesSession ? summary?.name : null) || session?.user?.name || session?.user?.email || "Account";
+  const imageUrl = accountMatchesSession
+    ? summary?.imageUrl ?? null
+    : isHttpUrl(session?.user?.image) ? session.user.image : null;
   const linkClass =
     "flex min-h-11 items-center rounded-md px-3 py-2 text-sm font-medium text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]";
 
@@ -124,7 +128,15 @@ export function AccountNavigation({
   }
 
   return (
-    <details className="group relative">
+    <details
+      className="group relative"
+      onClick={(event) => {
+        const target = event.target;
+        if (target instanceof HTMLElement && target.closest("a, button")) {
+          event.currentTarget.open = false;
+        }
+      }}
+    >
       <summary className="inline-flex min-h-11 max-w-48 cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1 text-sm text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c] [&::-webkit-details-marker]:hidden">
         <UserAvatar name={userName} imageUrl={imageUrl} identity={userId} className="h-8 w-8 text-xs" />
         <span className="max-w-24 truncate">{userName}</span>
