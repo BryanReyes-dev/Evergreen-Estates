@@ -46,7 +46,7 @@ Do not assume local edits are committed or pushed without confirmation.
 - `DIRECT_URL` → privileged Drizzle Kit migrations only.
 - `APP_DATABASE_URL` → current local app write client uses `evergreen_app`; deployment configuration is unverified.
 
-The shared `evergreen_read` NOLOGIN role and migration-defined memberships/grants are in repository history. `evergreen_runtime` and `evergreen_app` inherit shared reads using `INHERIT TRUE, SET FALSE`. Migration `0011_shared_read_role.sql` grants SELECT on listings/reviews/seller_profiles and only users.id/users.name. The current checkout adds app write grants/policies in migrations 0013–0018 and a transaction-scoped app client. These files do not establish which migrations are applied to a live service.
+The shared `evergreen_read` NOLOGIN role and migration-defined memberships/grants are in repository history. `evergreen_runtime` and `evergreen_app` inherit shared reads using `INHERIT TRUE, SET FALSE`. Migration `0011_shared_read_role.sql` grants shared identity reads for `users.id` and `users.name`; source migration `0020_user_account_preferences.sql` adds shared access to `users.image`, owner-scoped account preferences, and avatar upload permissions for `evergreen_app`. Migration 0020 is source-only in this coding pass; its live application status is not verified. Never change or force-repair the known historical 0011 provenance discrepancy to work around this.
 
 PostgreSQL 17.6 verification on 2026-10-18 predates the app-write grants and policies in migrations 0013–0018. It confirmed shared reads and that `evergreen_runtime` could not select `users.email`; its finding that the app role lacked listing-write privileges is historical and should not be used to describe the current migration set. The four shared-read policies target `evergreen_read`, and the separate `evergreen_auth` policy on users remains in place. Current effective privileges still need verification against the target database.
 
@@ -62,6 +62,7 @@ Migration `0009_remove_redundant_schema_fields.sql` was generated, reviewed, and
 - `id` is the UUID primary key.
 - `name`, `email`, `email_verified`, `image`, `created_at`, and `updated_at` remain.
 - Migration 0019 adds private `saved_listings uuid[]` with a database-enforced 100-ID maximum; it has been applied to the configured Supabase project and registered in the Drizzle migration ledger.
+- Source migration 0020 adds a private JSONB `preferences` object with validated default sort and results layout values. It also grants owner-scoped app access to preferences and avatar updates and backfills avatar URLs only from already-published seller profiles. It has not been applied or live-verified by this implementation pass.
 - `email` is unique.
 - Removed `auth_user_id`; Better Auth uses `users.id`.
 
@@ -178,7 +179,8 @@ These are user-reported command results. Re-run relevant checks after additional
 The pushed repository now includes:
 
 - Public listing browsing, details, and URL-driven search/filtering.
-- Better Auth email/password backend plus user-facing sign-up/sign-in and session-aware account navigation.
+- Better Auth email/password backend plus user-facing sign-up/sign-in and session-aware account navigation with initials/photo avatars.
+- New `/account` settings UI for personal name, uploaded avatar, password changes, default listing sort, and results layout; seller storefronts and reviews use the account avatar. These changes and migration 0020 remain unvalidated until lint/type/build and browser checks run.
 - Seller-profile create/read/update/delete UI connected to the existing seller-profile API, plus a public storefront page for profiles explicitly marked published.
 - Listing create/edit/delete UI connected to the existing listing Route Handlers, with owner-scoped edit access and a seller page listing the current user's properties.
 - Review create/edit/delete controls connected to the existing review Route Handlers; only the review author sees mutation controls, and the server remains authoritative.
@@ -186,7 +188,7 @@ The pushed repository now includes:
 - Saved-home buttons on listing cards and details, Saved homes page, and GET/PATCH `/api/v1/users/me/saved-listings` backed by migration 0019.
 - Synthetic fixtures and 48 local media files, plus scripts/populate.ts with read-only preflight and explicit write-mode safeguards.
 
-These source changes have not yet been type-checked, built, automated-tested, or manually verified as end-to-end workflows in this implementation pass. Do not describe them as validated until those steps run successfully.
+These source changes—including the new account-settings/avatar work—have not yet been type-checked, built, automated-tested, or manually verified as end-to-end workflows in this implementation pass. Do not describe them as validated until those steps run successfully. The account settings and private avatar upload paths depend on migration 0020 being applied safely first.
 
 ### Population script status
 
@@ -199,11 +201,12 @@ These source changes have not yet been type-checked, built, automated-tested, or
 
 ### Next work order
 
-1. Run `npm run populate:dry-run` against the configured project; inspect its report and confirm no database, auth, or Storage writes.
-2. Reconcile the migration 0011 provenance discrepancy before population apply. Git history does not contain the source version matching the live checksum; do not edit the historical migration or rewrite its existing ledger entry. Byte-compare the previously flagged Storage object before considering any overwrite.
-3. Manually verify auth, profile, listing CRUD, reviews, saved-home persistence and states, media management, mobile navigation, and error states with at least two accounts when the local app is available.
-4. Keep Vite+ as the last implementation-stage change. Automated tests and the final security audit remain deferred until after Vite+ as requested; preserve Next.js as the runtime unless a separate framework conversion is approved.
-5. After Vite+, run the automated test suite and final security audit, then resolve findings.
+1. Review migration `0020_user_account_preferences.sql` and its snapshot, then apply it through the repository's approved migration procedure before testing Account settings/avatar storage; confirm the column grants and default preferences with read-only catalog queries. Do not bypass the unresolved migration-0011 provenance guard.
+2. Run `npm run populate:dry-run` against the configured project; inspect its report and confirm no database, auth, or Storage writes.
+3. Reconcile the migration 0011 provenance discrepancy before population apply. Git history does not contain the source version matching the live checksum; do not edit the historical migration or rewrite its existing ledger entry. Byte-compare the previously flagged Storage object before considering any overwrite.
+4. Manually verify account name and preference persistence, avatar upload/removal, seller-profile and review avatars, auth, listing CRUD, reviews, saved-home persistence, media management, mobile-only menu behavior, and error states at 350px, tablet, and 1140px with at least two accounts when the local app is available.
+5. Keep Vite+ as the last implementation-stage change. Automated tests and the final security audit remain deferred until after Vite+ as requested; preserve Next.js as the runtime unless a separate framework conversion is approved.
+6. After Vite+, run the automated test suite and final security audit, then resolve findings.
 
 Saved homes source is implemented in this branch: migration 0019, GET/PATCH route, shared saved-state provider, card/detail save controls, and Saved homes page. Migration 0019 has been applied to live Supabase and its schema contract was checked, but saved-home workflows have not been manually verified. Public seller storefronts are implemented for profiles explicitly marked published. Rating aggregates on listing cards/search results remain a separate UI/data enhancement; listing details calculate an average from the review records they load and display an unrated state when there are no reviews.
 
