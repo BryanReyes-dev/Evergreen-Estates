@@ -14,6 +14,8 @@ import { getDrizzleDb } from "@/db/drizzle/client";
 import { listings, reviews, sellerProfiles, users } from "@/db/schema";
 import { MAX_LISTING_PRICE, MIN_LISTING_PRICE } from "@/lib/listing-constants";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
+import { getUserAvatarUrl } from "@/db/supabase/storage-admin";
+import { SUPPORTED_LISTING_TAGS } from "@/lib/listing-constants";
 
 const UUID_PATTERN =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -78,6 +80,7 @@ export async function getListingById(
         createdAt: reviews.createdAt,
         authorId: users.id,
         authorName: users.name,
+        authorImage: users.image,
       })
       .from(reviews)
       .leftJoin(users, eq(reviews.userId, users.id))
@@ -87,6 +90,23 @@ export async function getListingById(
       listing.id,
       listing.media,
     );
+
+    const mappedReviews = await Promise.all(reviewRows.map(async (review) => {
+      const authorId = review.authorId ?? review.userId;
+      return {
+        id: review.id,
+        listing_id: review.listingId,
+        user_id: review.userId,
+        rating: review.rating,
+        comment: review.comment,
+        created_at: review.createdAt,
+        user: {
+          id: authorId,
+          name: review.authorName ?? "Unknown user",
+          image: await getUserAvatarUrl({ userId: authorId, image: review.authorImage }),
+        },
+      };
+    }));
 
     return {
       id: listing.id,
@@ -101,18 +121,7 @@ export async function getListingById(
       address: listing.address,
       description: listing.description,
       created_at: listing.createdAt,
-      reviews: reviewRows.map((review) => ({
-        id: review.id,
-        listing_id: review.listingId,
-        user_id: review.userId,
-        rating: review.rating,
-        comment: review.comment,
-        created_at: review.createdAt,
-        user: {
-          id: review.authorId ?? review.userId,
-          name: review.authorName ?? "Unknown user",
-        },
-      })),
+      reviews: mappedReviews,
     };
   } catch (error) {
     console.error("Error fetching listing with Drizzle:", error);
@@ -154,7 +163,11 @@ export async function getFilteredListings(
   }
 
   if (filters.tags && filters.tags.length > 0) {
-    conditions.push(arrayContains(listings.tags, filters.tags));
+    const canonicalTags = new Map(SUPPORTED_LISTING_TAGS.map((tag) => [tag.toLowerCase(), tag]));
+    const selectedTags = filters.tags
+      .map((tag) => canonicalTags.get(tag.trim().toLowerCase()))
+      .filter((tag): tag is string => Boolean(tag));
+    if (selectedTags.length > 0) conditions.push(arrayContains(listings.tags, selectedTags));
   }
 
   try {
