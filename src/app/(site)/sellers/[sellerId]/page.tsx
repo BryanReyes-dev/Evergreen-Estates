@@ -82,7 +82,7 @@ export default async function PublicSellerPage({
       displayName: seller.displayName,
       accountName: seller.accountName,
       bio: seller.bio,
-      avatarUrl: resolvedUserAvatar ?? seller.avatarUrl,
+      avatarUrl: resolvedUserAvatar,
       contactEmail: seller.contactEmail,
       contactPhone: seller.contactPhone,
       preferredContactMethod: seller.preferredContactMethod,
