@@ -161,6 +161,7 @@ export async function getFilteredListings(
     const rows = await db
       .select({
         id: listings.id,
+        sellerUserId: listings.sellerUserId,
         media: listings.media,
         tags: listings.tags,
         title: listings.title,
