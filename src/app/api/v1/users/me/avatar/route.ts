@@ -59,7 +59,8 @@ export async function POST(request: Request) {
         .select({ image: users.image })
         .from(users)
         .where(eq(users.id, userId))
-        .limit(1);
+        .limit(1)
+        .for("update");
 
       if (!current) return null;
 
@@ -117,7 +118,8 @@ export async function DELETE(request: Request) {
         .select({ image: users.image })
         .from(users)
         .where(eq(users.id, userId))
-        .limit(1);
+        .limit(1)
+        .for("update");
       if (!current) return { found: false as const };
 
       await tx.update(users)
@@ -127,7 +129,13 @@ export async function DELETE(request: Request) {
     });
 
     if (!result.found) return errorResponse("USER_NOT_FOUND", "Your account could not be found.", 404);
-    await deleteUserAvatarObject({ userId, path: result.image });
+    try {
+      await deleteUserAvatarObject({ userId, path: result.image });
+    } catch (error) {
+      // The database is already cleared; an orphaned object must not make the
+      // successful "Use initials" action appear to have failed.
+      console.error("Avatar object cleanup failed after removal.", error);
+    }
     return NextResponse.json({ data: { image: null, imageUrl: null } }, { status: 200 });
   } catch (error) {
     console.error("Avatar removal failed:", error);
