@@ -253,10 +253,10 @@ export function SellerProfileForm() {
             <textarea id="profile-bio" value={values.bio} onChange={(event) => update("bio", event.target.value)} rows={4} maxLength={profile ? 2000 : 1000} disabled={pending} className={fieldClassName + " px-3 py-2 text-sm"} />
             <p className="text-right text-xs text-white/50">{values.bio.length}/{profile ? 2000 : 1000}</p>
           </div>
-          <div className="space-y-2 sm:col-span-2">
-            <label htmlFor="profile-avatar" className="text-sm font-medium">Avatar URL</label>
-            <Input id="profile-avatar" className={fieldClassName} type="url" inputMode="url" value={values.avatarUrl} onChange={(event) => update("avatarUrl", event.target.value)} maxLength={2048} disabled={pending} placeholder="https://example.com/avatar.jpg" />
-          </div>
+          <p className="text-sm leading-6 text-white/60 sm:col-span-2">
+            Your public seller profile uses your account photo. Change it any time in{" "}
+            <Link href="/account" className="underline underline-offset-4 hover:text-white">Account settings</Link>.
+          </p>
           <div className="space-y-2">
             <label htmlFor="profile-contact-method" className="text-sm font-medium">Preferred contact method *</label>
             <select id="profile-contact-method" value={values.preferredContactMethod} onChange={(event) => update("preferredContactMethod", event.target.value as ContactMethod)} disabled={pending} className={fieldClassName + " min-h-11 px-3"}>
