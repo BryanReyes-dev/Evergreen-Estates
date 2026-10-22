@@ -59,4 +59,5 @@ export interface SearchParams {
   query?: string;
   price?: string;
   tag?: string | string[];
+  sort?: string;
 }
