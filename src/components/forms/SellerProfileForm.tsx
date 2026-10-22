@@ -188,6 +188,9 @@ export function SellerProfileForm() {
       setNotice(profile ? "Profile changes saved." : "Seller profile created. You can now create listings.");
       router.refresh();
     } catch (caught) {
+      if (profile) {
+        setValues((current) => ({ ...current, isPublished: profile.isPublished }));
+      }
       setError(caught instanceof Error ? caught.message : "Your seller profile could not be saved.");
     } finally {
       setPending(false);
