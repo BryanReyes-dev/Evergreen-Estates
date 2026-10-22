@@ -534,6 +534,16 @@ export async function PATCH(request: NextRequest) {
         return { status: "invalid-contact" as const };
       }
 
+      const [existingListing] = await tx
+        .select({ id: listings.id })
+        .from(listings)
+        .where(eq(listings.sellerUserId, userId))
+        .limit(1);
+      const profileWillBePublished = updates.isPublished ?? current.isPublished;
+      if (existingListing && !profileWillBePublished) {
+        return { status: "listings-require-public-profile" as const };
+      }
+
       const [updated] = await tx
         .update(sellerProfiles)
         .set(updates)
@@ -562,6 +572,16 @@ export async function PATCH(request: NextRequest) {
             "The preferred contact method must have a corresponding contact detail.",
         },
         { status: 400 },
+      );
+    }
+
+    if (result.status === "listings-require-public-profile") {
+      return NextResponse.json(
+        {
+          error: "SELLER_PROFILE_MUST_BE_PUBLIC",
+          message: "A seller profile with listings must be public. Publish your profile or delete your listings before making it private.",
+        },
+        { status: 409 },
       );
     }
 
