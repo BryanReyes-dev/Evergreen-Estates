@@ -74,7 +74,7 @@ src/db/schema.ts declares evergreenReadRole via pgRole and targets it from the f
 - `evergreen_app` has column-level SELECT/UPDATE on `saved_listings`, a permissive owner-only SELECT policy, a restrictive owner-only SELECT policy (to clamp inherited `evergreen_read` visibility), and an owner-scoped UPDATE policy. `evergreen_runtime` and `evergreen_auth` cannot SELECT `saved_listings`.
 - Better Auth uses a dedicated Drizzle user projection that omits `saved_listings`. Migration 0019 replaces broad table-level user grants with explicit column grants for supported auth fields.
 - A fixed-search-path SECURITY DEFINER trigger removes deleted listing IDs from saved arrays. Direct execution of the trigger function is revoked from PUBLIC.
-- Migration 0019 is in source only; it has not been applied to the live database. Review and apply through the normal migration workflow before relying on this feature.
+- Migration 0019 has been applied to the configured Supabase project and registered in the Drizzle migration ledger. Its column, CHECK constraint, owner policies, grants, and trigger were checked via catalog queries; browser-level behavior remains unverified.
 
 ### `seller_profiles`
 
@@ -289,14 +289,13 @@ For Supabase shared transaction-pooler connections, use the Dashboard's copied h
 
 ## 11. Verification and Work Order
 
-The saved-home migration and UI/API are present in this branch. TypeScript, ESLint, production build, automated tests, browser checks, and database writes have not been run in this pass.
+The saved-home UI/API are present and migration 0019 is applied and registered in the Drizzle migration ledger. The column, CHECK constraint, owner policies, role grants, and listing-delete cleanup trigger were checked via read-only catalog queries. TypeScript, ESLint, production build, automated tests, and browser checks have not been run. No fixture population or Storage writes were performed.
 
-1. Review migration 0019's explicit Better Auth grants, owner-only permissive/restrictive SELECT policies, owner-scoped UPDATE policy, 100-item CHECK constraint, and listing-delete cleanup trigger.
-2. Apply migration 0019 through the normal workflow in the intended environment after review. It has not been applied to the live database.
-3. Manually verify save/unsave on cards and detail pages, persistence after refresh and re-authentication, anonymous/empty/populated/error Saved homes states, the 100-item cap, and cleanup after listing deletion.
-4. Run `npm run populate:dry-run` after migration 0019 is applied to the intended database; verify saved-list column/grant/policy/check/trigger assertions and no-write behavior.
-5. Reconcile the migration 0011 provenance discrepancy before enabling population apply. Do not rewrite the historical migration or ledger to force a match.
-6. Keep Vite+ as the last implementation-stage change; automated tests and the final security audit remain deferred until after Vite+ as requested.
+1. Run `npm run populate:dry-run` against the configured project; confirm the saved-list contract checks pass and no database, auth, or Storage writes occur.
+2. Reconcile the historical migration 0011 provenance discrepancy before population apply. Git history does not contain the version that produced the live checksum; do not edit migration 0011 or rewrite its existing ledger entry. Also byte-compare the previously flagged Storage object before considering any overwrite.
+3. Manually verify card/detail save and unsave, persistence after refresh and re-authentication, anonymous/empty/populated/error Saved homes states, the 100-item cap, and deleted-listing cleanup.
+4. Keep Vite+ as the last implementation-stage change; automated tests and the final security audit remain deferred until after Vite+ as requested. Preserve Next.js as the runtime unless a separate framework conversion is approved.
+5. After the Vite+ work, add/expand automated tests and conduct the final security audit.
 
 ## 12. Architecture Overview
 
