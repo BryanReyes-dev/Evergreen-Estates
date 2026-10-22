@@ -48,6 +48,8 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
       return () => { cancelled = true; };
     }
 
+    // Capture the narrowed ID so TypeScript can verify it inside the async closure.
+    const requestedUserId = userId;
     setIsLoading(true);
     async function loadSavedListings() {
       try {
@@ -57,12 +59,12 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
         );
         if (!cancelled) {
           setSavedListingIds(result.savedListingIds);
-          setSavedForUserId(userId);
+          setSavedForUserId(requestedUserId);
         }
       } catch (error) {
         if (!cancelled) {
           setLoadError(error instanceof Error ? error.message : "Your saved homes could not be loaded. Try again.");
-          setLoadErrorForUserId(userId);
+          setLoadErrorForUserId(requestedUserId);
         }
       } finally {
         if (!cancelled) setIsLoading(false);
