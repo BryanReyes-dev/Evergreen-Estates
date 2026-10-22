@@ -510,6 +510,7 @@ export async function PATCH(request: NextRequest) {
         .select()
         .from(sellerProfiles)
         .where(eq(sellerProfiles.userId, userId))
+        .for("update")
         .limit(1);
 
       if (!current) {
