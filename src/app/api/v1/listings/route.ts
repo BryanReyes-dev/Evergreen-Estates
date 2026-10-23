@@ -30,10 +30,12 @@ const CREATE_LISTING_FIELDS = new Set([
   "tags",
 ]);
 
+// Utility function to check if a value is a record (object) with string keys and unknown values.
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// Parses and validates the input for creating a listing. Returns a CreateListingInput object if valid, or null if invalid.
 function parseCreateListingInput(
   value: unknown,
 ): CreateListingInput | null {
@@ -107,6 +109,7 @@ function parseCreateListingInput(
   };
 }
 
+// Checks if the provided error is a listing cap violation error, indicating that a seller has reached the maximum number of listings allowed.
 function isListingCapViolation(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
 
