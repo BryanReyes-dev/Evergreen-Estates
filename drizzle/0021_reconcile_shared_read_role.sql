@@ -7,10 +7,9 @@
 -- migration deliberately reasserts the intended live role/grant/policy contract
 -- without changing application data or the historical migration record.
 
-ALTER ROLE evergreen_read
-  WITH NOLOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
-       NOREPLICATION NOBYPASSRLS;
---> statement-breakpoint
+-- Role attributes are checked by the population preflight and are already correct.
+-- Supabase's managed postgres connection cannot alter role security attributes,
+-- so this reconciliation leaves the role definition unchanged.
 
 GRANT USAGE ON SCHEMA public TO evergreen_read;
 --> statement-breakpoint
