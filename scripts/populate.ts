@@ -17,11 +17,19 @@ const EXPECTED_PROJECT_REF = "vcsotaclvwvbpqiljkuk";
 const STORAGE_BUCKET = "property-images";
 const MAX_ACTIVE_LISTINGS_PER_SELLER = 3;
 
-// The exact historical SQL body for migration 0011 was not recoverable from Git
-// or Supabase migration history. Keep apply mode blocked until the forward-only
-// 0021 reconciliation has been applied and reviewed. Never edit migration 0011
-// or rewrite its existing Drizzle ledger row.
-const HISTORICAL_0011_CHECKSUM_UNRESOLVED = true;
+// The applied Drizzle ledger hash for migration 0011
+// (d23ee45dadfe79d8ff2346b80fc07872a1c7edebd4b88bc511a83a944ea6baed) does not
+// match the tracked SQL bytes (SHA-256
+// 5f654419803188a68ae069c3a3d873821cdae57c9a58c9ecd5b7bae44a8f9af4). The
+// original byte sequence was not recovered; LF/CRLF and final-newline variants
+// did not reproduce the ledger hash. Never edit migration 0011 or its ledger row.
+//
+// Explicit review disposition (2026-10-23): accept the residual provenance
+// discrepancy for this fixture workflow because migration 0021 has been applied
+// and live role/grant/membership/policy/RLS checks plus the complete dry-run pass.
+// This does NOT resolve or repair the historical checksum. Set this acknowledgement
+// to false to block apply mode again.
+const HISTORICAL_0011_DISCREPANCY_ACKNOWLEDGED = true;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -1696,8 +1704,8 @@ function printPlan(input: {
   if (storagePlan.extraObjects > 0) {
     console.log(`Storage: ${storagePlan.extraObjects} additional objects in fixture listing folders will be preserved untouched`);
   }
-  if (HISTORICAL_0011_CHECKSUM_UNRESOLVED) {
-    console.log("Migration provenance: the 0011 checksum discrepancy remains unresolved; live schema checks passed independently, and no checksum or ledger repair was attempted.");
+  if (HISTORICAL_0011_DISCREPANCY_ACKNOWLEDGED) {
+    console.log("Migration provenance: the 0011 checksum mismatch remains unresolved but explicitly acknowledged; migration 0021 is applied, live schema/security checks passed, and no checksum or ledger repair was attempted.");
   }
   if (databasePlan.conflicts.length > 0 || storagePlan.conflicts.length > 0) {
     printConflicts([...databasePlan.conflicts, ...storagePlan.conflicts]);
@@ -2050,12 +2058,12 @@ async function run(): Promise<void> {
     return;
   }
 
-  // Do not write while the previously observed 0011 migration checksum/provenance
-  // discrepancy is unresolved. The catalog checks are necessary, but not a
-  // substitute for reconciling that migration-history mismatch.
-  if (HISTORICAL_0011_CHECKSUM_UNRESOLVED) {
+  // The exact historical 0011 bytes remain unknown. Do not claim the hash was
+  // resolved or update the ledger. This explicit acknowledgement allows writes
+  // only after migration 0021 is applied and the live preflight passes.
+  if (!HISTORICAL_0011_DISCREPANCY_ACKNOWLEDGED) {
     throw new PopulationError(
-      "Apply is blocked until migration 0011 provenance is reconciled and this guard is reviewed. Dry-run remains available.",
+      "Apply is blocked because the 0011 checksum discrepancy has not been explicitly acknowledged. Dry-run remains available.",
     );
   }
 
