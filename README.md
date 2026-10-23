@@ -38,7 +38,7 @@ The project uses the Next.js App Router, Server Components for data fetching and
 - Saved-home GET/PATCH persistence for authenticated users
 - Tailwind CSS and shadcn/ui styling
 
-The current source includes email/password authentication, seller-profile management, published seller storefronts, listing create/edit/delete, saved-home add/remove and listing, review create/edit/delete, and listing media management. Source still requires TypeScript, lint, production build, automated tests, and manual end-to-end verification. Migration 0019_saved_listings_on_users.sql has been applied to the configured Supabase project and its schema, grants, policies, and trigger were checked; saved-home workflows are not yet browser-verified. A forward-only migration, `0021_reconcile_shared_read_role.sql`, and updated population preflight are now staged in this branch; the migration has not been applied to Supabase by this change. Population apply remains blocked until the migration is reviewed/applied, the complete dry-run passes without conflicts, and the unresolved 0011 provenance discrepancy receives a separate explicit review.
+The current source includes email/password authentication, seller-profile management, published seller storefronts, listing create/edit/delete, saved-home add/remove and listing, review create/edit/delete, and listing media management. Source still requires TypeScript, lint, production build, automated tests, and manual end-to-end verification. Migration 0019_saved_listings_on_users.sql has been applied to the configured Supabase project and its schema, grants, policies, and trigger were checked; saved-home workflows are not yet browser-verified. The forward-only migration `0021_reconcile_shared_read_role.sql` has now been applied and recorded in the Drizzle ledger; its live role, grant, membership, policy, and RLS contracts pass the population preflight. The historical `0011` checksum discrepancy remains unresolved at the byte level (ledger hash `d23ee45d...` versus tracked SQL hash `5f654419...`), but has been explicitly reviewed and acknowledged for the fixture-population workflow. No historical migration or ledger row was edited.
 
 ## Media and Image Delivery
 
@@ -221,7 +221,7 @@ The population tool performs read-only preflight by default and does not write d
 npm run populate:dry-run
 ```
 
-The first run uses a pinned tsx runner and may need network access to download it. Do not run apply mode yet: scripts/populate.ts deliberately blocks writes while the recorded migration 0011 checksum/provenance discrepancy remains unresolved. Do not edit the migration ledger or bypass the guard just to seed data. See agent-files/IMPLEMENTATION_HANDOFF.md for the specific manual review items.
+The first run uses a pinned tsx runner and may need network access to download it. The 0011 checksum discrepancy remains unresolved and is explicitly acknowledged, not repaired: the original bytes could not be recovered, so do not edit migration 0011 or its ledger row. Apply mode requires the explicit `--apply --confirm-project vcsotaclvwvbpqiljkuk` flags, a clean preflight, and valid local `seed/credentials`; it creates synthetic accounts/records and uploads missing fixture media. Do not run apply mode until you are ready for those writes. See agent-files/IMPLEMENTATION_HANDOFF.md for the review evidence and remaining verification tasks.
 
 ## Client Components
 
