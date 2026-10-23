@@ -13,7 +13,7 @@ export default function Menu() {
   const [open, setOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLSectionElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const desktopViewport = window.matchMedia("(min-width: 768px)");

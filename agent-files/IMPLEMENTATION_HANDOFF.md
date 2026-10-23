@@ -1,4 +1,4 @@
-# Implementation handoff — 2026-10-22
+# Implementation handoff — 2026-10-23
 
 ## Scope of this branch
 
@@ -36,7 +36,8 @@ The pinned runner is downloaded by `npx` on first use if it is not already cache
 
 - The source changes have not been run through TypeScript, ESLint, a production build, automated tests, or browser-level end-to-end checks in this pass. Do not treat the branch as validated before those checks.
 - The population dry-run has not been executed. Run `npm run populate:dry-run` and inspect its report. It is intended to remain read-only and independent of the seller password file.
-- Apply mode remains intentionally blocked until the provenance discrepancy for `drizzle/0011_shared_read_role.sql` is reconciled. Git history does not contain the version that produced the live 0011 checksum, so current catalog similarity alone is not proof of provenance. Do not bypass the code guard, edit the old migration, or rewrite the existing 0011 ledger row. The new 0019 entry tracks the migration that was actually applied.
+- A forward-only `drizzle/0021_reconcile_shared_read_role.sql` migration and updated permission preflight have been added in source. The migration has not been applied to Supabase by this commit. Review it, verify `DIRECT_URL` targets the expected project, and use the normal Drizzle migrator; inspect the output closely because migration 0020 was applied through Supabase outside Drizzle and may be registered/replayed idempotently.
+- The exact historical SQL text that produced the `0011` checksum remains unavailable in Git and Supabase migration history. Migration 0021 does not recover that text or rewrite the old ledger row. Keep `HISTORICAL_0011_CHECKSUM_UNRESOLVED` true until the forward migration is applied, the full dry-run passes, and the residual provenance uncertainty is explicitly reviewed in a separate change. Never edit migration 0011 or its existing ledger row.
 - A prior read-only audit saw one existing fixture Storage ETag mismatch. An ETag mismatch alone does not establish different file bytes. The population script downloads expected existing objects for byte comparison; resolve any actual conflict without overwriting it.
 - The known existing unrelated Storage objects must be preserved. Population must not delete unknown objects or non-fixture rows.
 - `seed/credentials` must remain local/ignored. Never commit synthetic passwords or env secrets.
@@ -63,7 +64,8 @@ The pinned runner is downloaded by `npx` on first use if it is not already cache
 - [ ] Check mobile widths and keyboard-only navigation, focus movement, Escape dismissal, validation states, and pending states.
 - [x] Apply migration 0019 and verify its column, CHECK constraint, owner policies, grants, and listing-delete cleanup trigger through catalog checks.
 - [ ] Run `npm run populate:dry-run` against the configured project; confirm the saved-list contract checks and read-only behavior.
-- [ ] Do not run apply mode until migration 0011 provenance and any genuine Storage byte conflicts have been resolved.
+- [ ] Review and apply the forward-only 0021 migration through the normal Drizzle migrator; stop on unexpected migration output.
+- [ ] Rerun `npm run populate:dry-run`; all schema/security checks must pass and there must be no database or Storage conflicts. Keep write mode blocked until this review is complete and the residual 0011 provenance uncertainty has a separately approved disposition.
 
 ## Deferred until after Vite+ tomorrow
 

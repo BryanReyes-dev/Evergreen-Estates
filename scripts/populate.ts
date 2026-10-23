@@ -17,9 +17,10 @@ const EXPECTED_PROJECT_REF = "vcsotaclvwvbpqiljkuk";
 const STORAGE_BUCKET = "property-images";
 const MAX_ACTIVE_LISTINGS_PER_SELLER = 3;
 
-// This historical checksum discrepancy remains unresolved. Population is
-// gated on the independently verified live schema contract below; the script
-// never rewrites migration files or the Drizzle migration ledger.
+// The exact historical SQL body for migration 0011 was not recoverable from Git
+// or Supabase migration history. Keep apply mode blocked until the forward-only
+// 0021 reconciliation has been applied and reviewed. Never edit migration 0011
+// or rewrite its existing Drizzle ledger row.
 const HISTORICAL_0011_CHECKSUM_UNRESOLVED = true;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -786,7 +787,7 @@ async function verifyLiveSchemaContract(): Promise<void> {
     app_review_delete: boolean;
     app_ownership_columns_immutable: boolean;
     app_saved_listings_select_update: boolean;
-    app_saved_listings_column_only: boolean;
+    app_user_column_privileges_scoped: boolean;
     app_users_table_write_denied: boolean;
     runtime_inherited_select: boolean;
     runtime_users_email_denied: boolean;
@@ -1009,13 +1010,22 @@ async function verifyLiveSchemaContract(): Promise<void> {
         has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'SELECT')
           and has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'UPDATE')
           and not has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'INSERT')
+          and has_column_privilege('evergreen_app', 'public.users', 'preferences', 'SELECT')
+          and has_column_privilege('evergreen_app', 'public.users', 'preferences', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'preferences', 'INSERT')
+          and has_column_privilege('evergreen_app', 'public.users', 'image', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'image', 'INSERT')
+          and has_column_privilege('evergreen_app', 'public.users', 'updated_at', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'updated_at', 'INSERT')
           and not has_column_privilege('evergreen_app', 'public.users', 'id', 'UPDATE')
           and not has_column_privilege('evergreen_app', 'public.users', 'name', 'UPDATE')
           and not has_column_privilege('evergreen_app', 'public.users', 'email', 'UPDATE')
           and not has_column_privilege('evergreen_app', 'public.users', 'email_verified', 'UPDATE')
-          and not has_column_privilege('evergreen_app', 'public.users', 'image', 'UPDATE')
           and not has_column_privilege('evergreen_app', 'public.users', 'created_at', 'UPDATE')
-          and not has_column_privilege('evergreen_app', 'public.users', 'updated_at', 'UPDATE') as app_saved_listings_column_only,
+          and not has_column_privilege('evergreen_app', 'public.users', 'email', 'SELECT')
+          and not has_column_privilege('evergreen_app', 'public.users', 'email_verified', 'SELECT')
+          and not has_column_privilege('evergreen_app', 'public.users', 'created_at', 'SELECT')
+          and not has_column_privilege('evergreen_app', 'public.users', 'updated_at', 'SELECT') as app_user_column_privileges_scoped,
         not has_table_privilege('evergreen_app', 'public.users', 'INSERT')
           and not has_table_privilege('evergreen_app', 'public.users', 'UPDATE')
           and not has_table_privilege('evergreen_app', 'public.users', 'DELETE') as app_users_table_write_denied,
@@ -1106,7 +1116,7 @@ async function verifyLiveSchemaContract(): Promise<void> {
   const sharedTableGrants = grants.filter((row) => row.grantee === "evergreen_read" && row.scope === "TABLE");
   const sharedColumnGrants = grants.filter((row) => row.grantee === "evergreen_read" && row.scope === "COLUMN");
   const expectedSharedTableGrants = new Set(["listings:SELECT", "reviews:SELECT", "seller_profiles:SELECT"]);
-  const expectedSharedColumnGrants = new Set(["users.id:SELECT", "users.name:SELECT"]);
+  const expectedSharedColumnGrants = new Set(["users.id:SELECT", "users.name:SELECT", "users.image:SELECT"]);
   const sharedTableGrantsPassed = sharedTableGrants.length === expectedSharedTableGrants.size &&
     sharedTableGrants.every((row) => expectedSharedTableGrants.has(`${row.table_name}:${row.privilege_type}`));
   const sharedColumnGrantsPassed = sharedColumnGrants.length === expectedSharedColumnGrants.size &&
@@ -1237,7 +1247,7 @@ async function verifyLiveSchemaContract(): Promise<void> {
     app.app_seller_profile_update && app.app_listing_update && app.app_review_update &&
     app.app_seller_profile_delete && app.app_listing_delete && app.app_review_delete &&
     app.app_ownership_columns_immutable && app.app_saved_listings_select_update &&
-    app.app_saved_listings_column_only && app.app_users_table_write_denied;
+    app.app_user_column_privileges_scoped && app.app_users_table_write_denied;
   const runtimePrivilegesPassed = privileges.length === 1 && app.runtime_inherited_select &&
     app.runtime_users_email_denied && app.runtime_saved_listings_select_denied;
   const authPrivilegesPassed = privileges.length === 1 && app.auth_users_crud && app.auth_users_delete_denied &&
@@ -1252,14 +1262,14 @@ async function verifyLiveSchemaContract(): Promise<void> {
     ["required database role login/inheritance attributes", roleAttributesPassed],
     ["shared-read membership settings", membershipSettingsPassed],
     ["evergreen_read table grants", sharedTableGrantsPassed],
-    ["evergreen_read users.id/users.name-only column grants", sharedColumnGrantsPassed],
+    ["evergreen_read users.id/name/avatar-only column grants", sharedColumnGrantsPassed],
     ["absence of evergreen_runtime direct grants and intended inherited reads", runtimeDirectGrantsAbsent && runtimePrivilegesPassed],
     ["shared-read policies and absence of obsolete runtime policies", sharedPoliciesPassed && obsoleteRuntimePoliciesAbsent],
     ["RLS enabled on application and Better Auth tables", rlsPassed],
     ["owner-scoped CRUD policies", ownerPoliciesPassed],
     ["saved-list owner-only RLS policies", savedListingPoliciesPassed],
     ["listing deletion cleans saved-list references", savedCleanupTriggerPassed],
-    ["saved-list column grants and role isolation", app.app_saved_listings_column_only &&
+    ["saved-list/preferences/avatar column grants and role isolation", app.app_user_column_privileges_scoped &&
       app.app_users_table_write_denied && app.runtime_saved_listings_select_denied &&
       app.auth_saved_listings_access_denied && app.auth_users_table_privileges_denied],
     ["APP_DATABASE_URL write privileges and ownership-column restrictions", appPrivilegesPassed],
