@@ -22,7 +22,7 @@ Saved-homes migration 0019 has been applied to the configured Evergreen Estates 
 - Implemented saved homes in source: migration 0019 adds `users.saved_listings uuid[]` with a 100-item CHECK constraint, owner-only SELECT/UPDATE policies including a restrictive SELECT clamp, explicit Better Auth grants, GET/PATCH `/api/v1/users/me/saved-listings`, account-scoped client saved state that ignores stale responses across account switches, card/detail save controls, a functional Saved homes page, and a listing-delete cleanup trigger.
 - Added `npm run populate` and `npm run populate:dry-run`, pinning the `tsx@4.20.6` runner through `npx`.
 - Corrected population preflight so dry-run does not read the private seller credentials file. Credentials are read only on apply mode after the live preflight and explicit apply safety gate.
-- Made the unresolved migration 0011 checksum/provenance issue a hard apply blocker instead of a log-only warning.
+- Reviewed the residual 0011 checksum/provenance mismatch as an explicit exception after applying migration 0021 and validating the live role, grants, memberships, policies, RLS, and full population dry-run. The mismatch remains honestly documented; migration 0011 and its ledger row were not altered.
 - Corrected duplicate declarations found during source inspection in the population preflight script.
 - Updated README, agent context, architecture, and this handoff document so code presence, verified behavior, and deferred work are distinct.
 
@@ -35,9 +35,9 @@ The pinned runner is downloaded by `npx` on first use if it is not already cache
 ## Known blockers and limitations
 
 - The source changes have not been run through TypeScript, ESLint, a production build, automated tests, or browser-level end-to-end checks in this pass. Do not treat the branch as validated before those checks.
-- The population dry-run has not been executed. Run `npm run populate:dry-run` and inspect its report. It is intended to remain read-only and independent of the seller password file.
-- A forward-only `drizzle/0021_reconcile_shared_read_role.sql` migration and updated permission preflight have been added in source. The migration has not been applied to Supabase by this commit. Review it, verify `DIRECT_URL` targets the expected project, and use the normal Drizzle migrator; inspect the output closely because migration 0020 was applied through Supabase outside Drizzle and may be registered/replayed idempotently.
-- The exact historical SQL text that produced the `0011` checksum remains unavailable in Git and Supabase migration history. Migration 0021 does not recover that text or rewrite the old ledger row. Keep `HISTORICAL_0011_CHECKSUM_UNRESOLVED` true until the forward migration is applied, the full dry-run passes, and the residual provenance uncertainty is explicitly reviewed in a separate change. Never edit migration 0011 or its existing ledger row.
+- The population dry-run was executed against project `vcsotaclvwvbpqiljkuk` after the 0021 migration. All reported database/security checks passed. It planned 4 seller accounts, 4 seller profiles, 12 listings, 48 reviews, and 48 media objects; 14 existing objects were verified byte-for-byte and skipped, while 34 were missing. The run reported no conflicts and performed no Auth, database, or Storage writes.
+- The forward-only `drizzle/0021_reconcile_shared_read_role.sql` migration was applied through the normal Drizzle migrator to the configured project and is recorded in `drizzle.__drizzle_migrations`. The migration was adjusted to avoid `ALTER ROLE`, which Supabase's managed postgres connection rejects. Live catalog checks passed afterward.
+- The exact historical byte sequence that produced the `0011` checksum remains unavailable. The tracked file and its original available Git commit both hash to `5f654419803188a68ae069c3a3d873821cdae57c9a58c9ecd5b7bae44a8f9af4`, while the database ledger records `d23ee45dadfe79d8ff2346b80fc07872a1c7edebd4b88bc511a83a944ea6baed`. LF/CRLF and final-newline variants were checked and did not reproduce the recorded hash. This mismatch was explicitly reviewed and acknowledged as a residual historical uncertainty for fixture population because migration 0021 is applied and the live preflight contract passes. The code does not claim the hash is resolved; never edit migration 0011 or rewrite its existing ledger row.
 - A prior read-only audit saw one existing fixture Storage ETag mismatch. An ETag mismatch alone does not establish different file bytes. The population script downloads expected existing objects for byte comparison; resolve any actual conflict without overwriting it.
 - The known existing unrelated Storage objects must be preserved. Population must not delete unknown objects or non-fixture rows.
 - `seed/credentials` must remain local/ignored. Never commit synthetic passwords or env secrets.
@@ -63,9 +63,10 @@ The pinned runner is downloaded by `npx` on first use if it is not already cache
 - [ ] Delete a listing and confirm the trigger removes the deleted ID from saved arrays.
 - [ ] Check mobile widths and keyboard-only navigation, focus movement, Escape dismissal, validation states, and pending states.
 - [x] Apply migration 0019 and verify its column, CHECK constraint, owner policies, grants, and listing-delete cleanup trigger through catalog checks.
-- [ ] Run `npm run populate:dry-run` against the configured project; confirm the saved-list contract checks and read-only behavior.
-- [ ] Review and apply the forward-only 0021 migration through the normal Drizzle migrator; stop on unexpected migration output.
-- [ ] Rerun `npm run populate:dry-run`; all schema/security checks must pass and there must be no database or Storage conflicts. Keep write mode blocked until this review is complete and the residual 0011 provenance uncertainty has a separately approved disposition.
+- [x] Run `npm run populate:dry-run` against the configured project; confirm the saved-list contract checks and read-only behavior.
+- [x] Review and apply the forward-only 0021 migration through the normal Drizzle migrator; confirm the migration is recorded in the Drizzle ledger.
+- [x] Rerun `npm run populate:dry-run`; all reported schema/security checks passed and no database or Storage conflicts were reported. Explicitly document the unresolved 0011 checksum provenance mismatch without changing the SQL file or ledger.
+- [ ] Before population apply, confirm local `seed/credentials` is correct and private, then deliberately run the explicit `--apply --confirm-project vcsotaclvwvbpqiljkuk` command only when ready to create synthetic Auth users, database rows, and upload missing fixture media.
 
 ## Deferred until after Vite+ tomorrow
 
