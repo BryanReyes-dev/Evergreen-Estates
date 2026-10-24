@@ -220,3 +220,45 @@ agent-files/ARCHITECTURE.md remains the finalized architecture authority; this c
 - Keep the Supabase Storage bucket private.
 - Keep `src/lib/netlifyImageLoader.ts` and the local-development versus production image optimization behavior intact.
 - Use the installed Next.js 16 documentation before framework-sensitive changes.
+
+
+## Netlify demo readiness and mock account policy (2026-10-23)
+
+### Authentication gap to close before inviting real users
+
+Current `src/lib/auth.ts` only enables Better Auth email/password; it does not explicitly configure mandatory email verification, verification-email delivery, or password-reset delivery. Do not describe auth as production-ready until these are implemented and tested.
+
+For non-fixture users, configure mandatory Better Auth email verification with the installed version's supported API, a real transactional email provider, production callback URLs, rate limiting for sign-in/sign-up/resend/reset, secure session/cookie settings, trusted origins, and generic responses that limit account enumeration. Verify that unverified accounts cannot establish usable authenticated sessions or access protected features. Configure password reset delivery and test token expiry/single-use behavior.
+
+### Population and synthetic account exception
+
+The intended mock seller accounts must be usable for a demo without requiring a developer to click verification links for each one. This must be a narrow, script-only exception, not a global bypass:
+- Keep verification mandatory for normal public registration.
+- Change `scripts/populate.ts` from its current `auth.api.signUpEmail` provisioning path to a supported Better Auth script/admin provisioning path that marks only exact fixture identities from `src/db/seed/data.ts` verified. Follow the installed Better Auth version's documentation and preserve its normal password hashing/account model.
+- Require an exact allowlist of synthetic fixture emails/keys; fail closed for any other identity. Never mark an existing non-fixture account verified or expose a public verification-bypass endpoint/flag.
+- Continue to use ignored local `seed/credentials`, random unique passwords, explicit target project confirmation, dry-run, and no credential logging.
+- If demo accounts should be forced to rotate their initial password, add an explicit server-enforced first-login password-change state and block protected app routes until the password changes. Email reset and forced first-login change are different features; reset-email delivery requires mailbox access.
+- Add tests showing normal registration requires verification and the seed-only exception works only for enumerated fixture accounts. Current population script has not yet been updated for mandatory verification.
+
+### Required release gates before opening the Netlify demo to real users
+
+- [ ] Netlify production env is configured with the exact HTTPS `BETTER_AUTH_URL`/trusted origin, strong `BETTER_AUTH_SECRET`, least-privilege `AUTH_DATABASE_URL` and `APP_DATABASE_URL`, Supabase URL/server-only key, and email provider credentials. Keep `DIRECT_URL` migration-only.
+- [ ] Mandatory email verification and email password reset are implemented and tested end-to-end in the deployed environment, including invalid/expired tokens, resend throttling and abuse/rate limits.
+- [ ] Decide and implement forced password rotation for seeded demo accounts if required.
+- [ ] Test cross-account authorization for listings, reviews, seller profiles, saved homes, avatars and listing media; verify role grants/RLS and private bucket behavior.
+- [ ] Run automated auth/route/RLS/IDOR/media/population tests and full type/lint/build checks; do not rely on CI's build alone.
+- [ ] Manually verify desktop/tablet/mobile, keyboard navigation, error/loading/empty states, session expiry and sign-out.
+- [ ] Check Netlify preview versus production environment variables, callback URLs, cookies, secrets, logging, privacy/terms/contact and demo-data disclosure.
+- [ ] Record backup/restore and rollback plan; review all database and Storage objects before any destructive cleanup.
+- [ ] Rerun `npm run populate:dry-run`, inspect all planned writes and Storage matches, then use the explicit confirmed-project apply command only after approval.
+- [ ] Resolve critical/high security findings and document remaining known limitations before sharing publicly.
+
+### Current live state and requested clean mock install
+
+Read-only catalog review observed 2 users, 1 seller profile, 2 listings, 1 review, 2 Better Auth accounts, 6 sessions, 0 verification rows, and 20 objects in private `property-images`. The last dry-run passed all role/grant/RLS/trigger/Storage-policy checks, plans 4 fixture sellers, 12 listings, 48 reviews, and 48 media assets, and reports 14 existing expected objects byte-verified/skipped plus 34 missing. No write has been run by that dry-run.
+
+The 20 Storage objects include 18 under `listings/`, one under `avatars/`, and root `home-image.jpg`; classify them before deleting. The current populate script is additive, will not remove the two current users or unrelated objects, and does not currently provide a clean-reset mode. Do not add a broad destructive flag to the default population command.
+
+A clean fixture install is optional; Vite+ itself does not require wiping Supabase. If the user confirms cleanup, first produce an exact reviewed deletion manifest for the two current non-fixture identities and their dependent rows plus only known disposable media, preserve schema/migrations/roles/policies/triggers and unknown Storage objects, and verify a backup. Do not use `TRUNCATE CASCADE`, reset the schema, delete the migration ledger, or delete all Storage objects. Use a separate, explicit, development-only cleanup procedure and rerun the dry-run before population apply.
+
+Migration 0021 is applied and live security checks pass; the historical 0011 checksum mismatch remains acknowledged, not repaired. Never rewrite migration 0011 or its ledger row.
