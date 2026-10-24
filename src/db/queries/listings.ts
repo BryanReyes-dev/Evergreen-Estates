@@ -11,10 +11,16 @@ import {
 
 import type { Houselisting, filters as Filters } from "@/app/types";
 import { getDrizzleDb } from "@/db/drizzle/client";
-import { listings, reviews, users } from "@/db/schema";
+import { listings, reviews, sellerProfiles, users } from "@/db/schema";
+import {
+  MAX_LISTING_PRICE,
+  MIN_LISTING_PRICE,
+  SUPPORTED_LISTING_TAG_VALUES,
+} from "@/lib/listing-constants";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
+import { getUserAvatarUrl } from "@/db/supabase/storage-admin";
 
-const UUID_PATTERN =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 
 export async function getListingById(
@@ -31,6 +37,7 @@ export async function getListingById(
     const [listing] = await db
       .select({
         id: listings.id,
+        sellerUserId: listings.sellerUserId,
         media: listings.media,
         tags: listings.tags,
         title: listings.title,
@@ -43,7 +50,20 @@ export async function getListingById(
         createdAt: listings.createdAt,
       })
       .from(listings)
-      .where(eq(listings.id, id))
+      .innerJoin(
+        sellerProfiles,
+        and(
+          eq(listings.sellerUserId, sellerProfiles.userId),
+          eq(sellerProfiles.isPublished, true),
+        ),
+      )
+      .where(
+        and(
+          eq(listings.id, id),
+          gte(listings.price, String(MIN_LISTING_PRICE)),
+          lte(listings.price, String(MAX_LISTING_PRICE)),
+        ),
+      )
       .limit(1);
 
     if (!listing) {
@@ -63,6 +83,7 @@ export async function getListingById(
         createdAt: reviews.createdAt,
         authorId: users.id,
         authorName: users.name,
+        authorImage: users.image,
       })
       .from(reviews)
       .leftJoin(users, eq(reviews.userId, users.id))
@@ -73,8 +94,26 @@ export async function getListingById(
       listing.media,
     );
 
+    const mappedReviews = await Promise.all(reviewRows.map(async (review) => {
+      const authorId = review.authorId ?? review.userId;
+      return {
+        id: review.id,
+        listing_id: review.listingId,
+        user_id: review.userId,
+        rating: review.rating,
+        comment: review.comment,
+        created_at: review.createdAt,
+        user: {
+          id: authorId,
+          name: review.authorName ?? "Unknown user",
+          image: await getUserAvatarUrl({ userId: authorId, image: review.authorImage }),
+        },
+      };
+    }));
+
     return {
       id: listing.id,
+      sellerUserId: listing.sellerUserId,
       media,
       tags: listing.tags,
       title: listing.title,
@@ -85,18 +124,7 @@ export async function getListingById(
       address: listing.address,
       description: listing.description,
       created_at: listing.createdAt,
-      reviews: reviewRows.map((review) => ({
-        id: review.id,
-        listing_id: review.listingId,
-        user_id: review.userId,
-        rating: review.rating,
-        comment: review.comment,
-        created_at: review.createdAt,
-        user: {
-          id: review.authorId ?? review.userId,
-          name: review.authorName ?? "Unknown user",
-        },
-      })),
+      reviews: mappedReviews,
     };
   } catch (error) {
     console.error("Error fetching listing with Drizzle:", error);
@@ -109,7 +137,10 @@ export async function getFilteredListings(
   filters: Filters,
 ): Promise<Houselisting[]> {
   const db = getDrizzleDb();
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [
+    gte(listings.price, String(MIN_LISTING_PRICE)),
+    lte(listings.price, String(MAX_LISTING_PRICE)),
+  ];
 
   if (filters.price !== null) {
     const [minPrice, maxPrice] = filters.price;
@@ -135,13 +166,22 @@ export async function getFilteredListings(
   }
 
   if (filters.tags && filters.tags.length > 0) {
-    conditions.push(arrayContains(listings.tags, filters.tags));
+    const supportedTags = new Set(SUPPORTED_LISTING_TAG_VALUES);
+    const selectedTags = filters.tags
+      .map((tag) => tag.trim().toLowerCase())
+      .filter((tag) => supportedTags.has(tag));
+    // Never let an unsupported URL filter silently broaden the result set.
+    if (selectedTags.length !== filters.tags.length || selectedTags.length === 0) {
+      return [];
+    }
+    conditions.push(arrayContains(listings.tags, selectedTags));
   }
 
   try {
     const rows = await db
       .select({
         id: listings.id,
+        sellerUserId: listings.sellerUserId,
         media: listings.media,
         tags: listings.tags,
         title: listings.title,
@@ -154,11 +194,19 @@ export async function getFilteredListings(
         createdAt: listings.createdAt,
       })
       .from(listings)
+      .innerJoin(
+        sellerProfiles,
+        and(
+          eq(listings.sellerUserId, sellerProfiles.userId),
+          eq(sellerProfiles.isPublished, true),
+        ),
+      )
       .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     return await Promise.all(
       rows.map(async (row): Promise<Houselisting> => ({
         id: row.id,
+        sellerUserId: row.sellerUserId,
         media: await getMediaUrls(row.id, row.media),
         tags: row.tags,
         title: row.title,

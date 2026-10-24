@@ -17,10 +17,19 @@ const EXPECTED_PROJECT_REF = "vcsotaclvwvbpqiljkuk";
 const STORAGE_BUCKET = "property-images";
 const MAX_ACTIVE_LISTINGS_PER_SELLER = 3;
 
-// This historical checksum discrepancy remains unresolved. Population is
-// gated on the independently verified live schema contract below; the script
-// never rewrites migration files or the Drizzle migration ledger.
-const HISTORICAL_0011_CHECKSUM_UNRESOLVED = true;
+// The applied Drizzle ledger hash for migration 0011
+// (d23ee45dadfe79d8ff2346b80fc07872a1c7edebd4b88bc511a83a944ea6baed) does not
+// match the tracked SQL bytes (SHA-256
+// 5f654419803188a68ae069c3a3d873821cdae57c9a58c9ecd5b7bae44a8f9af4). The
+// original byte sequence was not recovered; LF/CRLF and final-newline variants
+// did not reproduce the ledger hash. Never edit migration 0011 or its ledger row.
+//
+// Explicit review disposition (2026-10-23): accept the residual provenance
+// discrepancy for this fixture workflow because migration 0021 has been applied
+// and live role/grant/membership/policy/RLS checks plus the complete dry-run pass.
+// This does NOT resolve or repair the historical checksum. Set this acknowledgement
+// to false to block apply mode again.
+const HISTORICAL_0011_DISCREPANCY_ACKNOWLEDGED = true;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -785,10 +794,16 @@ async function verifyLiveSchemaContract(): Promise<void> {
     app_listing_delete: boolean;
     app_review_delete: boolean;
     app_ownership_columns_immutable: boolean;
+    app_saved_listings_select_update: boolean;
+    app_user_column_privileges_scoped: boolean;
+    app_users_table_write_denied: boolean;
     runtime_inherited_select: boolean;
     runtime_users_email_denied: boolean;
+    runtime_saved_listings_select_denied: boolean;
     auth_users_crud: boolean;
     auth_users_delete_denied: boolean;
+    auth_saved_listings_access_denied: boolean;
+    auth_users_table_privileges_denied: boolean;
     auth_account_crud: boolean;
     auth_session_crud: boolean;
     auth_verification_crud: boolean;
@@ -806,6 +821,37 @@ async function verifyLiveSchemaContract(): Promise<void> {
   const allRlsTables = new Set(["listings", "reviews", "seller_profiles", "users", "account", "session", "verification"]);
   const normalizeExpression = (value: string | null): string =>
     (value ?? "").toLowerCase().replace(/[\s()"]+/g, "");
+
+  // Migration 0019 is required by the saved-home UI.
+  try {
+    const savedSchemaRows = await appDb.execute(sql`
+      select
+        exists (
+          select 1 from pg_attribute
+          where attrelid = 'public.users'::regclass
+            and attname = 'saved_listings'
+            and atttypid = 'uuid[]'::regtype
+            and attnotnull
+            and not attisdropped
+        ) as column_ready,
+        exists (
+          select 1 from pg_constraint
+          where conrelid = 'public.users'::regclass
+            and conname = 'users_saved_listings_max_100'
+            and contype = 'c'
+            and convalidated
+            and position('cardinality(saved_listings) <= 100' in pg_get_constraintdef(oid)) > 0
+        ) as cap_check_ready
+    `) as unknown as Array<{ column_ready: boolean; cap_check_ready: boolean }>;
+    if (savedSchemaRows[0]?.column_ready !== true || savedSchemaRows[0]?.cap_check_ready !== true) {
+      throw new PopulationError(
+        "The saved_listings column or its 100-item CHECK constraint is missing. Review and apply migration 0019 in the intended database before population.",
+      );
+    }
+  } catch (error) {
+    if (error instanceof PopulationError) throw error;
+    throw new PopulationError("Could not inspect saved-list schema; verify migration 0019 and database access.");
+  }
 
   let roles: RoleRow[];
   let memberships: MembershipRow[];
@@ -967,16 +1013,63 @@ async function verifyLiveSchemaContract(): Promise<void> {
           and not has_column_privilege('evergreen_app', 'public.reviews', 'id', 'UPDATE')
           and not has_column_privilege('evergreen_app', 'public.reviews', 'listing_id', 'UPDATE')
           and not has_column_privilege('evergreen_app', 'public.reviews', 'user_id', 'UPDATE') as app_ownership_columns_immutable,
+        has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'SELECT')
+          and has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'UPDATE') as app_saved_listings_select_update,
+        has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'SELECT')
+          and has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'INSERT')
+          and has_column_privilege('evergreen_app', 'public.users', 'preferences', 'SELECT')
+          and has_column_privilege('evergreen_app', 'public.users', 'preferences', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'preferences', 'INSERT')
+          and has_column_privilege('evergreen_app', 'public.users', 'image', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'image', 'INSERT')
+          and has_column_privilege('evergreen_app', 'public.users', 'updated_at', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'updated_at', 'INSERT')
+          and not has_column_privilege('evergreen_app', 'public.users', 'id', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'name', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'email', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'email_verified', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'created_at', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'email', 'SELECT')
+          and not has_column_privilege('evergreen_app', 'public.users', 'email_verified', 'SELECT')
+          and not has_column_privilege('evergreen_app', 'public.users', 'created_at', 'SELECT')
+          and not has_column_privilege('evergreen_app', 'public.users', 'updated_at', 'SELECT') as app_user_column_privileges_scoped,
+        not has_table_privilege('evergreen_app', 'public.users', 'INSERT')
+          and not has_table_privilege('evergreen_app', 'public.users', 'UPDATE')
+          and not has_table_privilege('evergreen_app', 'public.users', 'DELETE') as app_users_table_write_denied,
+        not has_column_privilege('evergreen_runtime', 'public.users', 'saved_listings', 'SELECT') as runtime_saved_listings_select_denied,
         has_table_privilege('evergreen_runtime', 'public.listings', 'SELECT')
           and has_table_privilege('evergreen_runtime', 'public.reviews', 'SELECT')
           and has_table_privilege('evergreen_runtime', 'public.seller_profiles', 'SELECT')
           and has_column_privilege('evergreen_runtime', 'public.users', 'id', 'SELECT')
           and has_column_privilege('evergreen_runtime', 'public.users', 'name', 'SELECT') as runtime_inherited_select,
         not has_column_privilege('evergreen_runtime', 'public.users', 'email', 'SELECT') as runtime_users_email_denied,
-        has_table_privilege('evergreen_auth', 'public.users', 'SELECT')
-          and has_table_privilege('evergreen_auth', 'public.users', 'INSERT')
-          and has_table_privilege('evergreen_auth', 'public.users', 'UPDATE') as auth_users_crud,
+        has_column_privilege('evergreen_auth', 'public.users', 'id', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'name', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email_verified', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'image', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'created_at', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'updated_at', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'id', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'name', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email_verified', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'image', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'created_at', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'updated_at', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'name', 'UPDATE')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email', 'UPDATE')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email_verified', 'UPDATE')
+          and has_column_privilege('evergreen_auth', 'public.users', 'image', 'UPDATE')
+          and has_column_privilege('evergreen_auth', 'public.users', 'updated_at', 'UPDATE') as auth_users_crud,
         not has_table_privilege('evergreen_auth', 'public.users', 'DELETE') as auth_users_delete_denied,
+        not has_column_privilege('evergreen_auth', 'public.users', 'saved_listings', 'SELECT')
+          and not has_column_privilege('evergreen_auth', 'public.users', 'saved_listings', 'INSERT')
+          and not has_column_privilege('evergreen_auth', 'public.users', 'saved_listings', 'UPDATE') as auth_saved_listings_access_denied,
+        not has_table_privilege('evergreen_auth', 'public.users', 'SELECT')
+          and not has_table_privilege('evergreen_auth', 'public.users', 'INSERT')
+          and not has_table_privilege('evergreen_auth', 'public.users', 'UPDATE') as auth_users_table_privileges_denied,
         has_table_privilege('evergreen_auth', 'public.account', 'SELECT')
           and has_table_privilege('evergreen_auth', 'public.account', 'INSERT')
           and has_table_privilege('evergreen_auth', 'public.account', 'UPDATE')
@@ -1031,7 +1124,7 @@ async function verifyLiveSchemaContract(): Promise<void> {
   const sharedTableGrants = grants.filter((row) => row.grantee === "evergreen_read" && row.scope === "TABLE");
   const sharedColumnGrants = grants.filter((row) => row.grantee === "evergreen_read" && row.scope === "COLUMN");
   const expectedSharedTableGrants = new Set(["listings:SELECT", "reviews:SELECT", "seller_profiles:SELECT"]);
-  const expectedSharedColumnGrants = new Set(["users.id:SELECT", "users.name:SELECT"]);
+  const expectedSharedColumnGrants = new Set(["users.id:SELECT", "users.name:SELECT", "users.image:SELECT"]);
   const sharedTableGrantsPassed = sharedTableGrants.length === expectedSharedTableGrants.size &&
     sharedTableGrants.every((row) => expectedSharedTableGrants.has(`${row.table_name}:${row.privilege_type}`));
   const sharedColumnGrantsPassed = sharedColumnGrants.length === expectedSharedColumnGrants.size &&
@@ -1083,6 +1176,34 @@ async function verifyLiveSchemaContract(): Promise<void> {
     return qualMatches && checkMatches;
   });
 
+  const expectedSavedListingPolicies = [
+    { name: "App can read own saved listings", command: "SELECT", permissive: "PERMISSIVE" },
+    { name: "App can only read own users row", command: "SELECT", permissive: "RESTRICTIVE" },
+    { name: "App can update own saved listings", command: "UPDATE", permissive: "PERMISSIVE" },
+  ] as const;
+  const actualSavedListingPolicies = policies.filter((row) =>
+    row.table_name === "users" &&
+    expectedSavedListingPolicies.some((expected) => expected.name === row.policy_name),
+  );
+  const savedOwnerExpression = normalizeExpression(
+    "id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid",
+  );
+  const savedListingPoliciesPassed =
+    actualSavedListingPolicies.length === expectedSavedListingPolicies.length &&
+    expectedSavedListingPolicies.every((expected) => {
+      const matches = actualSavedListingPolicies.filter((row) => row.policy_name === expected.name);
+      if (matches.length !== 1) return false;
+      const row = matches[0];
+      return row.command === expected.command &&
+        row.permissive === expected.permissive &&
+        row.roles.length === 1 &&
+        row.roles[0] === "evergreen_app" &&
+        normalizeExpression(row.qual) === savedOwnerExpression &&
+        (expected.command === "UPDATE"
+          ? normalizeExpression(row.with_check) === savedOwnerExpression
+          : row.with_check === null);
+    });
+
   const authExpected = [
     ["users", "Evergreen auth can manage users"],
     ["account", "Evergreen auth can manage accounts"],
@@ -1100,6 +1221,21 @@ async function verifyLiveSchemaContract(): Promise<void> {
   const rlsPassed = rls.length === allRlsTables.size && [...allRlsTables].every((table) =>
     rls.some((row) => row.table_name === table && row.enabled),
   );
+  const savedCleanupTriggers = triggers.filter(
+    (row) => row.trigger_name === "listings_remove_deleted_ids_from_saved_listings",
+  );
+  const savedCleanupTrigger = savedCleanupTriggers[0];
+  const normalizedSavedCleanupTrigger = savedCleanupTrigger?.definition.toLowerCase().replace(/\s+/g, " ") ?? "";
+  const normalizedSavedCleanupFunction = savedCleanupTrigger?.function_definition.toLowerCase().replace(/\s+/g, " ") ?? "";
+  const savedCleanupTriggerPassed =
+    savedCleanupTriggers.length === 1 &&
+    savedCleanupTrigger.enabled === "O" &&
+    savedCleanupTrigger.security_definer &&
+    Boolean(savedCleanupTrigger.function_config?.some((value) => value.toLowerCase().replace(/\s+/g, "") === "search_path=pg_catalog,public")) &&
+    normalizedSavedCleanupTrigger.includes("after delete on public.listings") &&
+    normalizedSavedCleanupFunction.includes("array_remove(saved_listings, old.id)") &&
+    normalizedSavedCleanupFunction.includes("saved_listings @> array[old.id]::uuid[]");
+
   const capTriggers = triggers.filter((row) => row.trigger_name === "listings_enforce_max_three_per_seller");
   const capTrigger = capTriggers[0];
   const normalizedTrigger = capTrigger?.definition.toLowerCase().replace(/\s+/g, " ") ?? "";
@@ -1117,9 +1253,13 @@ async function verifyLiveSchemaContract(): Promise<void> {
   const appPrivilegesPassed = privileges.length === 1 && app.app_role === "evergreen_app" && app.app_select &&
     app.app_seller_profile_insert && app.app_listing_insert && app.app_review_insert &&
     app.app_seller_profile_update && app.app_listing_update && app.app_review_update &&
-    app.app_seller_profile_delete && app.app_listing_delete && app.app_review_delete && app.app_ownership_columns_immutable;
-  const runtimePrivilegesPassed = privileges.length === 1 && app.runtime_inherited_select && app.runtime_users_email_denied;
+    app.app_seller_profile_delete && app.app_listing_delete && app.app_review_delete &&
+    app.app_ownership_columns_immutable && app.app_saved_listings_select_update &&
+    app.app_user_column_privileges_scoped && app.app_users_table_write_denied;
+  const runtimePrivilegesPassed = privileges.length === 1 && app.runtime_inherited_select &&
+    app.runtime_users_email_denied && app.runtime_saved_listings_select_denied;
   const authPrivilegesPassed = privileges.length === 1 && app.auth_users_crud && app.auth_users_delete_denied &&
+    app.auth_saved_listings_access_denied && app.auth_users_table_privileges_denied &&
     app.auth_account_crud && app.auth_session_crud && app.auth_verification_crud;
   const authConnection = authConnections[0];
   const authConnectionPassed = authConnections.length === 1 && authConnection.role_name === "evergreen_auth" &&
@@ -1130,11 +1270,16 @@ async function verifyLiveSchemaContract(): Promise<void> {
     ["required database role login/inheritance attributes", roleAttributesPassed],
     ["shared-read membership settings", membershipSettingsPassed],
     ["evergreen_read table grants", sharedTableGrantsPassed],
-    ["evergreen_read users.id/users.name-only column grants", sharedColumnGrantsPassed],
+    ["evergreen_read users.id/name/avatar-only column grants", sharedColumnGrantsPassed],
     ["absence of evergreen_runtime direct grants and intended inherited reads", runtimeDirectGrantsAbsent && runtimePrivilegesPassed],
     ["shared-read policies and absence of obsolete runtime policies", sharedPoliciesPassed && obsoleteRuntimePoliciesAbsent],
     ["RLS enabled on application and Better Auth tables", rlsPassed],
     ["owner-scoped CRUD policies", ownerPoliciesPassed],
+    ["saved-list owner-only RLS policies", savedListingPoliciesPassed],
+    ["listing deletion cleans saved-list references", savedCleanupTriggerPassed],
+    ["saved-list/preferences/avatar column grants and role isolation", app.app_user_column_privileges_scoped &&
+      app.app_users_table_write_denied && app.runtime_saved_listings_select_denied &&
+      app.auth_saved_listings_access_denied && app.auth_users_table_privileges_denied],
     ["APP_DATABASE_URL write privileges and ownership-column restrictions", appPrivilegesPassed],
     ["AUTH_DATABASE_URL role, privileges, and policies", authConnectionPassed && authPrivilegesPassed && authPoliciesPassed],
     ["concurrency-safe three-listing trigger", capTriggerPassed],
@@ -1559,8 +1704,8 @@ function printPlan(input: {
   if (storagePlan.extraObjects > 0) {
     console.log(`Storage: ${storagePlan.extraObjects} additional objects in fixture listing folders will be preserved untouched`);
   }
-  if (HISTORICAL_0011_CHECKSUM_UNRESOLVED) {
-    console.log("Migration provenance: the 0011 checksum discrepancy remains unresolved; live schema checks passed independently, and no checksum or ledger repair was attempted.");
+  if (HISTORICAL_0011_DISCREPANCY_ACKNOWLEDGED) {
+    console.log("Migration provenance: the 0011 checksum mismatch remains unresolved but explicitly acknowledged; migration 0021 is applied, live schema/security checks passed, and no checksum or ledger repair was attempted.");
   }
   if (databasePlan.conflicts.length > 0 || storagePlan.conflicts.length > 0) {
     printConflicts([...databasePlan.conflicts, ...storagePlan.conflicts]);
@@ -1899,8 +2044,6 @@ async function run(): Promise<void> {
   }
 
   const sellerPlans = await inspectSellerAccounts();
-  validateAuthProvisioningConfig(sellerPlans, options.mode);
-  const passwords = await readSellerCredentials(sellerPlans);
   const databasePlan = await inspectApplicationRecords(sellerPlans);
   const storagePlan = await inspectStorage(mediaManifest);
 
@@ -1915,10 +2058,21 @@ async function run(): Promise<void> {
     return;
   }
 
+  // The exact historical 0011 bytes remain unknown. Do not claim the hash was
+  // resolved or update the ledger. This explicit acknowledgement allows writes
+  // only after migration 0021 is applied and the live preflight passes.
+  if (!HISTORICAL_0011_DISCREPANCY_ACKNOWLEDGED) {
+    throw new PopulationError(
+      "Apply is blocked because the 0011 checksum discrepancy has not been explicitly acknowledged. Dry-run remains available.",
+    );
+  }
+
   if (options.confirmedProject !== EXPECTED_PROJECT_REF) {
     throw new PopulationError("Write mode lost its explicit target project confirmation.");
   }
 
+  validateAuthProvisioningConfig(sellerPlans, options.mode);
+  const passwords = await readSellerCredentials(sellerPlans);
   const userIds = await provisionSellerAccounts(sellerPlans, passwords);
   await createMissingProfiles(sellerPlans, userIds);
   await uploadMissingMedia(storagePlan);

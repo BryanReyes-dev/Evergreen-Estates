@@ -12,7 +12,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ListingMediaCarouselProps } from "@/app/types";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export const ListingMediaCarousel = ({
   media,
@@ -28,10 +28,10 @@ export const ListingMediaCarousel = ({
   const indicatorSize = uiSize - 7;
   const arrowSize = uiSize + 9;
 
-  const onSelect = () => {
+  const onSelect = useCallback(() => {
     if (!emblaApi) return;
     setSelectedIndex(emblaApi.selectedScrollSnap());
-  };
+  }, [emblaApi]);
 
   useEffect(() => {
     const selectedButton = paginationRefs.current[selectedIndex];
@@ -54,13 +54,12 @@ export const ListingMediaCarousel = ({
   useEffect(() => {
     if (!emblaApi) return;
 
-    onSelect();
     emblaApi.on("select", onSelect);
 
     return () => {
       emblaApi.off("select", onSelect);
     };
-  }, [emblaApi]);
+  }, [emblaApi, onSelect]);
 
   if (media.length === 0) return null;
 

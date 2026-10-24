@@ -1,21 +1,28 @@
 import { getFilteredListings } from "@/db/queries/listings";
-import { filters, SearchParams } from "@/app/types";
+import type { SearchParams } from "@/app/types";
+import type { DefaultListingSort, ListingViewMode } from "@/lib/account-preferences";
 import Listing from "./Listing";
 
-const DEFAULT_PRICE_RANGE: [number, number] = [10_000, 3_000_000];
+import { MAX_LISTING_PRICE, MIN_LISTING_PRICE } from "@/lib/listing-constants";
 
 export const ResultsDisplay = async ({
   searchParams,
+  defaultSort = "newest",
+  viewMode = "grid",
 }: {
   searchParams: SearchParams;
+  defaultSort?: DefaultListingSort;
+  viewMode?: ListingViewMode;
 }) => {
   const price = searchParams.price?.split("-").map(Number);
   const validPrice =
-    price?.length === 2 && price.every(Number.isFinite)
+    price?.length === 2 &&
+    price.every(Number.isFinite) &&
+    price[0] <= price[1]
       ? (price as [number, number])
-      : DEFAULT_PRICE_RANGE;
+      : [MIN_LISTING_PRICE, MAX_LISTING_PRICE] as [number, number];
 
-  const filters: filters = {
+  const filters = {
     price: validPrice,
     tags: Array.isArray(searchParams.tag)
       ? searchParams.tag
@@ -26,14 +33,32 @@ export const ResultsDisplay = async ({
   };
 
   const listings = await getFilteredListings(filters);
+  const rawSort = searchParams.sort;
+  const sort: DefaultListingSort =
+    rawSort === "price-low" || rawSort === "price-high" || rawSort === "newest"
+      ? rawSort
+      : defaultSort;
+  const sortedListings = [...listings].sort((left, right) => {
+    if (sort === "price-low") return left.price - right.price;
+    if (sort === "price-high") return right.price - left.price;
+    return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+  });
 
-  if (listings.length === 0) {
-    return <div>No listings found.</div>;
+  if (sortedListings.length === 0) {
+    return (
+      <div className="mx-auto w-full max-w-3xl px-4 py-8 text-sm text-white/65" role="status">
+        No homes match these filters. Try a wider price range or clear one of the selected tags.
+      </div>
+    );
   }
 
+  const containerClass = viewMode === "list"
+    ? "mx-auto grid w-full max-w-3xl grid-cols-1 gap-4 p-4"
+    : "grid w-full grid-cols-1 gap-4 p-4 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+
   return (
-    <div className="grid justify-center gap-4 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-      {listings.map((listing) => (
+    <div className={containerClass} aria-label="Property results">
+      {sortedListings.map((listing) => (
         <Listing key={listing.id} listing={listing} />
       ))}
     </div>

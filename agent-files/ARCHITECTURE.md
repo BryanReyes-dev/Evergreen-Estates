@@ -13,7 +13,7 @@ This is the authoritative record of finalized Evergreen Estates architecture. Pr
 
 Evergreen Estates is a real-estate marketplace built with Next.js 16.x App Router, React, TypeScript, Supabase/PostgreSQL and Storage, Drizzle ORM, Better Auth, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
-Implemented source includes public property browsing, listing details, URL-driven search/filtering, listing media and review display, Better Auth email/password authentication, and Route Handlers for listing CRUD, seller-profile CRUD, review read/CRUD, and listing-media upload and deletion operations. The handlers are present in source, but their full behavior and deployment have not been verified here. User-facing mutation flows and the database population operation are not established as complete. Before these documentation edits, `git status` showed no existing changes.
+Implemented source includes public property browsing, listing details, URL-driven search/filtering, Better Auth email/password auth, account settings for name/avatar/password and browsing preferences, seller-profile editing and published storefronts, owner-scoped listing CRUD, review CRUD, listing media management, and a guarded population script. Account avatars use initials with stable per-user color fallbacks or uploaded images, and are rendered in navigation, published seller storefronts, and reviews. ESLint, TypeScript, and the production build passed in GitHub Actions run 21 on 2026-10-22. Migration 0020 has not been applied or live-verified, and browser/end-to-end verification at target widths remains outstanding.
 
 ## 2. Application Structure and Boundaries
 
@@ -26,7 +26,7 @@ src/
 
 agent-files/      coding-agent guidance, context, and architecture authority
 drizzle/          SQL migrations and Drizzle Kit metadata
-scripts/          not present; developer-run population entry point is planned
+scripts/          developer-run population/preflight scripts
 seed/
 ├── images/       downloaded source media
 └── snapshots/    immutable historical database snapshot
@@ -63,9 +63,18 @@ src/db/schema.ts declares evergreenReadRole via pgRole and targets it from the f
 ### `users`
 
 - Canonical Better Auth identity table; there is no separate Better Auth user table.
-- UUID `id` primary key; `name`, unique `email`, `email_verified`, nullable `image`, `created_at`, and `updated_at`.
+- UUID `id` primary key; `name`, unique `email`, `email_verified`, nullable `image`, `saved_listings uuid[]`, `preferences jsonb`, `created_at`, and `updated_at`. Saved listings default to an empty array and have a database CHECK constraint limiting them to 100 IDs. Migration `0020_user_account_preferences.sql` adds validated `defaultSort` (`newest`, `price-low`, `price-high`) and `viewMode` (`grid`, `list`) preferences; the migration is in source and its live application status is not verified.
 - `users.auth_user_id` was removed by migration `0009_remove_redundant_schema_fields.sql`. Do not refer to it as a current column or reintroduce it.
-- Runtime column grants restrict user identity reads; the application should return only public fields needed by the caller.
+- Runtime column grants restrict user identity reads; after migration 0020, the public shared-read role may read only `id`, `name`, and `image`. Account `preferences` remain available only through the owner-scoped `evergreen_app` path.
+
+### Saved listings
+
+- Migration `0019_saved_listings_on_users.sql` adds `public.users.saved_listings uuid[] NOT NULL DEFAULT ARRAY[]::uuid[]` and the `users_saved_listings_max_100` CHECK constraint.
+- GET/PATCH `/api/v1/users/me/saved-listings` derives identity from the verified Better Auth session; neither URL nor request body accepts a user ID. PATCH changes one listing ID at a time.
+- `evergreen_app` has column-level SELECT/UPDATE on `saved_listings`, a permissive owner-only SELECT policy, a restrictive owner-only SELECT policy (to clamp inherited `evergreen_read` visibility), and an owner-scoped UPDATE policy. `evergreen_runtime` and `evergreen_auth` cannot SELECT `saved_listings`.
+- Better Auth uses a dedicated Drizzle user projection that omits `saved_listings`. Migration 0019 replaces broad table-level user grants with explicit column grants for supported auth fields.
+- A fixed-search-path SECURITY DEFINER trigger removes deleted listing IDs from saved arrays. Direct execution of the trigger function is revoked from PUBLIC.
+- Migration 0019 has been applied to the configured Supabase project and registered in the Drizzle migration ledger. Its column, CHECK constraint, owner policies, grants, and trigger were checked via catalog queries; browser-level behavior remains unverified.
 
 ### `seller_profiles`
 
@@ -107,7 +116,7 @@ The shared-read policy contract is:
 - listings: evergreen_read can SELECT all listing rows.
 - reviews: evergreen_read can SELECT review rows.
 - seller_profiles: evergreen_read can SELECT published profiles only (is_published = true).
-- users: the shared SELECT policy permits visible rows, but SQL column grants expose only id and name; email is not accessible through the shared permissions.
+- users: the shared SELECT policy permits visible rows. Migration 0011 grants shared `id` and `name`; migration 0020 additionally grants shared `image` for public avatars. `email` and private `preferences` are not exposed through shared permissions.
 
 Implemented listing Route Handlers:
 
@@ -135,7 +144,7 @@ Filtering remains URL-driven: controls update search parameters, navigation rend
 
 ## 6. Application Write Architecture — Partially Implemented
 
-The evergreen_app login originates in migration 0010 and was added to evergreen_read in migration 0011. The source includes APP_DATABASE_URL support, a dedicated app Drizzle client, owner-aware write policies, constrained grants, and migrations 0013–0018. It also contains authenticated listing create/update/delete, seller-profile CRUD, review read/create/update/delete, and media upload-url/completion/file-delete handlers. These source files do not prove that every route has been tested or deployed; the corresponding UI mutation flows are not established as complete.
+The evergreen_app login originates in migration 0010 and was added to evergreen_read in migration 0011. The source includes APP_DATABASE_URL support, a dedicated app Drizzle client, owner-aware write policies, constrained grants, and migrations 0013–0018. It also contains authenticated listing create/update/delete, seller-profile CRUD, review read/create/update/delete, and media upload-url/completion/file-delete handlers. These source files do not prove that every route has been tested or deployed; the corresponding UI flows still need static and manual verification.
 
 ### Route Handlers present in source
 
@@ -206,26 +215,28 @@ Historical records and intended mock fixtures have different purposes and must r
 - `src/db/seed/data.ts` defines editable fixture data; it does not connect to or modify the database and does not provision authentication accounts.
 - `tests/data.test.ts` validates the fixture data and referenced local listing media.
 - The intended dataset currently contains four synthetic sellers/profiles, 12 listings, and 48 reviews. Each seller owns exactly three listings, and every seller reviews every listing, including their own; self-reviews are intentional for this mock dataset.
-- The first six listings preserve their historical IDs, core details, and media filenames. Six additional listings have stable fixture IDs and currently empty media arrays.
-- Review authors use stable seller keys, which a future population operation must resolve to the actual Better Auth user UUIDs.
+- The first six listings preserve their historical IDs, core details, and media filenames. Six additional listings have stable fixture IDs. All 12 listings currently reference four media files each: two JPGs, one GIF, and one MP4.
+- Review authors use stable seller keys, which scripts/populate.ts resolves to actual Better Auth user UUIDs.
 - The old reviewer identities/reviews remain in the archive and are not duplicated in the new fixture dataset.
 - Fixture data contains no passwords, password hashes, sessions, database URLs, or secrets. Do not add them.
 
 The last reported checks after fixture changes were `npx tsc --noEmit`, `npx vitest run tests/data.test.ts`, and `npm run test:run`; the fixture suite passed 9 tests and the full suite passed 11 tests across 2 files. These are historical, user-reported results, not a claim that code was rerun during this documentation change.
 
-### Planned population entry point
+### Developer-run population entry point — implemented, not yet verified
 
-Implement `scripts/populate.ts` only after CRUD, ownership enforcement, and relevant schema decisions are stable. Avoid a redundant `src/db/seed/populate.ts`; `data.ts` defines what should exist and `scripts/populate.ts` defines how to populate it.
+scripts/populate.ts defines a default read-only preflight and a separately gated apply mode. It checks the expected Supabase project, role attributes and memberships, relevant privileges, RLS policies, listing-cap trigger, fixture relationships, seller identity conflicts, existing rows, private Storage settings, local path safety, media sizes, and existing fixture media bytes.
 
-The future population operation must:
+The script can:
+- Provision fixture seller accounts through Better Auth without committing passwords.
+- Resolve canonical user UUIDs, then create matching seller profiles, listings, and reviews using the application writer's owner-scoped transaction helper.
+- Upload missing fixture media with upsert disabled, compare existing objects byte-for-byte, and preserve unknown/unrelated objects.
+- Be re-run after a partial failure without intentionally deleting or overwriting unrelated records.
 
-- Provision the four login-capable seed accounts through a supported server-side Better Auth flow without committing reusable credentials.
-- Resolve actual user UUIDs and create matching seller profiles.
-- Insert or safely reconcile listings and reviews while resolving fixture keys/foreign keys.
-- Upload bundled files to the private `property-images` bucket using `listings/<listing-id>/<filename>` paths; fixture media filenames must match object names.
-- Be safe to repeat without duplicating fixture-managed records and report inserts, updates, skips, and validation failures.
-- Avoid deleting unrelated data by default, include explicit safeguards against targeting production, and never run at app startup or through a public route.
-- Preserve the existing private-bucket and signed-URL design.
+Execution is exposed as npm run populate (dry-run by default) and npm run populate:dry-run. The pinned tsx runner is obtained through npx when needed. Dry-run must not require the private seed/credentials file; account passwords are loaded only for apply mode if new fixture accounts are required.
+
+**Write mode is currently blocked** by the recorded checksum/provenance discrepancy for 0011_shared_read_role.sql. Read-only Git history shows the current file is identical to its only recorded version, but its LF and CRLF SHA-256 hashes both differ from the live ledger value. The ledger does not store the applied SQL body, so exact migration provenance remains unverified. Reconcile the discrepancy before removing that guard. Do not modify old migration files or the Drizzle migration ledger merely to make the checksum match. Do not apply population during a dry-run review, and do not run it at app startup or through a public route.
+
+Existing fixture Storage ETags are not treated as proof of byte identity; expected existing objects are downloaded and compared with local fixture bytes. Unrelated Storage objects must remain untouched.
 
 ## 8. Schema Changes and Ownership Readiness
 
@@ -240,7 +251,7 @@ In particular:
 
 ## 9. Supabase Storage and Media Model
 
-The listing `media` array stores filenames, not public URLs. Runtime media uses `src/db/supabase/util/GetMediaUrls.ts` and the server-only Storage admin helper. It preserves the database filename order, filters out filenames that do not exist in Storage, and generates signed URLs. The bucket remains private; migration 0018 removes the prior public-read policy. The repository does not establish whether that migration has been applied to production.
+The listing `media` array stores filenames, not public URLs. Runtime media uses `src/db/supabase/util/GetMediaUrls.ts` and the server-only Storage admin helper. It preserves database filename order, filters out missing filenames, and generates signed URLs. User-uploaded avatars are stored under owner-scoped `avatars/{userId}/{uuid}.{ext}` paths in the same private `property-images` bucket and are resolved to signed URLs; users without an image render their name initial with a stable generated color. Migration 0018 removes the prior public-read policy, but the repository does not establish whether it has been applied to production. Migration 0020 adds avatar column permissions and private account preferences, and is not verified as applied.
 
 Source Route Handlers provide POST endpoints for requesting an upload URL and completing/registering a listing-media upload, plus a DELETE endpoint for a listing media file. Their presence does not establish that the full upload lifecycle has been verified or deployed.
 
@@ -278,17 +289,13 @@ For Supabase shared transaction-pooler connections, use the Dashboard's copied h
 
 ## 11. Verification and Work Order
 
-Historical checks after authentication and fixture setup included npx tsc --noEmit, npm run build, npx drizzle-kit check, npm run test:run, and npx drizzle-kit migrate. The fixture suite was previously reported as passing 9 tests and the full suite 11 tests across 2 files. Those results do not verify the current CRUD/media handlers, the app writer connection, or population.
+The saved-home UI/API are present and migration 0019 is applied and registered in the Drizzle migration ledger. The column, CHECK constraint, owner policies, role grants, and listing-delete cleanup trigger were checked via read-only catalog queries. TypeScript, ESLint, production build, automated tests, and browser checks have not been run. No fixture population or Storage writes were performed.
 
-Current follow-up work (source and documentation audit, 2026-10-20):
-
-1. Review and add targeted coverage for the current Route Handlers, especially authentication, input validation, ownership boundaries, the media upload lifecycle, and the three-listing cap. Existing tests cover fixture validation and runtime database permissions, not those route behaviors.
-2. Confirm required migrations and role settings in the target database before relying on or deploying application writes.
-3. Build user-facing mutation flows after the corresponding API behavior is verified.
-4. Implement the planned developer-run population operation after write paths and ownership rules are stable. Protect production and avoid deleting unrelated rows.
-5. Re-run type-checks, relevant tests, build, migration checks, and permission checks after implementation changes. Earlier passing results are historical until rerun.
-
-Do not let work on Vite or unrelated tooling distract from this API/security milestone. The current test runner is Vitest (npm run test:run). Consult installed Next.js 16 documentation under node_modules/next/dist/docs/ before framework-sensitive changes.
+1. Run `npm run populate:dry-run` against the configured project; confirm the saved-list contract checks pass and no database, auth, or Storage writes occur.
+2. Reconcile the historical migration 0011 provenance discrepancy before population apply. Git history does not contain the version that produced the live checksum; do not edit migration 0011 or rewrite its existing ledger entry. Also byte-compare the previously flagged Storage object before considering any overwrite.
+3. Manually verify card/detail save and unsave, persistence after refresh and re-authentication, anonymous/empty/populated/error Saved homes states, the 100-item cap, and deleted-listing cleanup.
+4. Keep Vite+ as the last implementation-stage change; automated tests and the final security audit remain deferred until after Vite+ as requested. Preserve Next.js as the runtime unless a separate framework conversion is approved.
+5. After the Vite+ work, add/expand automated tests and conduct the final security audit.
 
 ## 12. Architecture Overview
 
@@ -317,3 +324,51 @@ Next.js App Router
 DIRECT_URL → Drizzle Kit migrations only
 ```
 
+
+## Demo readiness, email verification, and mock-account policy (2026-10-23)
+
+### Authentication policy
+
+The current `src/lib/auth.ts` enables Better Auth email/password but does not yet explicitly require email verification or configure verification and password-reset delivery. Treat this as an implementation gap, not a production-ready authentication policy.
+
+Before inviting real people to the Netlify demo:
+- Configure Better Auth's supported `emailAndPassword.requireEmailVerification` and `sendVerificationEmail` flow using the installed Better Auth version's documentation.
+- Configure `sendResetPassword` and verify reset tokens, expiry, single-use behavior, and user-facing responses.
+- Configure a real transactional email provider through server-only environment variables; verify the sender/domain and production callback URL.
+- Enforce that an unverified user cannot establish an authenticated session / access protected app features. Test sign-up, verification link, expired/invalid link, sign-in before verification, resend throttling, and verified sign-in.
+- Configure and test rate limiting for sign-in, sign-up, verification resend, and password reset; review session lifetime, cookie security, trusted origins, HTTPS, generic responses against account enumeration, and production secrets.
+- Never expose auth/database/storage secrets to client bundles or commit them.
+
+### Synthetic mock-account exception
+
+Mock accounts are developer-created fixtures, not public sign-ups. They need deterministic access for reviewers without relying on inboxes controlled by the developer. Keep this exception inside the local, manually invoked population script and its explicit fixture-account contract; do not weaken the global Better Auth policy.
+
+Preferred design to implement/review:
+- Keep `requireEmailVerification: true` for ordinary registrations.
+- Provision only the exact, enumerated synthetic fixture emails in `src/db/seed/data.ts` through a dedicated script-only Better Auth admin/create-user API (or a narrowly scoped script-only operation supported by the installed version) that explicitly sets the fixture user's email-verified state. Do not use ordinary public sign-up as a hidden bypass and do not add a public endpoint, query parameter, environment flag exposed to the client, or email-domain wildcard to skip verification.
+- Use the normal Better Auth password hashing/session/account model; do not insert plaintext passwords or hand-built password hashes directly into the database.
+- Fixture passwords must be unique random local secrets from ignored `seed/credentials`; do not commit or log them. Make demo credentials available only through the intended private/demo instructions, and rotate them if exposed.
+- Keep a strict allowlist matching the exact fixture emails/keys; abort if a fixture identity is not in that allowlist or already belongs to a non-fixture user. Never mark arbitrary existing users as verified.
+- Add an automated test proving ordinary sign-up cannot bypass verification and that only the script's exact fixture path may mark fixture identities verified. Re-run the population dry-run after implementing this; current `scripts/populate.ts` calls `auth.api.signUpEmail` and must be deliberately updated/tested for the verification-required configuration.
+- Forced password reset: if the intent is for mock accounts to require changing their initial password on first use, a verified flag alone is not enough. Add an explicit server-enforced `mustResetPassword`/credential-rotation state for fixture users (or another supported, secure equivalent), gate protected routes until completion, provide a reset/change flow, and clear the flag only after the password has actually changed. Do not confuse password-reset email delivery with forced reset: a reset email requires control of the mailbox, while mock-account first-login rotation can use an authenticated change-password flow. Do not ship a shared mock password for accounts intended for real users.
+
+### Netlify public-demo release gate
+
+A successful build and passing population preflight are not a release sign-off. Before opening the deployed Netlify URL to real visitors:
+- [ ] Set production-only environment variables in Netlify: `BETTER_AUTH_URL`, strong `BETTER_AUTH_SECRET`, the least-privilege `AUTH_DATABASE_URL` and `APP_DATABASE_URL`, Supabase URL and server-only secret key, and transactional email provider credentials. Keep `DIRECT_URL` migration-only; do not make it available to runtime handlers if unnecessary.
+- [ ] Set Better Auth's production URL/trusted origins to the exact HTTPS Netlify domain(s); verify callback URLs and secure cookies on the deployed domain and preview deployments.
+- [ ] Implement and end-to-end test mandatory email verification for all non-fixture registrations and password-reset emails; test invalid/expired tokens and abuse/rate limiting.
+- [ ] Implement forced first-login password change for seeded demo accounts if that remains a requirement; verify protected routes are blocked until it succeeds.
+- [ ] Keep mock accounts synthetic, visibly documented as demo accounts, and separate from real-user registration. Never reuse real personal email addresses or real passwords in fixtures.
+- [ ] Confirm RLS, role grants, private Storage, signed URL expiry, upload MIME/size/path checks, and authorization for every read/write route. Test cross-account listing/review/profile/saved-home/media access.
+- [ ] Add and run tests for auth/verification/reset, ownership/IDOR, route validation, rate limits, media lifecycle, RLS/role assumptions, population safety, and fixture-only auth bypass.
+- [ ] Manually test all main flows at mobile/tablet/desktop widths and keyboard-only; verify loading, error, empty, and expired-session states.
+- [ ] Verify backup/restore and incident/rollback plan, privacy/terms/contact information, logging that excludes secrets/passwords/tokens, and appropriate demo data disclosure.
+- [ ] Review current database and Storage contents before any cleanup; run the population script in dry-run mode after all changes, then review the exact write plan.
+- [ ] Keep a written residual-risk list. Do not call the app production-ready until all critical/high findings are resolved.
+
+### Data reset and fixture population
+
+Do not drop/recreate the database, delete the Drizzle migration ledger, or reset role/policy objects to get a clean mock-data install. The current seed operation is additive and intentionally preserves unrelated records and Storage objects. A clean fixture reset must be a separately reviewed, explicit development-only cleanup with a backup and an exact allowlist of disposable user IDs, fixture-owned database rows, and fixture-owned Storage paths. Preserve migrations, schema, grants, RLS, triggers, and unrelated objects. The currently observed non-fixture Storage objects (including root `home-image.jpg`) must be classified before deleting anything. Never delete all users by broad predicate without tracing account/session/profile/listing/review foreign-key effects and confirming the target environment.
+
+Migration provenance note: migration `0021_reconcile_shared_read_role.sql` reconciles the live shared-read security contract forward. The historical `0011` checksum discrepancy remains acknowledged; do not edit the historical SQL or ledger row to silence it.

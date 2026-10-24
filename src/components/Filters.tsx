@@ -2,36 +2,57 @@
 import { useDebouncedCallback } from 'use-debounce';
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox"
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { Button, buttonVariants } from './ui/button';
+import { Button } from './ui/button';
+import { MAX_LISTING_PRICE, MIN_LISTING_PRICE, SUPPORTED_LISTING_TAGS } from "@/lib/listing-constants";
 
 
 
 
 
 
-const tags = [
-"Swimming Pool",
-"Garage",
-"Basement",
-"Attic",
-"Fireplace",
-"Garden",
-"Balcony",
-"Patio",
-"Air Conditioning",
-"Heating System",
-"Hardwood Floors",
-"Carpeted Floors"]
+type SearchInputProps = {
+    currentSearchQuery: string | null;
+    onSearch: (term: string) => void;
+};
 
+function SearchInput({ currentSearchQuery, onSearch }: SearchInputProps) {
+    const [search, setSearch] = useState(currentSearchQuery ?? "");
 
+    return (
+        <Input
+            className="w-full border-[4px] rounded-lg text-white bg-transparent border-[#228000]"
+            type="search"
+            placeholder="Search homes..."
+            value={search}
+            onChange={(event) => {
+                setSearch(event.target.value);
+                onSearch(event.target.value);
+            }}
+        />
+    );
+}
 
+function parsePriceRange(priceRange: string | null): number[] {
+    if (!priceRange) return [MIN_LISTING_PRICE, MAX_LISTING_PRICE];
 
+    const parsed = priceRange.split("-").map(Number);
+    if (
+        parsed.length !== 2 ||
+        !parsed.every(Number.isFinite) ||
+        parsed[0] > parsed[1]
+    ) {
+        return [MIN_LISTING_PRICE, MAX_LISTING_PRICE];
+    }
 
+    const min = Math.max(MIN_LISTING_PRICE, Math.min(MAX_LISTING_PRICE, parsed[0]));
+    const max = Math.max(MIN_LISTING_PRICE, Math.min(MAX_LISTING_PRICE, parsed[1]));
+    return min <= max ? [min, max] : [MIN_LISTING_PRICE, MAX_LISTING_PRICE];
+}
 
 export const Filters =() => {
 
@@ -40,20 +61,26 @@ export const Filters =() => {
     const pathname = usePathname();
     
     const currentSearchQuery = searchParams.get('query');
+    const currentPriceRange = searchParams.get("price");
     const selectedTags = searchParams.getAll("tag");
-    const [search, setSearch] = useState(currentSearchQuery ?? "");
     const router = useRouter();
 
 
 
-    const [value, setValue] = useState([10000, 3000000])
+    const [priceState, setPriceState] = useState(() => ({
+        range: currentPriceRange,
+        value: parsePriceRange(currentPriceRange),
+    }));
 
+    // Reset from URL changes (including browser back/forward) without syncing state in an effect.
+    if (priceState.range !== currentPriceRange) {
+        setPriceState({
+            range: currentPriceRange,
+            value: parsePriceRange(currentPriceRange),
+        });
+    }
+    const value = priceState.value;
 
-    useEffect(() => {
-        if (currentSearchQuery !== null) {
-            setSearch(currentSearchQuery);
-        }
-    }, [currentSearchQuery]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -63,7 +90,7 @@ export const Filters =() => {
     }).format(price);};
 
    const handlePriceChange = (newValue: number[]) => {
-    setValue(newValue);
+    setPriceState({ range: currentPriceRange, value: newValue });
     updatePriceURL(newValue);
     };
    
@@ -118,8 +145,7 @@ export const Filters =() => {
         params.delete('price');
         params.delete('query');
         router.replace(`${pathname}?${params.toString()}`);
-        setValue([10000, 3000000]);
-        setSearch("");
+        setPriceState({ range: currentPriceRange, value: [MIN_LISTING_PRICE, MAX_LISTING_PRICE] });
     }
 
 
@@ -139,7 +165,7 @@ export const Filters =() => {
                 
 
                 <form  className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-5 p-3 text-[.9rem]">
-                    {tags.map(tag => ( 
+                    {SUPPORTED_LISTING_TAGS.map(tag => ( 
                         <div key={tag} className="flex items-center gap-2" >
                             <Checkbox 
                             className="w-5 h-5" 
@@ -164,18 +190,10 @@ export const Filters =() => {
                 
 
                     <div className="col-span-2 xs:col-span-3 sm:col-span-4 mt-2">
-                        <Input
-                        className="w-full border-[4px] rounded-lg text-white bg-transparent border-[#228000]   "
-                        type='search'
-                        placeholder="Search homes..."
-                        value={search}
-                        onChange={(e) => {
-                        setSearch(e.target.value);
-                        handleSearch(e.target.value);
-                        }}
-
-
-
+                        <SearchInput
+                            key={currentSearchQuery ?? ""}
+                            currentSearchQuery={currentSearchQuery}
+                            onSearch={handleSearch}
                         />
                     </div>
 
@@ -192,8 +210,8 @@ export const Filters =() => {
                             id="price-channel"
                             value={value}
                             onValueChange={(value) => handlePriceChange(value as number[])}
-                            min={10000}
-                            max={3000000}
+                            min={MIN_LISTING_PRICE}
+                            max={MAX_LISTING_PRICE}
                             step={10000}
                         />
                         </div>

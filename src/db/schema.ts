@@ -1,11 +1,13 @@
 
 import { sql } from "drizzle-orm";
+import type { AccountPreferences } from "../lib/account-preferences";
 import {
   boolean,
   check,
   foreignKey,
   index,
   integer,
+  jsonb,
   numeric,
   pgPolicy,
   pgTable,
@@ -30,6 +32,8 @@ export const users = pgTable(
     email: text().notNull(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
+    savedListings: uuid("saved_listings").array().notNull().default(sql`ARRAY[]::uuid[]`),
+    preferences: jsonb("preferences").$type<AccountPreferences>().notNull().default(sql`'{"defaultSort":"newest","viewMode":"grid"}'::jsonb`),
 
 
     createdAt: timestamp("created_at", {
@@ -48,10 +52,15 @@ export const users = pgTable(
   },
   (table) => [
     unique("users_email_key").on(table.email),
+    check("users_saved_listings_max_100", sql`cardinality(${table.savedListings}) <= 100`),
+    check(
+      "users_preferences_valid_check",
+      sql`jsonb_typeof(${table.preferences}) = 'object' AND ${table.preferences} ? 'defaultSort' AND ${table.preferences} ? 'viewMode' AND ${table.preferences}->>'defaultSort' IN ('newest', 'price-low', 'price-high') AND ${table.preferences}->>'viewMode' IN ('grid', 'list')`,
+    ),
 
 
-    // Server-side read visibility. SQL column grants restrict the runtime
-    // connection to id and name; public clients use the Route Handlers.
+    // Public reads may access a user's name and avatar; preferences are owner-private.
+    // SQL column grants remain the boundary in addition to RLS.
     pgPolicy("Shared read role can read application user identity", {
       as: "permissive",
       for: "select",
@@ -65,6 +74,29 @@ export const users = pgTable(
       to: ["evergreen_auth"],
       using: sql`true`,
       withCheck: sql`true`,
+    }),
+
+    pgPolicy("App can read own saved listings", {
+      as: "permissive",
+      for: "select",
+      to: ["evergreen_app"],
+      using: sql`${table.id} = ${currentAppUserId}`,
+    }),
+
+    // Clamp the inherited evergreen_read permissive policy to the current owner.
+    pgPolicy("App can only read own users row", {
+      as: "restrictive",
+      for: "select",
+      to: ["evergreen_app"],
+      using: sql`${table.id} = ${currentAppUserId}`,
+    }),
+
+    pgPolicy("App can update own saved listings", {
+      as: "permissive",
+      for: "update",
+      to: ["evergreen_app"],
+      using: sql`${table.id} = ${currentAppUserId}`,
+      withCheck: sql`${table.id} = ${currentAppUserId}`,
     }),
   ],
 ).enableRLS();

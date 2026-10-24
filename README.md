@@ -27,6 +27,7 @@ The project uses the Next.js App Router, Server Components for data fetching and
 - Featured property listings
 - Loading, error, and data components
 - Responsive component-based UI
+- Seller storefront pages for profiles marked public
 - Accessibility and SEO considerations
 - Server-side data fetching with async Server Components
 - Better Auth email/password authentication with a canonical `public.users` table
@@ -34,9 +35,10 @@ The project uses the Next.js App Router, Server Components for data fetching and
 - Authenticated listing create, update, and delete endpoints
 - Review read, create, update, and delete endpoints
 - Listing media upload-url, completion, and file-delete endpoints
+- Saved-home GET/PATCH persistence for authenticated users
 - Tailwind CSS and shadcn/ui styling
 
-The current source includes authentication, listing, seller-profile, review, and listing-media Route Handlers. Their presence in source does not establish that every handler has been tested or deployed, and the UI mutation flows are not established as complete. The developer-run population script is not present. Fixture definitions and validation tests exist, but they do not populate a database.
+The current source includes email/password authentication, seller-profile management, published seller storefronts, listing create/edit/delete, saved-home add/remove and listing, review create/edit/delete, and listing media management. Source still requires TypeScript, lint, production build, automated tests, and manual end-to-end verification. Migration 0019_saved_listings_on_users.sql has been applied to the configured Supabase project and its schema, grants, policies, and trigger were checked; saved-home workflows are not yet browser-verified. The forward-only migration `0021_reconcile_shared_read_role.sql` has now been applied and recorded in the Drizzle ledger; its live role, grant, membership, policy, and RLS contracts pass the population preflight. The historical `0011` checksum discrepancy remains unresolved at the byte level (ledger hash `d23ee45d...` versus tracked SQL hash `5f654419...`), but has been explicitly reviewed and acknowledged for the fixture-population workflow. No historical migration or ledger row was edited.
 
 ## Media and Image Delivery
 
@@ -209,7 +211,17 @@ Run the production build locally:
 npm start
 ```
 
-Run the Vitest suite with `npm run test:run`. The database-permissions integration test requires `DRIZZLE_DATABASE_URL` to reach a database configured for the `evergreen_runtime` role; fixture tests do not populate a database.
+Run the Vitest suite with `npm run test:run`. The database-permissions integration test requires `DRIZZLE_DATABASE_URL` to reach a database configured for the `evergreen_runtime` role; fixture tests do not populate a database. Automated tests and the Vite+ toolchain migration are deliberately deferred to the next work session.
+
+### Review the demo-data population plan
+
+The population tool performs read-only preflight by default and does not write data unless explicitly run in apply mode. It checks the configured Supabase project, database-role grants/RLS policies, fixture records, listing cap, Storage bucket settings, and existing media bytes.
+
+```bash
+npm run populate:dry-run
+```
+
+The first run uses a pinned tsx runner and may need network access to download it. The 0011 checksum discrepancy remains unresolved and is explicitly acknowledged, not repaired: the original bytes could not be recovered, so do not edit migration 0011 or its ledger row. Apply mode requires the explicit `--apply --confirm-project vcsotaclvwvbpqiljkuk` flags, a clean preflight, and valid local `seed/credentials`; it creates synthetic accounts/records and uploads missing fixture media. Do not run apply mode until you are ready for those writes. See agent-files/IMPLEMENTATION_HANDOFF.md for the review evidence and remaining verification tasks.
 
 ## Client Components
 

@@ -1,16 +1,30 @@
 import "server-only";
 
 import { drizzle } from "drizzle-orm/postgres-js";
+import { boolean, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import postgres from "postgres";
 
 import { account, session, verification } from "@/db/auth-schema";
-import { users } from "@/db/schema";
+
+const authUsers = pgTable(
+  "users",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    email: text().notNull(),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    image: text("image"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+  },
+  (table) => [unique("users_email_key").on(table.email)],
+);
 
 // Better Auth's logical "user" model maps to Evergreen's canonical "users" table.
 // This client must use the dedicated evergreen_auth login, never the read-only
 // evergreen_runtime credentials or the privileged DIRECT_URL migration connection.
 export const authSchema = {
-  user: users,
+  user: authUsers,
   session,
   account,
   verification,
