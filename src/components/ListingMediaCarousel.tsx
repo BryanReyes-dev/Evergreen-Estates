@@ -12,41 +12,9 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ListingMediaCarouselProps } from "@/app/types";
 import { isGifMediaSource } from "@/lib/media/media-source";
+import { ListingVideoPlayer } from "@/components/ListingVideoPlayer";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-function ListingVideo({
-  src,
-  captionSrc,
-  label,
-}: {
-  src: string;
-  captionSrc?: string;
-  label: string;
-}) {
-  return (
-    <video
-      src={src}
-      className="h-full w-full object-cover"
-      controls
-      playsInline
-      preload="metadata"
-      disablePictureInPicture
-      disableRemotePlayback
-      aria-label={label}
-    >
-      {captionSrc ? (
-        <track
-          kind="captions"
-          src={captionSrc}
-          srcLang="en"
-          label="English captions"
-          default
-        />
-      ) : null}
-    </video>
-  );
-}
 
 export const ListingMediaCarousel = ({
   media,
@@ -104,10 +72,13 @@ export const ListingMediaCarousel = ({
           {media.map((item, index) => (
             <div className="min-w-0 flex-[0_0_100%]" key={`${item.src}-${index}`}>
               {item.type === "video" ? (
-                <ListingVideo
+                <ListingVideoPlayer
                   src={item.src}
                   captionSrc={item.captionSrc}
                   label={item.alt ?? `Listing video ${index + 1}`}
+                  className="h-full w-full object-cover"
+                  disablePictureInPicture
+                  disableRemotePlayback
                 />
               ) : (
                 <Image
