@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
   getAuthenticatedUserId: vi.fn(),
@@ -62,8 +63,8 @@ function makeTransaction(
   };
 }
 
-function makeRequest(body: unknown, listingId = LISTING_ID) {
-  return new Request(`http://localhost/api/v1/listings/${listingId}/media`, {
+function makeRequest(body: unknown, listingId = LISTING_ID): NextRequest {
+  return new NextRequest(`http://localhost/api/v1/listings/${listingId}/media`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

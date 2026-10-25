@@ -2,8 +2,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import dotenv from "dotenv";
 import postgres from "postgres";
 
-dotenv.config({ path: ".env" });
 const RUN_DB_INTEGRATION_TESTS = process.env.RUN_DB_INTEGRATION_TESTS === "true";
+
+// Load credentials only when a developer explicitly opts into this read-only suite.
+if (RUN_DB_INTEGRATION_TESTS) {
+  dotenv.config({ path: ".env" });
+}
 
 const connectionUrl = RUN_DB_INTEGRATION_TESTS
   ? process.env.DRIZZLE_DATABASE_URL
@@ -26,7 +30,9 @@ function getDatabase() {
 }
 
 beforeAll(() => {
-  getDatabase();
+  if (RUN_DB_INTEGRATION_TESTS) {
+    getDatabase();
+  }
 });
 
 afterAll(async () => {
@@ -35,7 +41,9 @@ afterAll(async () => {
   }
 });
 
-describe("evergreen_runtime database permissions", () => {
+describe.skipIf(!RUN_DB_INTEGRATION_TESTS)(
+  "evergreen_runtime database permissions",
+  () => {
   it("has the expected read-only permissions", async () => {
     const db = getDatabase();
 

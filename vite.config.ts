@@ -8,11 +8,11 @@ export default defineConfig({
     },
   },
   test: {
-    // Vitest v4 compatibility: preserve mock call history.
-    // Keep until the migrated test suite has been validated.
-    clearMocks: false,
+    // Run tests in Node and print each case to the terminal.
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    reporters: ["verbose"],
+    clearMocks: true,
     testTimeout: 15_000,
     hookTimeout: 15_000,
   },
