@@ -190,7 +190,10 @@ describe("PATCH /api/v1/listings/[id]/reviews/[reviewId] — author binding", ()
       updatedAt: "2026-01-02T12:00:00.000Z",
     };
     const returning = vi.fn().mockResolvedValue([returnedReview]);
-    const where = vi.fn(() => ({ returning }));
+    const where = vi.fn((condition: unknown) => {
+      void condition;
+      return { returning };
+    });
     const set = vi.fn(() => ({ where }));
     const update = vi.fn(() => ({ set }));
 
@@ -247,7 +250,10 @@ describe("PATCH /api/v1/listings/[id]/reviews/[reviewId] — author binding", ()
 
   it("returns not-found if the review is not owned by the authenticated user", async () => {
     const returning = vi.fn().mockResolvedValue([]);
-    const where = vi.fn(() => ({ returning }));
+    const where = vi.fn((condition: unknown) => {
+      void condition;
+      return { returning };
+    });
     const set = vi.fn(() => ({ where }));
     const update = vi.fn(() => ({ set }));
     mocks.withAppUserTransaction.mockImplementation(

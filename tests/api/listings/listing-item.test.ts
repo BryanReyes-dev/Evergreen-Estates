@@ -178,7 +178,10 @@ describe("PATCH /api/v1/listings/[id] — successful owner-scoped update", () =>
   it("normalizes validated fields and predicates the update on the signed-in owner", async () => {
     const updatedRow = { id: LISTING_ID };
     const returning = vi.fn().mockResolvedValue([updatedRow]);
-    const where = vi.fn(() => ({ returning }));
+    const where = vi.fn((condition: unknown) => {
+      void condition;
+      return { returning };
+    });
     const set = vi.fn(() => ({ where }));
     const update = vi.fn(() => ({ set }));
     const listing = {
