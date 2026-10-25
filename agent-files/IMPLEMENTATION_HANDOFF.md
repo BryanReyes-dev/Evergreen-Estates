@@ -6,7 +6,7 @@ Branch: `feature/ui-workflows-and-populate-fix`
 
 This branch connects existing Next.js user-facing pages to the authentication, seller-profile, listing, review, and media APIs. It also fixes dry-run credential handling in the population script and refreshes project documentation.
 
-Saved-homes migration 0019 has been applied to the configured Evergreen Estates Supabase project and its column, CHECK constraint, owner policies, role grants, and listing-delete trigger were verified with read-only catalog checks. No fixture/user/auth/Storage population writes were run. Automated test expansion and the final security audit remain deferred until after Vite+.
+Saved-homes migration 0019 has been applied to the configured Evergreen Estates Supabase project and its column, CHECK constraint, owner policies, role grants, and listing-delete trigger were verified with read-only catalog checks. No fixture/user/auth/Storage population writes were run. The Vite+ branch now includes focused auth/fixture/media unit tests and categorized verbose test commands; local execution and the final security audit remain outstanding.
 
 ## Implemented in source
 
@@ -34,7 +34,7 @@ The pinned runner is downloaded by `npx` on first use if it is not already cache
 
 ## Known blockers and limitations
 
-- The source changes have not been run through TypeScript, ESLint, a production build, automated tests, or browser-level end-to-end checks in this pass. Do not treat the branch as validated before those checks.
+- This handoff's original implementation pass was not run through TypeScript, ESLint, a production build, automated tests, or browser-level end-to-end checks. The later Vite+ migration branch adds categorized automated tests, but those tests have not yet been executed in the current tool session. Do not treat the branch as validated before local checks.
 - The population dry-run was executed against project `vcsotaclvwvbpqiljkuk` after the 0021 migration. All reported database/security checks passed. It planned 4 seller accounts, 4 seller profiles, 12 listings, 48 reviews, and 48 media objects; 14 existing objects were verified byte-for-byte and skipped, while 34 were missing. The run reported no conflicts and performed no Auth, database, or Storage writes.
 - The forward-only `drizzle/0021_reconcile_shared_read_role.sql` migration was applied through the normal Drizzle migrator to the configured project and is recorded in `drizzle.__drizzle_migrations`. The migration was adjusted to avoid `ALTER ROLE`, which Supabase's managed postgres connection rejects. Live catalog checks passed afterward.
 - The exact historical byte sequence that produced the `0011` checksum remains unavailable. The tracked file and its original available Git commit both hash to `5f654419803188a68ae069c3a3d873821cdae57c9a58c9ecd5b7bae44a8f9af4`, while the database ledger records `d23ee45dadfe79d8ff2346b80fc07872a1c7edebd4b88bc511a83a944ea6baed`. LF/CRLF and final-newline variants were checked and did not reproduce the recorded hash. This mismatch was explicitly reviewed and acknowledged as a residual historical uncertainty for fixture population because migration 0021 is applied and the live preflight contract passes. The code does not claim the hash is resolved; never edit migration 0011 or rewrite its existing ledger row.
@@ -45,7 +45,7 @@ The pinned runner is downloaded by `npx` on first use if it is not already cache
 - Seller listing-card rating aggregates are not implemented; listing detail calculates an average from loaded reviews.
 - A published seller storefront is implemented and uses the shared read role/row-level policy to restrict public visibility to profiles with `is_published = true`. Verify publication and privacy behavior manually before enabling it in a live environment.
 
-## Static review and manual verification checklist before Vite+
+## Static review and manual verification checklist after the Vite+ test-tooling migration
 
 - [ ] Run TypeScript check, ESLint, and the Next.js production build.
 - [ ] Create a fresh synthetic test account, verify redirect/session state, sign in again, and sign out.
@@ -68,7 +68,7 @@ The pinned runner is downloaded by `npx` on first use if it is not already cache
 - [x] Rerun `npm run populate:dry-run`; all reported schema/security checks passed and no database or Storage conflicts were reported. Explicitly document the unresolved 0011 checksum provenance mismatch without changing the SQL file or ledger.
 - [ ] Before population apply, confirm local `seed/credentials` is correct and private, then deliberately run the explicit `--apply --confirm-project vcsotaclvwvbpqiljkuk` command only when ready to create synthetic Auth users, database rows, and upload missing fixture media.
 
-## Deferred until after Vite+ tomorrow
+## Remaining validation after Vite+ test-tooling migration
 
 - Expand automated coverage for UI components, Route Handlers, auth/ownership boundaries, database roles/RLS, the media lifecycle, population safeguards, and browser-level workflows.
 - Complete the final security audit and resolve findings.
