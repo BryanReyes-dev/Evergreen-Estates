@@ -108,6 +108,11 @@ const suites = {
       "WebVTT caption-file validation, authenticated video-caption uploads, and owner/registration checks.",
     paths: ["tests/unit/media-captions.test.ts", "tests/api/media/caption-upload.test.ts"],
   },
+  "media-display": {
+    description:
+      "GIF source URL detection and optional-caption video-player rendering.",
+    paths: ["tests/unit/media-display.test.ts"],
+  },
   avatar: {
     description:
       "Avatar upload authentication, multipart input handling, and actual image-signature validation.",

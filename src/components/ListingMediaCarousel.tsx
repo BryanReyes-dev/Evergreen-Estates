@@ -11,39 +11,10 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ListingMediaCarouselProps } from "@/app/types";
+import { isGifMediaSource } from "@/lib/media/media-source";
+import { ListingVideoPlayer } from "@/components/ListingVideoPlayer";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-function CaptionedListingVideo({
-  src,
-  captionSrc,
-  label,
-}: {
-  src: string;
-  captionSrc: string;
-  label: string;
-}) {
-  return (
-    <video
-      src={src}
-      className="h-full w-full object-cover"
-      controls
-      playsInline
-      preload="metadata"
-      disablePictureInPicture
-      disableRemotePlayback
-      aria-label={label}
-    >
-      <track
-        kind="captions"
-        src={captionSrc}
-        srcLang="en"
-        label="English captions"
-        default
-      />
-    </video>
-  );
-}
 
 export const ListingMediaCarousel = ({
   media,
@@ -101,19 +72,14 @@ export const ListingMediaCarousel = ({
           {media.map((item, index) => (
             <div className="min-w-0 flex-[0_0_100%]" key={`${item.src}-${index}`}>
               {item.type === "video" ? (
-                item.captionSrc ? (
-                  <CaptionedListingVideo
-                    src={item.src}
-                    captionSrc={item.captionSrc}
-                    label={item.alt ?? `Listing video ${index + 1}`}
-                  />
-                ) : (
-                  <div className="flex min-h-64 w-full items-center justify-center bg-black px-6 text-center">
-                    <p className="max-w-sm text-sm text-white/80">
-                      Video playback is unavailable until the listing owner uploads English captions.
-                    </p>
-                  </div>
-                )
+                <ListingVideoPlayer
+                  src={item.src}
+                  captionSrc={item.captionSrc}
+                  label={item.alt ?? `Listing video ${index + 1}`}
+                  className="h-full w-full object-cover"
+                  disablePictureInPicture
+                  disableRemotePlayback
+                />
               ) : (
                 <Image
                   src={item.src}
@@ -121,6 +87,10 @@ export const ListingMediaCarousel = ({
                   className="h-full w-full object-cover"
                   width={1200}
                   height={800}
+                  sizes="(max-width: 640px) 100vw, 1024px"
+                  loading="lazy"
+                  decoding="async"
+                  unoptimized={isGifMediaSource(item.src)}
                 />
               )}
             </div>

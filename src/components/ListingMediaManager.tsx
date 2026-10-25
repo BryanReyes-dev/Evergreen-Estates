@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MAX_CAPTION_FILE_BYTES, validateWebVttCaptionFile } from "@/lib/media/captions";
+import { ListingVideoPlayer } from "@/components/ListingVideoPlayer";
 import { MAX_MEDIA_FILE_BYTES } from "@/lib/media/file-limits";
 import {
   SUPPORTED_LISTING_MEDIA_TYPES,
@@ -120,63 +121,6 @@ function describeError(
 
 function mediaEndpoint(listingId: string): string {
   return `/api/v1/listings/${encodeURIComponent(listingId)}/media`;
-}
-
-function CaptionedListingVideoPreview({
-  src,
-  filename,
-  captionUrl,
-}: {
-  src: string;
-  filename: string;
-  captionUrl: string;
-}) {
-  return (
-    <video
-      src={src}
-      controls
-      playsInline
-      preload="metadata"
-      aria-label={`Video preview: ${filename}`}
-      className="h-full w-full object-contain"
-    >
-      <track
-        kind="captions"
-        src={captionUrl}
-        srcLang="en"
-        label="English captions"
-        default
-      />
-    </video>
-  );
-}
-
-function ListingVideoPreview({
-  src,
-  filename,
-  captionUrl,
-}: {
-  src: string;
-  filename: string;
-  captionUrl: string | null;
-}) {
-  if (captionUrl) {
-    return (
-      <CaptionedListingVideoPreview
-        src={src}
-        filename={filename}
-        captionUrl={captionUrl}
-      />
-    );
-  }
-
-  return (
-    <div className="flex h-full w-full items-center justify-center bg-[#202324] p-3 text-center">
-      <p className="text-xs text-white/70">
-        Upload English captions (.vtt) to preview this video.
-      </p>
-    </div>
-  );
 }
 
 export function ListingMediaManager({
@@ -624,7 +568,12 @@ export function ListingMediaManager({
                   <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-black/40">
                     {item.previewUrl ? (
                       item.mediaKind === "video" ? (
-                        <ListingVideoPreview src={item.previewUrl} filename={item.filename} captionUrl={item.captionUrl} />
+                        <ListingVideoPlayer
+                          src={item.previewUrl}
+                          captionSrc={item.captionUrl}
+                          label={`Video preview: ${item.filename}`}
+                          className="h-full w-full object-contain"
+                        />
                       ) : (
                         <Image
                           src={item.previewUrl}
