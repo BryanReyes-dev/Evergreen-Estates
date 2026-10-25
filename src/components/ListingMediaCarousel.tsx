@@ -77,6 +77,8 @@ export const ListingMediaCarousel = ({
                   captionSrc={item.captionSrc}
                   label={item.alt ?? `Listing video ${index + 1}`}
                   className="h-full w-full object-cover"
+                  autoPlay={selectedIndex === index}
+                  loop
                   disablePictureInPicture
                   disableRemotePlayback
                 />

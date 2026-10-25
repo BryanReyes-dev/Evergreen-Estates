@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
 type ListingVideoPlayerProps = {
   src: string;
   captionSrc?: string | null;
@@ -5,6 +9,8 @@ type ListingVideoPlayerProps = {
   className: string;
   disablePictureInPicture?: boolean;
   disableRemotePlayback?: boolean;
+  autoPlay?: boolean;
+  loop?: boolean;
 };
 
 /**
@@ -18,10 +24,39 @@ export function ListingVideoPlayer({
   className,
   disablePictureInPicture = false,
   disableRemotePlayback = false,
+  autoPlay = false,
+  loop = false,
 }: ListingVideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (!autoPlay) {
+      video.pause();
+      return;
+    }
+
+    // Muted inline playback is the most compatible browser autoplay mode.
+    video.muted = true;
+    const playback = video.play();
+    if (playback) {
+      void playback.catch(() => {
+        // Browsers can still reject playback due to user/device policy.
+      });
+    }
+
+    return () => video.pause();
+  }, [autoPlay, src]);
+
   return (
     <video
+      ref={videoRef}
       src={src}
+      autoPlay={autoPlay}
+      muted={autoPlay}
+      loop={loop}
       className={className}
       controls
       playsInline

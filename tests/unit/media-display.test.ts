@@ -42,6 +42,28 @@ describe("listing video playback", () => {
     expect(markup).not.toContain("<track");
   });
 
+  it("renders autoplaying videos muted and looping when autoplay is enabled", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ListingVideoPlayer, {
+        ...baseProps,
+        autoPlay: true,
+        loop: true,
+      }),
+    );
+
+    expect(markup).toContain("autoplay");
+    expect(markup).toContain("muted");
+    expect(markup).toContain("loop");
+  });
+
+  it("does not add autoplay attributes when autoplay is disabled", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ListingVideoPlayer, baseProps),
+    );
+
+    expect(markup).not.toContain("autoplay");
+  });
+
   it("adds an English caption track when a VTT URL is available", () => {
     const markup = renderToStaticMarkup(
       createElement(ListingVideoPlayer, {

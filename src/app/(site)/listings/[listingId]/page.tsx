@@ -91,6 +91,8 @@ export default async function ListingDetails({
             captionSrc={featuredMedia.captionSrc}
             label={listing.title + " featured video"}
             className="max-h-[70vh] w-full bg-black object-contain"
+            autoPlay
+            loop
           />
         ) : (
           <div className="relative h-[35vh] min-h-64 w-full bg-black sm:h-[55vh]">

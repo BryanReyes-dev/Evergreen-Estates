@@ -27,6 +27,8 @@ const Listing = ({ listing }: ListingProps) => {
           <video
             src={featuredMedia}
             muted
+            autoPlay
+            loop
             playsInline
             preload="metadata"
             tabIndex={-1}
