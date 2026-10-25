@@ -3,5 +3,9 @@ command = "npm run build"
 
 publish = ".next"
 
+[build.environment]
+NODE_VERSION = "24.22.1"
+NPM_VERSION = "11.12.1"
+
 [images]
 remote_images = ["https://vcsotaclvwvbpqiljkuk\\.supabase\\.co/.*"]
