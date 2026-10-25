@@ -9,6 +9,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 
 import { seedListings, seedReviews, seedSellers, validateSeedData } from "@/db/seed/data";
+import { isSeedFixtureIdentity } from "@/db/seed/auth-fixtures";
 import { account, session, verification } from "@/db/auth-schema";
 import { listings, reviews, sellerProfiles, users } from "@/db/schema";
 import { MAX_MEDIA_FILE_BYTES } from "@/lib/media/file-limits";
@@ -1765,6 +1766,29 @@ async function getVerifiedUserByEmail(seller: SellerRecord): Promise<AuthUserRow
   return found[0];
 }
 
+async function markFixtureSellerVerified(seller: SellerRecord, userId: string): Promise<void> {
+  // This helper is reachable only from the manually invoked populate script.
+  // Public registration never imports or calls the fixture allowlist.
+  if (!isSeedFixtureIdentity(seller.email, seller.name)) {
+    throw new PopulationError("Refusing to verify an identity outside the exact synthetic fixture allowlist.");
+  }
+
+  requireDbHelpers();
+  const updated = await getAuthDb()
+    .update(users)
+    .set({ emailVerified: true })
+    .where(and(
+      eq(users.id, userId),
+      eq(users.email, seller.email),
+      eq(users.name, seller.name),
+    ))
+    .returning({ id: users.id });
+
+  if (updated.length !== 1 || updated[0].id !== userId) {
+    throw new PopulationError("Could not mark the allowlisted fixture seller as verified; stop and inspect the account state.");
+  }
+}
+
 async function provisionSellerAccounts(
   sellerPlans: SellerPlan[],
   passwords: Map<string, string>,
@@ -1776,12 +1800,14 @@ async function provisionSellerAccounts(
 
   for (const plan of sellerPlans) {
     if (plan.user) {
+      await markFixtureSellerVerified(plan.seller, plan.user.id);
       userIds.set(plan.seller.key, plan.user.id);
       continue;
     }
 
     const existing = await getVerifiedUserByEmail(plan.seller);
     if (existing) {
+      await markFixtureSellerVerified(plan.seller, existing.id);
       userIds.set(plan.seller.key, existing.id);
       console.log(`Account ${plan.seller.key}: reused after concurrent creation`);
       continue;
@@ -1815,8 +1841,9 @@ async function provisionSellerAccounts(
       throw new PopulationError(`Better Auth did not provision seller ${plan.seller.key}; rerun after reviewing the account state.`);
     }
 
+    await markFixtureSellerVerified(plan.seller, created.id);
     userIds.set(plan.seller.key, created.id);
-    console.log(`Account ${plan.seller.key}: provisioned through Better Auth (UUID ${created.id})`);
+    console.log(`Account ${plan.seller.key}: provisioned through Better Auth and verified through the fixture-only allowlist (UUID ${created.id})`);
   }
 
   return userIds;
