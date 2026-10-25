@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { captionFilenameForVideo, validateWebVttCaptionFile } from "@/lib/media/captions";
 
 const STORAGE_BUCKET = "property-images";
 
@@ -38,6 +39,17 @@ export type ListingMediaKind = "image" | "video";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function containsControlCharacters(value: string): boolean {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    if (codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function isAllowedListingMediaFilename(
   filename: string,
 ): boolean {
@@ -48,8 +60,7 @@ export function isAllowedListingMediaFilename(
     filename !== ".." &&
     !filename.includes("/") &&
     !filename.includes("\\") &&
-    // eslint-disable-next-line no-control-regex -- Intentionally reject ASCII control characters in user-supplied storage filenames.
-    !/[\u0000-\u001f\u007f]/.test(filename) &&
+    !containsControlCharacters(filename) &&
     /^[a-zA-Z0-9][a-zA-Z0-9 ._()-]*\.(jpg|png|webp|avif|gif|mp4|webm|mov)$/i.test(
       filename,
     )
@@ -268,8 +279,7 @@ export async function getListingMediaUrls(input: {
       filename !== ".." &&
       !filename.includes("/") &&
       !filename.includes("\\") &&
-      // eslint-disable-next-line no-control-regex -- Intentionally reject ASCII control characters in user-supplied storage filenames.
-      !/[\u0000-\u001f\u007f]/.test(filename),
+      !containsControlCharacters(filename),
   );
 
   const bucket = getStorageAdminClient()
@@ -325,11 +335,60 @@ export type ListingMediaPreview = {
   filename: string;
   previewUrl: string | null;
   mediaKind: ListingMediaKind;
+  captionUrl: string | null;
 };
 
 /**
+ * Saves an English WebVTT sidecar for a registered video. The route must
+ * authenticate the user and verify ownership of the listing and video first.
+ */
+export async function uploadListingMediaCaptions(input: {
+  listingId: string;
+  videoFilename: string;
+  content: string;
+  size: number;
+}): Promise<{ filename: string }> {
+  const { listingId, videoFilename, content, size } = input;
+
+  if (!UUID_PATTERN.test(listingId)) {
+    throw new Error("Invalid listing ID.");
+  }
+
+  if (!isAllowedListingMediaFilename(videoFilename)) {
+    throw new Error("Invalid listing media filename.");
+  }
+
+  const filename = captionFilenameForVideo(videoFilename);
+  if (!filename) {
+    throw new Error("Captions can only be attached to video files.");
+  }
+
+  const validationError = validateWebVttCaptionFile({ name: filename, size }, content);
+  if (validationError) {
+    throw new Error(validationError);
+  }
+
+  const path = `listings/${listingId}/${filename}`;
+  const { error } = await getStorageAdminClient()
+    .storage
+    .from(STORAGE_BUCKET)
+    .upload(path, Buffer.from(content, "utf8"), {
+      contentType: "text/vtt",
+      cacheControl: "3600",
+      upsert: true,
+    });
+
+  if (error) {
+    throw new Error("Unable to save video captions.");
+  }
+
+  return { filename };
+}
+
+/**
  * Signs previews for registered filenames while preserving their order and
- * retaining rows whose Storage object is unavailable.
+ * retaining rows whose Storage object is unavailable. A companion VTT file
+ * is signed only when it exists beside a registered video.
  */
 export async function getListingMediaPreviews(input: {
   listingId: string;
@@ -352,6 +411,22 @@ export async function getListingMediaPreviews(input: {
     ? getStorageAdminClient().storage.from(STORAGE_BUCKET)
     : null;
 
+  let storageFilenames = new Set<string>();
+  if (bucket) {
+    const { data: files, error } = await bucket.list(
+      `listings/${listingId}`,
+      { limit: 1000 },
+    );
+
+    if (error) {
+      console.error("Failed to list listing media captions:", error);
+    } else {
+      storageFilenames = new Set(
+        (files ?? []).map((file) => file.name).filter(Boolean),
+      );
+    }
+  }
+
   return Promise.all(
     filenames.map(async (filename): Promise<ListingMediaPreview> => {
       const extension = filename.split(".").pop()?.toLowerCase() ?? "";
@@ -360,7 +435,7 @@ export async function getListingMediaPreviews(input: {
         : "image";
 
       if (!bucket || !safeFilenames.has(filename)) {
-        return { filename, previewUrl: null, mediaKind };
+        return { filename, previewUrl: null, mediaKind, captionUrl: null };
       }
 
       const path = `listings/${listingId}/${filename}`;
@@ -369,17 +444,36 @@ export async function getListingMediaPreviews(input: {
 
         if (error || !data?.signedUrl) {
           console.error("Failed to sign listing media preview:", path, error);
-          return { filename, previewUrl: null, mediaKind };
+          return { filename, previewUrl: null, mediaKind, captionUrl: null };
+        }
+
+        let captionUrl: string | null = null;
+        const captionFilename = mediaKind === "video"
+          ? captionFilenameForVideo(filename)
+          : null;
+
+        if (captionFilename && storageFilenames.has(captionFilename)) {
+          const { data: captionData, error: captionError } = await bucket.createSignedUrl(
+            `listings/${listingId}/${captionFilename}`,
+            60 * 60,
+          );
+
+          if (captionError || !captionData?.signedUrl) {
+            console.error("Failed to sign video captions:", captionFilename, captionError);
+          } else {
+            captionUrl = captionData.signedUrl;
+          }
         }
 
         return {
           filename,
           previewUrl: data.signedUrl,
           mediaKind,
+          captionUrl,
         };
       } catch (error) {
         console.error("Failed to sign listing media preview:", path, error);
-        return { filename, previewUrl: null, mediaKind };
+        return { filename, previewUrl: null, mediaKind, captionUrl: null };
       }
     }),
   );
@@ -416,9 +510,13 @@ export async function deleteListingMediaObjects(input: {
     }
   }
 
-  const paths = uniqueFilenames.map(
-    (filename: string) => `listings/${listingId}/${filename}`,
-  );
+  const paths = uniqueFilenames.flatMap((filename: string) => {
+    const mediaPath = `listings/${listingId}/${filename}`;
+    const captionFilename = captionFilenameForVideo(filename);
+    return captionFilename
+      ? [mediaPath, `listings/${listingId}/${captionFilename}`]
+      : [mediaPath];
+  });
 
   const { error } = await getStorageAdminClient()
     .storage

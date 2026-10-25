@@ -14,6 +14,37 @@ import { ListingMediaCarouselProps } from "@/app/types";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+function CaptionedListingVideo({
+  src,
+  captionSrc,
+  label,
+}: {
+  src: string;
+  captionSrc: string;
+  label: string;
+}) {
+  return (
+    <video
+      src={src}
+      className="h-full w-full object-cover"
+      controls
+      playsInline
+      preload="metadata"
+      disablePictureInPicture
+      disableRemotePlayback
+      aria-label={label}
+    >
+      <track
+        kind="captions"
+        src={captionSrc}
+        srcLang="en"
+        label="English captions"
+        default
+      />
+    </video>
+  );
+}
+
 export const ListingMediaCarousel = ({
   media,
   options,
@@ -70,18 +101,19 @@ export const ListingMediaCarousel = ({
           {media.map((item, index) => (
             <div className="min-w-0 flex-[0_0_100%]" key={`${item.src}-${index}`}>
               {item.type === "video" ? (
-                <video
-                  src={item.src}
-                  className="h-full w-full object-cover"
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  controls
-                  preload="metadata"
-                  disablePictureInPicture
-                  disableRemotePlayback
-                />
+                item.captionSrc ? (
+                  <CaptionedListingVideo
+                    src={item.src}
+                    captionSrc={item.captionSrc}
+                    label={item.alt ?? `Listing video ${index + 1}`}
+                  />
+                ) : (
+                  <div className="flex min-h-64 w-full items-center justify-center bg-black px-6 text-center">
+                    <p className="max-w-sm text-sm text-white/80">
+                      Video playback is unavailable until the listing owner uploads English captions.
+                    </p>
+                  </div>
+                )
               ) : (
                 <Image
                   src={item.src}

@@ -58,7 +58,7 @@ export function LoadingState({
           className="h-full w-full object-contain"
         />
       </motion.div>
-      <output aria-live="polite" className="text-sm text-white/70">{label}</output>
+      <p aria-live="polite" className="text-sm text-white/70">{label}</p>
     </div>
   );
 }

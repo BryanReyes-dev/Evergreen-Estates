@@ -54,7 +54,7 @@ export function ResetPasswordForm({ tokenParam, hasError }: { tokenParam: string
       <h1 className="text-2xl font-semibold">{complete ? "Password updated" : "Set a new password"}</h1>
       {complete ? (
         <div className="mt-4 space-y-4">
-          <output className="block text-sm leading-6 text-white/75" aria-live="polite">Your password has been changed. Other active sessions have been revoked; sign in again with your new password.</output>
+          <p className="block text-sm leading-6 text-white/75" aria-live="polite">Your password has been changed. Other active sessions have been revoked; sign in again with your new password.</p>
           <Link href="/auth" className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-[#a9d593]">Sign in</Link>
         </div>
       ) : invalidLink ? (

@@ -103,6 +103,11 @@ const suites = {
       "Listing media deletion authentication, ownership, registration, and Storage/database cleanup ordering.",
     paths: ["tests/api/media/delete-media.test.ts"],
   },
+  "media-captions": {
+    description:
+      "WebVTT caption-file validation, authenticated video-caption uploads, and owner/registration checks.",
+    paths: ["tests/unit/media-captions.test.ts", "tests/api/media/caption-upload.test.ts"],
+  },
   avatar: {
     description:
       "Avatar upload authentication, multipart input handling, and actual image-signature validation.",

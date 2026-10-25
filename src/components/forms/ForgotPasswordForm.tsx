@@ -42,9 +42,9 @@ export function ForgotPasswordForm() {
       <p className="mt-2 text-sm leading-6 text-white/70">Enter the email associated with your account. If the account exists, we will send a password-reset link.</p>
       {submitted ? (
         <div className="mt-5 space-y-4">
-          <output className="block rounded-md border border-white/10 bg-black/20 p-3 text-sm leading-6 text-white/80" aria-live="polite">
+          <p className="block rounded-md border border-white/10 bg-black/20 p-3 text-sm leading-6 text-white/80" aria-live="polite">
             If an account exists for <strong>{email.trim()}</strong>, a reset email will arrive shortly. The link expires in one hour. Check your spam folder too.
-          </output>
+          </p>
           <Link href="/auth" className="inline-flex min-h-11 items-center text-sm underline underline-offset-4 hover:text-[#a9d593]">Back to sign in</Link>
         </div>
       ) : (

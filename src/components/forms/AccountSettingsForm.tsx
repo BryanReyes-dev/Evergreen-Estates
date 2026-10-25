@@ -288,7 +288,7 @@ export function AccountSettingsForm() {
     }
   }
 
-  if (loading) return <output className="block p-4 text-sm text-white/70">Loading account settings…</output>;
+  if (loading) return <p aria-live="polite" className="block p-4 text-sm text-white/70">Loading account settings…</p>;
 
   if (!account) {
     return (
@@ -380,7 +380,7 @@ export function AccountSettingsForm() {
           </div>
 
           {error && <p role="alert" className="rounded-md border border-red-400/30 bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}
-          {notice && <output className="block rounded-md border border-green-400/25 bg-green-950/25 p-3 text-sm text-green-200">{notice}</output>}
+          {notice && <p aria-live="polite" className="block rounded-md border border-green-400/25 bg-green-950/25 p-3 text-sm text-green-200">{notice}</p>}
           <Button type="submit" disabled={pending} className="min-h-11 w-full sm:w-auto">{pending ? "Saving…" : "Save profile and preferences"}</Button>
         </form>
       </section>
@@ -404,7 +404,7 @@ export function AccountSettingsForm() {
             </div>
           </div>
           {passwordError && <p role="alert" className="rounded-md border border-red-400/30 bg-red-950/40 p-3 text-sm text-red-200">{passwordError}</p>}
-          {passwordNotice && <output className="block rounded-md border border-green-400/25 bg-green-950/25 p-3 text-sm text-green-200">{passwordNotice}</output>}
+          {passwordNotice && <p aria-live="polite" className="block rounded-md border border-green-400/25 bg-green-950/25 p-3 text-sm text-green-200">{passwordNotice}</p>}
           <Button type="submit" disabled={passwordPending} className="min-h-11 w-full sm:w-auto">{passwordPending ? "Changing password…" : "Change password"}</Button>
         </form>
       </section>

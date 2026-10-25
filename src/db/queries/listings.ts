@@ -18,7 +18,7 @@ import {
   SUPPORTED_LISTING_TAG_VALUES,
 } from "@/lib/listing-constants";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
-import { getUserAvatarUrl } from "@/db/supabase/storage-admin";
+import { getListingMediaPreviews, getUserAvatarUrl } from "@/db/supabase/storage-admin";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -89,9 +89,18 @@ export async function getListingById(
       .leftJoin(users, eq(reviews.userId, users.id))
       .where(eq(reviews.listingId, listing.id));
 
-    const media = await getMediaUrls(
-      listing.id,
-      listing.media,
+    const mediaPreviews = await getListingMediaPreviews({
+      listingId: listing.id,
+      filenames: listing.media,
+    });
+    const mediaAssets = mediaPreviews.flatMap((item) =>
+      item.previewUrl ? [{ src: item.previewUrl, captionSrc: item.captionUrl }] : [],
+    );
+    const media = mediaAssets.map((item) => item.src);
+    const mediaCaptions = Object.fromEntries(
+      mediaAssets.flatMap((item) =>
+        item.captionSrc ? [[item.src, item.captionSrc] as const] : [],
+      ),
     );
 
     const mappedReviews = await Promise.all(reviewRows.map(async (review) => {
@@ -115,6 +124,7 @@ export async function getListingById(
       id: listing.id,
       sellerUserId: listing.sellerUserId,
       media,
+      mediaCaptions,
       tags: listing.tags,
       title: listing.title,
       price: Number(listing.price),

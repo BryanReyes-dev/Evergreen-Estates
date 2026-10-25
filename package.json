@@ -30,7 +30,8 @@
     "test:media-upload": "vpx scripts/run-test-suite.mjs media-upload",
     "test:avatar": "vpx scripts/run-test-suite.mjs avatar",
     "test:db-permissions": "vpx scripts/run-test-suite.mjs db-permissions",
-    "test:media-delete": "vpx scripts/run-test-suite.mjs media-delete"
+    "test:media-delete": "vpx scripts/run-test-suite.mjs media-delete",
+    "test:media-captions": "vpx scripts/run-test-suite.mjs media-captions"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

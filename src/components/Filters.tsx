@@ -5,7 +5,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useState } from 'react'
 import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Button } from './ui/button';
 import { MAX_LISTING_PRICE, MIN_LISTING_PRICE, SUPPORTED_LISTING_TAGS } from "@/lib/listing-constants";
@@ -200,7 +199,7 @@ export const Filters =() => {
 
                     <div className="grid w-full  gap-4 mb-3 mt-0 col-span-2 xs:col-span-3 sm:col-span-4">
                         <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="price-channel">Price Range :</Label>
+                            <span id="price-channel-label" className="text-sm font-medium">Price Range :</span>
                             <span className="text-sm text-muted-foreground">
                             {formatPrice(value[0])} - {formatPrice(value[1])}
                             </span>
@@ -208,6 +207,7 @@ export const Filters =() => {
                         <Slider
                             className="text-[#228000] w-full"
                             id="price-channel"
+                            aria-labelledby="price-channel-label"
                             value={value}
                             onValueChange={(value) => handlePriceChange(value as number[])}
                             min={MIN_LISTING_PRICE}

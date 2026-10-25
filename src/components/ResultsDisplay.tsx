@@ -46,9 +46,9 @@ export const ResultsDisplay = async ({
 
   if (sortedListings.length === 0) {
     return (
-      <output className="mx-auto block w-full max-w-3xl px-4 py-8 text-sm text-white/65">
+      <p aria-live="polite" className="mx-auto w-full max-w-3xl px-4 py-8 text-sm text-white/65">
         No homes match these filters. Try a wider price range or clear one of the selected tags.
-      </output>
+      </p>
     );
   }
 

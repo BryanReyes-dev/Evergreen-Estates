@@ -41,17 +41,42 @@ async function canManageListing(listingId: string): Promise<boolean> {
   }
 }
 
-function FeaturedListingVideo({ src, title }: { src: string; title: string }) {
+function FeaturedListingVideo({
+  src,
+  title,
+  captionSrc,
+}: {
+  src: string;
+  title: string;
+  captionSrc?: string;
+}) {
+  if (captionSrc) {
+    return (
+      <video
+        src={src}
+        controls
+        playsInline
+        preload="metadata"
+        className="max-h-[70vh] w-full bg-black object-contain"
+        aria-label={title + " featured video"}
+      >
+        <track
+          kind="captions"
+          src={captionSrc}
+          srcLang="en"
+          label="English captions"
+          default
+        />
+      </video>
+    );
+  }
+
   return (
-    // eslint-disable-next-line jsx-a11y/media-has-caption -- Listing uploads currently store filenames only and do not support a caption-track asset.
-    <video
-      src={src}
-      controls
-      playsInline
-      preload="metadata"
-      className="max-h-[70vh] w-full bg-black object-contain"
-      aria-label={title + " featured video"}
-    />
+    <div className="flex min-h-64 w-full items-center justify-center bg-black px-5 text-center text-white">
+      <p className="max-w-xl text-sm text-white/80">
+        Video playback is unavailable until the listing owner uploads English captions.
+      </p>
+    </div>
   );
 }
 
@@ -89,6 +114,8 @@ export default async function ListingDetails({
   const media = listing.media.map((src) => ({
     type: getMediaType(src),
     src,
+    captionSrc: listing.mediaCaptions?.[src],
+    alt: listing.title + " property media",
   }));
   const featuredMedia = media[0];
 
@@ -96,7 +123,7 @@ export default async function ListingDetails({
     <main className="min-h-screen bg-[#141616] pb-8">
       {featuredMedia ? (
         featuredMedia.type === "video" ? (
-          <FeaturedListingVideo src={featuredMedia.src} title={listing.title} />
+          <FeaturedListingVideo src={featuredMedia.src} title={listing.title} captionSrc={featuredMedia.captionSrc} />
         ) : (
           <div className="relative h-[35vh] min-h-64 w-full bg-black sm:h-[55vh]">
             <Image

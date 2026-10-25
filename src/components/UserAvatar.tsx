@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable jsx-a11y/prefer-tag-over-role -- The avatar is a composite visual (uploaded image or generated initial) that needs one accessible image label. */
-
 import Image from "next/image";
 import { useState } from "react";
 
@@ -56,16 +54,13 @@ export function UserAvatar({
 
   return (
     <span
-      role="img"
-      aria-label={label + " avatar"}
       className={"relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white " + className}
       style={{ backgroundColor: safeImageUrl && !imageFailed ? "#202324" : background }}
     >
       {safeImageUrl && !imageFailed ? (
         <Image
           src={safeImageUrl}
-          alt=""
-          aria-hidden="true"
+          alt={label + " avatar"}
           fill
           unoptimized
           sizes="96px"
@@ -73,7 +68,10 @@ export function UserAvatar({
           onError={() => setFailedImageUrl(safeImageUrl)}
         />
       ) : (
-        <span aria-hidden="true">{initial}</span>
+        <>
+          <span aria-hidden="true">{initial}</span>
+          <span className="sr-only">{label} avatar</span>
+        </>
       )}
     </span>
   );

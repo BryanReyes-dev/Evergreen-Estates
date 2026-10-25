@@ -128,7 +128,7 @@ export function AuthForm() {
         <p className="mt-3 text-sm leading-6 text-white/70">
           We have processed the sign-up request for <strong>{email.trim()}</strong>. Follow the verification link before signing in.
         </p>
-        <output className="mt-3 block text-sm leading-6 text-white/70" aria-live="polite">{notice}</output>
+        <p className="mt-3 block text-sm leading-6 text-white/70" aria-live="polite">{notice}</p>
         <Button type="button" onClick={resendVerification} disabled={resending} className="mt-5 min-h-11 w-full">
           {resending ? "Sending…" : "Resend verification email"}
         </Button>
@@ -168,7 +168,7 @@ export function AuthForm() {
         </div>
         {error && <p className="rounded-md border border-red-400/30 bg-red-950/40 p-3 text-sm text-red-200" role="alert">{error}</p>}
         {needsVerification && <Button type="button" variant="outline" onClick={resendVerification} disabled={resending} className="min-h-11 w-full">{resending ? "Sending…" : "Resend verification email"}</Button>}
-        {notice && <output className="block text-sm text-white/75" aria-live="polite">{notice}</output>}
+        {notice && <p className="block text-sm text-white/75" aria-live="polite">{notice}</p>}
         <Button type="submit" disabled={pending} className="min-h-11 w-full">{pending ? "Please wait…" : mode === "sign-in" ? "Sign in" : "Create account"}</Button>
       </form>
       <p className="mt-5 text-sm text-white/60">You can browse homes without an account.{" "}<Link href="/search" className="underline underline-offset-4 hover:text-white">Browse listings</Link></p>
