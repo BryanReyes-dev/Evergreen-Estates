@@ -164,13 +164,13 @@ Copy the names from .env.example. Add values in Netlify's site environment-varia
 | DRIZZLE_DATABASE_URL | Read-only application reads | Secret; restricted evergreen_runtime login |
 | AUTH_DATABASE_URL | Better Auth operations | Secret; restricted evergreen_auth login |
 | APP_DATABASE_URL | Owner-scoped writes | Secret; restricted evergreen_app login |
-| BETTER_AUTH_URL | Canonical deployed auth base URL | Must match the active site URL |
+| BETTER_AUTH_URL | Canonical deployed auth base URL | Public URL, not a secret; use the active production site origin |
 | BETTER_AUTH_SECRET | Better Auth signing/encryption secret | Secret; use a strong unique value |
 | RESEND_API_KEY | Verification/reset email delivery | Secret |
 | AUTH_EMAIL_FROM | Verified sender used by Resend | Must use a sender/domain verified in Resend |
 | DIRECT_URL | Drizzle migrations | Privileged; use in a controlled migration environment, not request-time application code |
 
-Set the production BETTER_AUTH_URL to the site URL used by that deployment, and verify any deploy-preview origin requirements before testing auth on previews. Configure and verify a Resend sender domain/address before expecting verification and password-reset emails to arrive. Do not put seed/credentials or fixture passwords in Netlify variables.
+Set BETTER_AUTH_URL to the canonical public site origin (currently https://evergreen-estates.netlify.app for the linked demo); a production value that points to localhost is incorrect because it can generate local authentication/email links. This URL is public configuration, not a secret: in Netlify, store it as a regular environment variable rather than marking it secret for secret-value scanning. If your Netlify site URL differs, use that site's actual origin. Verify preview origins separately. Configure and verify a Resend sender domain/address before expecting verification and password-reset emails to arrive. Do not put seed/credentials or fixture passwords in Netlify variables.
 
 ### Database and fixture safety
 
