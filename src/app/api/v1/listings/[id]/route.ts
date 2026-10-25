@@ -2,6 +2,7 @@ import { getListingById } from "@/db/queries/listings"
 import { and, eq } from "drizzle-orm";
 import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { listings } from "@/db/schema";
+import { MAX_LISTING_PRICE, MIN_LISTING_PRICE, SUPPORTED_LISTING_TAG_VALUES } from "@/lib/listing-constants";
 import { deleteListingMediaObjects } from "@/db/supabase/storage-admin";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/api/get-authenticated-user-id";
@@ -136,8 +137,8 @@ export async function PATCH(
   if ("title" in input) {
     if (
       typeof input.title !== "string" ||
-      input.title.trim().length === 0 ||
-      input.title.trim().length > 200
+      input.title.trim().length < 3 ||
+      input.title.trim().length > 140
     ) {
       return NextResponse.json(
         { error: "INVALID_TITLE" },
@@ -167,7 +168,7 @@ export async function PATCH(
 
     const price = Number(priceString);
 
-    if (!Number.isFinite(price)) {
+    if (!Number.isFinite(price) || price < MIN_LISTING_PRICE || price > MAX_LISTING_PRICE) {
       return NextResponse.json(
         { error: "INVALID_PRICE" },
         { status: 400 },
@@ -182,10 +183,14 @@ export async function PATCH(
 
     const value = input[field];
 
+    const minimum = field === "sqft" ? 1 : 0;
+    const maximum = field === "sqft" ? 1_000_000 : 100;
+
     if (
       typeof value !== "number" ||
-      !Number.isInteger(value) ||
-      value < 0
+      !Number.isSafeInteger(value) ||
+      value < minimum ||
+      value > maximum
     ) {
       return NextResponse.json(
         { error: `INVALID_${field.toUpperCase()}` },
@@ -199,8 +204,8 @@ export async function PATCH(
   if ("address" in input) {
     if (
       typeof input.address !== "string" ||
-      input.address.trim().length === 0 ||
-      input.address.trim().length > 1000
+      input.address.trim().length < 5 ||
+      input.address.trim().length > 300
     ) {
       return NextResponse.json(
         { error: "INVALID_ADDRESS" },
@@ -214,7 +219,8 @@ export async function PATCH(
   if ("description" in input) {
     if (
       typeof input.description !== "string" ||
-      input.description.length > 20_000
+      input.description.trim().length === 0 ||
+      input.description.length > 5_000
     ) {
       return NextResponse.json(
         { error: "INVALID_DESCRIPTION" },
@@ -222,18 +228,19 @@ export async function PATCH(
       );
     }
 
-    updates.description = input.description;
+    updates.description = input.description.trim();
   }
 
   if ("tags" in input) {
     if (
       !Array.isArray(input.tags) ||
-      input.tags.length > 50 ||
+      input.tags.length > 20 ||
       !input.tags.every(
         (tag) =>
           typeof tag === "string" &&
           tag.trim().length > 0 &&
-          tag.trim().length <= 100,
+          tag.trim().length <= 40 &&
+          SUPPORTED_LISTING_TAG_VALUES.includes(tag.trim().toLowerCase()),
       )
     ) {
       return NextResponse.json(
@@ -245,8 +252,8 @@ export async function PATCH(
     updates.tags = [
       ...new Map(
         input.tags.map((tag) => {
-          const normalized = tag.trim();
-          return [normalized.toLowerCase(), normalized] as const;
+          const normalized = tag.trim().toLowerCase();
+          return [normalized, normalized] as const;
         }),
       ).values(),
     ];

@@ -9,6 +9,7 @@ import {
 } from "next/font/google";
 import "@/app/globals.css";
 import { cn } from "@/lib/utils";
+import { SavedListingsProvider } from "@/components/SavedListingsProvider";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -69,7 +70,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#141616] text-[#228100]`}
       >
-        {children}
+        <SavedListingsProvider>{children}</SavedListingsProvider>
       </body>
     </html>
   );

@@ -1,8 +1,4 @@
-import React from 'react'
-
-type Props = {}
-
-const Footer = (props: Props) => {
+const Footer = () => {
   return (
     <div className="bg-[#141616] text-[#228100] p-4">
       <div className="container mx-auto">

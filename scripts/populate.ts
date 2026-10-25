@@ -9,6 +9,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 
 import { seedListings, seedReviews, seedSellers, validateSeedData } from "@/db/seed/data";
+import { isSeedFixtureIdentity } from "@/db/seed/auth-fixtures";
 import { account, session, verification } from "@/db/auth-schema";
 import { listings, reviews, sellerProfiles, users } from "@/db/schema";
 import { MAX_MEDIA_FILE_BYTES } from "@/lib/media/file-limits";
@@ -17,10 +18,19 @@ const EXPECTED_PROJECT_REF = "vcsotaclvwvbpqiljkuk";
 const STORAGE_BUCKET = "property-images";
 const MAX_ACTIVE_LISTINGS_PER_SELLER = 3;
 
-// This historical checksum discrepancy remains unresolved. Population is
-// gated on the independently verified live schema contract below; the script
-// never rewrites migration files or the Drizzle migration ledger.
-const HISTORICAL_0011_CHECKSUM_UNRESOLVED = true;
+// The applied Drizzle ledger hash for migration 0011
+// (d23ee45dadfe79d8ff2346b80fc07872a1c7edebd4b88bc511a83a944ea6baed) does not
+// match the tracked SQL bytes (SHA-256
+// 5f654419803188a68ae069c3a3d873821cdae57c9a58c9ecd5b7bae44a8f9af4). The
+// original byte sequence was not recovered; LF/CRLF and final-newline variants
+// did not reproduce the ledger hash. Never edit migration 0011 or its ledger row.
+//
+// Explicit review disposition (2026-10-23): accept the residual provenance
+// discrepancy for this fixture workflow because migration 0021 has been applied
+// and live role/grant/membership/policy/RLS checks plus the complete dry-run pass.
+// This does NOT resolve or repair the historical checksum. Set this acknowledgement
+// to false to block apply mode again.
+const HISTORICAL_0011_DISCREPANCY_ACKNOWLEDGED = true;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -49,7 +59,6 @@ let storageAdminModule: StorageAdminModule | undefined;
 let appDatabase: ReturnType<AppClientModule["getAppDrizzleDb"]> | undefined;
 let authDatabase: ReturnType<AuthClientModule["getAuthDrizzleDb"]> | undefined;
 
-const authSchema = { user: users, session, account, verification };
 
 type CliOptions = {
   mode: Mode;
@@ -80,7 +89,7 @@ type SellerPlan = {
 };
 
 type MediaManifestEntry = {
-  listingId: string;
+  listingId: string | null;
   filename: string;
   path: string;
   localPath: string;
@@ -490,8 +499,57 @@ async function buildMediaManifest(): Promise<MediaManifestEntry[]> {
     }
   }
 
-  if (entries.length !== 48 || new Set(entries.map(({ path: objectPath }) => objectPath)).size !== 48) {
-    throw new PopulationError(`Expected 48 unique fixture media paths; found ${entries.length}.`);
+  // This image is a root-level Storage object used by the original homepage
+  // fixture. It is deliberately separate from each listing's media array.
+  const homeImagePath = path.resolve(repositoryRoot, "seed", "images", "home-image.jpg");
+  const homeImagePathReal = await realpath(homeImagePath).catch(() => {
+    throw new PopulationError("Missing local root Storage asset: home-image.jpg.");
+  });
+
+  if (!isPathInside(repositoryRootReal, homeImagePathReal)) {
+    throw new PopulationError("The home image resolves outside the repository.");
+  }
+
+  const homeImageStat = await lstat(homeImagePath).catch(() => {
+    throw new PopulationError("Could not inspect home-image.jpg.");
+  });
+
+  if (
+    homeImageStat.isSymbolicLink() ||
+    !homeImageStat.isFile() ||
+    homeImageStat.size <= 0 ||
+    homeImageStat.size > MAX_MEDIA_FILE_BYTES
+  ) {
+    throw new PopulationError(
+      "home-image.jpg must be a non-empty, regular file within the media size limit.",
+    );
+  }
+
+  const homeImageContentType = CONTENT_TYPES[
+    path.extname(homeImagePath).slice(1).toLowerCase()
+  ];
+  if (!homeImageContentType) {
+    throw new PopulationError("home-image.jpg has an unsupported media type.");
+  }
+
+  entries.push({
+    listingId: null,
+    filename: "home-image.jpg",
+    path: "home-image.jpg",
+    localPath: homeImagePath,
+    size: homeImageStat.size,
+    contentType: homeImageContentType,
+  });
+
+  const listingMediaCount = entries.filter((entry) => entry.listingId !== null).length;
+  if (
+    listingMediaCount !== 48 ||
+    entries.length !== 49 ||
+    new Set(entries.map(({ path: objectPath }) => objectPath)).size !== 49
+  ) {
+    throw new PopulationError(
+      `Expected 48 listing media assets and one root image; found ${entries.length} total assets.`,
+    );
   }
 
   return entries;
@@ -785,10 +843,16 @@ async function verifyLiveSchemaContract(): Promise<void> {
     app_listing_delete: boolean;
     app_review_delete: boolean;
     app_ownership_columns_immutable: boolean;
+    app_saved_listings_select_update: boolean;
+    app_user_column_privileges_scoped: boolean;
+    app_users_table_write_denied: boolean;
     runtime_inherited_select: boolean;
     runtime_users_email_denied: boolean;
+    runtime_saved_listings_select_denied: boolean;
     auth_users_crud: boolean;
     auth_users_delete_denied: boolean;
+    auth_saved_listings_access_denied: boolean;
+    auth_users_table_privileges_denied: boolean;
     auth_account_crud: boolean;
     auth_session_crud: boolean;
     auth_verification_crud: boolean;
@@ -806,6 +870,37 @@ async function verifyLiveSchemaContract(): Promise<void> {
   const allRlsTables = new Set(["listings", "reviews", "seller_profiles", "users", "account", "session", "verification"]);
   const normalizeExpression = (value: string | null): string =>
     (value ?? "").toLowerCase().replace(/[\s()"]+/g, "");
+
+  // Migration 0019 is required by the saved-home UI.
+  try {
+    const savedSchemaRows = await appDb.execute(sql`
+      select
+        exists (
+          select 1 from pg_attribute
+          where attrelid = 'public.users'::regclass
+            and attname = 'saved_listings'
+            and atttypid = 'uuid[]'::regtype
+            and attnotnull
+            and not attisdropped
+        ) as column_ready,
+        exists (
+          select 1 from pg_constraint
+          where conrelid = 'public.users'::regclass
+            and conname = 'users_saved_listings_max_100'
+            and contype = 'c'
+            and convalidated
+            and position('cardinality(saved_listings) <= 100' in pg_get_constraintdef(oid)) > 0
+        ) as cap_check_ready
+    `) as unknown as Array<{ column_ready: boolean; cap_check_ready: boolean }>;
+    if (savedSchemaRows[0]?.column_ready !== true || savedSchemaRows[0]?.cap_check_ready !== true) {
+      throw new PopulationError(
+        "The saved_listings column or its 100-item CHECK constraint is missing. Review and apply migration 0019 in the intended database before population.",
+      );
+    }
+  } catch (error) {
+    if (error instanceof PopulationError) throw error;
+    throw new PopulationError("Could not inspect saved-list schema; verify migration 0019 and database access.");
+  }
 
   let roles: RoleRow[];
   let memberships: MembershipRow[];
@@ -967,16 +1062,63 @@ async function verifyLiveSchemaContract(): Promise<void> {
           and not has_column_privilege('evergreen_app', 'public.reviews', 'id', 'UPDATE')
           and not has_column_privilege('evergreen_app', 'public.reviews', 'listing_id', 'UPDATE')
           and not has_column_privilege('evergreen_app', 'public.reviews', 'user_id', 'UPDATE') as app_ownership_columns_immutable,
+        has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'SELECT')
+          and has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'UPDATE') as app_saved_listings_select_update,
+        has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'SELECT')
+          and has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'saved_listings', 'INSERT')
+          and has_column_privilege('evergreen_app', 'public.users', 'preferences', 'SELECT')
+          and has_column_privilege('evergreen_app', 'public.users', 'preferences', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'preferences', 'INSERT')
+          and has_column_privilege('evergreen_app', 'public.users', 'image', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'image', 'INSERT')
+          and has_column_privilege('evergreen_app', 'public.users', 'updated_at', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'updated_at', 'INSERT')
+          and not has_column_privilege('evergreen_app', 'public.users', 'id', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'name', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'email', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'email_verified', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'created_at', 'UPDATE')
+          and not has_column_privilege('evergreen_app', 'public.users', 'email', 'SELECT')
+          and not has_column_privilege('evergreen_app', 'public.users', 'email_verified', 'SELECT')
+          and not has_column_privilege('evergreen_app', 'public.users', 'created_at', 'SELECT')
+          and not has_column_privilege('evergreen_app', 'public.users', 'updated_at', 'SELECT') as app_user_column_privileges_scoped,
+        not has_table_privilege('evergreen_app', 'public.users', 'INSERT')
+          and not has_table_privilege('evergreen_app', 'public.users', 'UPDATE')
+          and not has_table_privilege('evergreen_app', 'public.users', 'DELETE') as app_users_table_write_denied,
+        not has_column_privilege('evergreen_runtime', 'public.users', 'saved_listings', 'SELECT') as runtime_saved_listings_select_denied,
         has_table_privilege('evergreen_runtime', 'public.listings', 'SELECT')
           and has_table_privilege('evergreen_runtime', 'public.reviews', 'SELECT')
           and has_table_privilege('evergreen_runtime', 'public.seller_profiles', 'SELECT')
           and has_column_privilege('evergreen_runtime', 'public.users', 'id', 'SELECT')
           and has_column_privilege('evergreen_runtime', 'public.users', 'name', 'SELECT') as runtime_inherited_select,
         not has_column_privilege('evergreen_runtime', 'public.users', 'email', 'SELECT') as runtime_users_email_denied,
-        has_table_privilege('evergreen_auth', 'public.users', 'SELECT')
-          and has_table_privilege('evergreen_auth', 'public.users', 'INSERT')
-          and has_table_privilege('evergreen_auth', 'public.users', 'UPDATE') as auth_users_crud,
+        has_column_privilege('evergreen_auth', 'public.users', 'id', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'name', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email_verified', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'image', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'created_at', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'updated_at', 'SELECT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'id', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'name', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email_verified', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'image', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'created_at', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'updated_at', 'INSERT')
+          and has_column_privilege('evergreen_auth', 'public.users', 'name', 'UPDATE')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email', 'UPDATE')
+          and has_column_privilege('evergreen_auth', 'public.users', 'email_verified', 'UPDATE')
+          and has_column_privilege('evergreen_auth', 'public.users', 'image', 'UPDATE')
+          and has_column_privilege('evergreen_auth', 'public.users', 'updated_at', 'UPDATE') as auth_users_crud,
         not has_table_privilege('evergreen_auth', 'public.users', 'DELETE') as auth_users_delete_denied,
+        not has_column_privilege('evergreen_auth', 'public.users', 'saved_listings', 'SELECT')
+          and not has_column_privilege('evergreen_auth', 'public.users', 'saved_listings', 'INSERT')
+          and not has_column_privilege('evergreen_auth', 'public.users', 'saved_listings', 'UPDATE') as auth_saved_listings_access_denied,
+        not has_table_privilege('evergreen_auth', 'public.users', 'SELECT')
+          and not has_table_privilege('evergreen_auth', 'public.users', 'INSERT')
+          and not has_table_privilege('evergreen_auth', 'public.users', 'UPDATE') as auth_users_table_privileges_denied,
         has_table_privilege('evergreen_auth', 'public.account', 'SELECT')
           and has_table_privilege('evergreen_auth', 'public.account', 'INSERT')
           and has_table_privilege('evergreen_auth', 'public.account', 'UPDATE')
@@ -1031,7 +1173,7 @@ async function verifyLiveSchemaContract(): Promise<void> {
   const sharedTableGrants = grants.filter((row) => row.grantee === "evergreen_read" && row.scope === "TABLE");
   const sharedColumnGrants = grants.filter((row) => row.grantee === "evergreen_read" && row.scope === "COLUMN");
   const expectedSharedTableGrants = new Set(["listings:SELECT", "reviews:SELECT", "seller_profiles:SELECT"]);
-  const expectedSharedColumnGrants = new Set(["users.id:SELECT", "users.name:SELECT"]);
+  const expectedSharedColumnGrants = new Set(["users.id:SELECT", "users.name:SELECT", "users.image:SELECT"]);
   const sharedTableGrantsPassed = sharedTableGrants.length === expectedSharedTableGrants.size &&
     sharedTableGrants.every((row) => expectedSharedTableGrants.has(`${row.table_name}:${row.privilege_type}`));
   const sharedColumnGrantsPassed = sharedColumnGrants.length === expectedSharedColumnGrants.size &&
@@ -1083,6 +1225,34 @@ async function verifyLiveSchemaContract(): Promise<void> {
     return qualMatches && checkMatches;
   });
 
+  const expectedSavedListingPolicies = [
+    { name: "App can read own saved listings", command: "SELECT", permissive: "PERMISSIVE" },
+    { name: "App can only read own users row", command: "SELECT", permissive: "RESTRICTIVE" },
+    { name: "App can update own saved listings", command: "UPDATE", permissive: "PERMISSIVE" },
+  ] as const;
+  const actualSavedListingPolicies = policies.filter((row) =>
+    row.table_name === "users" &&
+    expectedSavedListingPolicies.some((expected) => expected.name === row.policy_name),
+  );
+  const savedOwnerExpression = normalizeExpression(
+    "id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid",
+  );
+  const savedListingPoliciesPassed =
+    actualSavedListingPolicies.length === expectedSavedListingPolicies.length &&
+    expectedSavedListingPolicies.every((expected) => {
+      const matches = actualSavedListingPolicies.filter((row) => row.policy_name === expected.name);
+      if (matches.length !== 1) return false;
+      const row = matches[0];
+      return row.command === expected.command &&
+        row.permissive === expected.permissive &&
+        row.roles.length === 1 &&
+        row.roles[0] === "evergreen_app" &&
+        normalizeExpression(row.qual) === savedOwnerExpression &&
+        (expected.command === "UPDATE"
+          ? normalizeExpression(row.with_check) === savedOwnerExpression
+          : row.with_check === null);
+    });
+
   const authExpected = [
     ["users", "Evergreen auth can manage users"],
     ["account", "Evergreen auth can manage accounts"],
@@ -1100,6 +1270,21 @@ async function verifyLiveSchemaContract(): Promise<void> {
   const rlsPassed = rls.length === allRlsTables.size && [...allRlsTables].every((table) =>
     rls.some((row) => row.table_name === table && row.enabled),
   );
+  const savedCleanupTriggers = triggers.filter(
+    (row) => row.trigger_name === "listings_remove_deleted_ids_from_saved_listings",
+  );
+  const savedCleanupTrigger = savedCleanupTriggers[0];
+  const normalizedSavedCleanupTrigger = savedCleanupTrigger?.definition.toLowerCase().replace(/\s+/g, " ") ?? "";
+  const normalizedSavedCleanupFunction = savedCleanupTrigger?.function_definition.toLowerCase().replace(/\s+/g, " ") ?? "";
+  const savedCleanupTriggerPassed =
+    savedCleanupTriggers.length === 1 &&
+    savedCleanupTrigger.enabled === "O" &&
+    savedCleanupTrigger.security_definer &&
+    Boolean(savedCleanupTrigger.function_config?.some((value) => value.toLowerCase().replace(/\s+/g, "") === "search_path=pg_catalog,public")) &&
+    normalizedSavedCleanupTrigger.includes("after delete on public.listings") &&
+    normalizedSavedCleanupFunction.includes("array_remove(saved_listings, old.id)") &&
+    normalizedSavedCleanupFunction.includes("saved_listings @> array[old.id]::uuid[]");
+
   const capTriggers = triggers.filter((row) => row.trigger_name === "listings_enforce_max_three_per_seller");
   const capTrigger = capTriggers[0];
   const normalizedTrigger = capTrigger?.definition.toLowerCase().replace(/\s+/g, " ") ?? "";
@@ -1117,9 +1302,13 @@ async function verifyLiveSchemaContract(): Promise<void> {
   const appPrivilegesPassed = privileges.length === 1 && app.app_role === "evergreen_app" && app.app_select &&
     app.app_seller_profile_insert && app.app_listing_insert && app.app_review_insert &&
     app.app_seller_profile_update && app.app_listing_update && app.app_review_update &&
-    app.app_seller_profile_delete && app.app_listing_delete && app.app_review_delete && app.app_ownership_columns_immutable;
-  const runtimePrivilegesPassed = privileges.length === 1 && app.runtime_inherited_select && app.runtime_users_email_denied;
+    app.app_seller_profile_delete && app.app_listing_delete && app.app_review_delete &&
+    app.app_ownership_columns_immutable && app.app_saved_listings_select_update &&
+    app.app_user_column_privileges_scoped && app.app_users_table_write_denied;
+  const runtimePrivilegesPassed = privileges.length === 1 && app.runtime_inherited_select &&
+    app.runtime_users_email_denied && app.runtime_saved_listings_select_denied;
   const authPrivilegesPassed = privileges.length === 1 && app.auth_users_crud && app.auth_users_delete_denied &&
+    app.auth_saved_listings_access_denied && app.auth_users_table_privileges_denied &&
     app.auth_account_crud && app.auth_session_crud && app.auth_verification_crud;
   const authConnection = authConnections[0];
   const authConnectionPassed = authConnections.length === 1 && authConnection.role_name === "evergreen_auth" &&
@@ -1130,11 +1319,16 @@ async function verifyLiveSchemaContract(): Promise<void> {
     ["required database role login/inheritance attributes", roleAttributesPassed],
     ["shared-read membership settings", membershipSettingsPassed],
     ["evergreen_read table grants", sharedTableGrantsPassed],
-    ["evergreen_read users.id/users.name-only column grants", sharedColumnGrantsPassed],
+    ["evergreen_read users.id/name/avatar-only column grants", sharedColumnGrantsPassed],
     ["absence of evergreen_runtime direct grants and intended inherited reads", runtimeDirectGrantsAbsent && runtimePrivilegesPassed],
     ["shared-read policies and absence of obsolete runtime policies", sharedPoliciesPassed && obsoleteRuntimePoliciesAbsent],
     ["RLS enabled on application and Better Auth tables", rlsPassed],
     ["owner-scoped CRUD policies", ownerPoliciesPassed],
+    ["saved-list owner-only RLS policies", savedListingPoliciesPassed],
+    ["listing deletion cleans saved-list references", savedCleanupTriggerPassed],
+    ["saved-list/preferences/avatar column grants and role isolation", app.app_user_column_privileges_scoped &&
+      app.app_users_table_write_denied && app.runtime_saved_listings_select_denied &&
+      app.auth_saved_listings_access_denied && app.auth_users_table_privileges_denied],
     ["APP_DATABASE_URL write privileges and ownership-column restrictions", appPrivilegesPassed],
     ["AUTH_DATABASE_URL role, privileges, and policies", authConnectionPassed && authPrivilegesPassed && authPoliciesPassed],
     ["concurrency-safe three-listing trigger", capTriggerPassed],
@@ -1485,7 +1679,7 @@ async function compareExistingStorageObject(
 ): Promise<boolean> {
   const { data, error } = await storageBucket.download(entry.path);
   if (error || !data) {
-    throw new PopulationError(`Could not download existing fixture object ${entry.listingId}/${entry.filename} for byte comparison.`);
+    throw new PopulationError(`Could not download existing fixture object ${entry.path} for byte comparison.`);
   }
   const [remoteBytes, localBytes] = await Promise.all([
     data.arrayBuffer().then((value) => Buffer.from(value)),
@@ -1502,9 +1696,15 @@ async function inspectStorage(entries: MediaManifestEntry[]): Promise<StoragePla
   const missing: MediaManifestEntry[] = [];
   const conflicts: string[] = [];
   const expectedNamesByListing = new Map<string, Set<string>>();
+  const expectedRootNames = new Set<string>();
   const existingNamesByListing = new Map<string, Set<string>>();
 
   for (const entry of entries) {
+    if (entry.listingId === null) {
+      expectedRootNames.add(entry.filename);
+      continue;
+    }
+
     const filenames = expectedNamesByListing.get(entry.listingId) ?? new Set<string>();
     filenames.add(entry.filename);
     expectedNamesByListing.set(entry.listingId, filenames);
@@ -1520,8 +1720,25 @@ async function inspectStorage(entries: MediaManifestEntry[]): Promise<StoragePla
     extraObjects += data.filter((item) => !expectedNames.has(item.name)).length;
   }
 
+  const { data: rootItems, error: rootError } = await bucket.list("", { limit: 1000 });
+  if (rootError || !rootItems) {
+    throw new PopulationError("Could not inspect root-level Storage objects.");
+  }
+
+  // Supabase returns folder entries alongside files at the root. Count only
+  // actual files as extras, not virtual folders such as "listings" or "avatars".
+  const existingRootFileNames = new Set(
+    rootItems.filter((item) => item.id !== null).map((item) => item.name),
+  );
+  extraObjects += rootItems.filter(
+    (item) => item.id !== null && !expectedRootNames.has(item.name),
+  ).length;
+
   for (const entry of entries) {
-    const isListed = existingNamesByListing.get(entry.listingId)?.has(entry.filename) ?? false;
+    const isListed = entry.listingId === null
+      ? existingRootFileNames.has(entry.filename)
+      : (existingNamesByListing.get(entry.listingId)?.has(entry.filename) ?? false);
+
     if (!isListed) {
       missing.push(entry);
       continue;
@@ -1529,12 +1746,12 @@ async function inspectStorage(entries: MediaManifestEntry[]): Promise<StoragePla
 
     try {
       if (!(await compareExistingStorageObject(bucket, entry))) {
-        conflicts.push(`Storage byte conflict at ${entry.listingId}/${entry.filename}; the object was left unchanged`);
+        conflicts.push(`Storage byte conflict at ${entry.path}; the object was left unchanged`);
       } else {
         identical.push(entry);
       }
     } catch {
-      conflicts.push(`Could not byte-verify existing Storage object ${entry.listingId}/${entry.filename}`);
+      conflicts.push(`Could not byte-verify existing Storage object ${entry.path}`);
     }
   }
 
@@ -1550,17 +1767,18 @@ function printPlan(input: {
   const { options, sellerPlans, databasePlan, storagePlan } = input;
   console.log(`Mode: ${options.mode}`);
   console.log(`Target project: ${EXPECTED_PROJECT_REF} (all configured connection targets verified)`);
-  console.log(`Fixture records: ${seedSellers.length} sellers, ${seedListings.length} listings, ${seedReviews.length} reviews, ${storagePlan.entries.length} media assets`);
+  console.log(`Fixture records: ${seedSellers.length} sellers, ${seedListings.length} listings, ${seedReviews.length} reviews.`);
+  console.log(`Storage manifest: 48 listing media assets plus one root-level image (${storagePlan.entries.length} total objects).`);
   console.log(`Better Auth: ${sellerPlans.filter(({ status }) => status === "create").length} planned account creations; ${sellerPlans.filter(({ status }) => status === "reuse").length} valid accounts reused`);
   console.log(`Seller profiles: ${databasePlan.profileCreations} planned creations; ${databasePlan.profileReuses} reused`);
   console.log(`Listings: ${databasePlan.listingCreations} planned creations; ${databasePlan.listingReuses} reused`);
   console.log(`Reviews: ${databasePlan.reviewCreations} planned creations; ${databasePlan.reviewReuses} reused`);
   console.log(`Storage: ${storagePlan.missing.length} missing; ${storagePlan.identical.length} existing objects verified byte-for-byte and skipped`);
   if (storagePlan.extraObjects > 0) {
-    console.log(`Storage: ${storagePlan.extraObjects} additional objects in fixture listing folders will be preserved untouched`);
+    console.log(`Storage: ${storagePlan.extraObjects} additional objects in checked fixture Storage paths will be preserved untouched`);
   }
-  if (HISTORICAL_0011_CHECKSUM_UNRESOLVED) {
-    console.log("Migration provenance: the 0011 checksum discrepancy remains unresolved; live schema checks passed independently, and no checksum or ledger repair was attempted.");
+  if (HISTORICAL_0011_DISCREPANCY_ACKNOWLEDGED) {
+    console.log("Migration provenance: the 0011 checksum mismatch remains unresolved but explicitly acknowledged; migration 0021 is applied, live schema/security checks passed, and no checksum or ledger repair was attempted.");
   }
   if (databasePlan.conflicts.length > 0 || storagePlan.conflicts.length > 0) {
     printConflicts([...databasePlan.conflicts, ...storagePlan.conflicts]);
@@ -1569,13 +1787,18 @@ function printPlan(input: {
 
 function createPopulationAuth() {
   requireDbHelpers();
+  if (!authClientModule) {
+    throw new PopulationError(
+      "The restricted Better Auth schema projection was not initialized."
+    );
+  }
   return betterAuth({
     appName: "Evergreen Estates",
     baseURL: getRequiredEnv("BETTER_AUTH_URL"),
     secret: getRequiredEnv("BETTER_AUTH_SECRET"),
     database: drizzleAdapter(getAuthDb(), {
       provider: "pg",
-      schema: authSchema,
+      schema: authClientModule.authSchema,
     }),
     emailAndPassword: {
       enabled: true,
@@ -1620,6 +1843,29 @@ async function getVerifiedUserByEmail(seller: SellerRecord): Promise<AuthUserRow
   return found[0];
 }
 
+async function markFixtureSellerVerified(seller: SellerRecord, userId: string): Promise<void> {
+  // This helper is reachable only from the manually invoked populate script.
+  // Public registration never imports or calls the fixture allowlist.
+  if (!isSeedFixtureIdentity(seller.email, seller.name)) {
+    throw new PopulationError("Refusing to verify an identity outside the exact synthetic fixture allowlist.");
+  }
+
+  requireDbHelpers();
+  const updated = await getAuthDb()
+    .update(users)
+    .set({ emailVerified: true })
+    .where(and(
+      eq(users.id, userId),
+      eq(users.email, seller.email),
+      eq(users.name, seller.name),
+    ))
+    .returning({ id: users.id });
+
+  if (updated.length !== 1 || updated[0].id !== userId) {
+    throw new PopulationError("Could not mark the allowlisted fixture seller as verified; stop and inspect the account state.");
+  }
+}
+
 async function provisionSellerAccounts(
   sellerPlans: SellerPlan[],
   passwords: Map<string, string>,
@@ -1631,12 +1877,14 @@ async function provisionSellerAccounts(
 
   for (const plan of sellerPlans) {
     if (plan.user) {
+      await markFixtureSellerVerified(plan.seller, plan.user.id);
       userIds.set(plan.seller.key, plan.user.id);
       continue;
     }
 
     const existing = await getVerifiedUserByEmail(plan.seller);
     if (existing) {
+      await markFixtureSellerVerified(plan.seller, existing.id);
       userIds.set(plan.seller.key, existing.id);
       console.log(`Account ${plan.seller.key}: reused after concurrent creation`);
       continue;
@@ -1670,8 +1918,9 @@ async function provisionSellerAccounts(
       throw new PopulationError(`Better Auth did not provision seller ${plan.seller.key}; rerun after reviewing the account state.`);
     }
 
+    await markFixtureSellerVerified(plan.seller, created.id);
     userIds.set(plan.seller.key, created.id);
-    console.log(`Account ${plan.seller.key}: provisioned through Better Auth (UUID ${created.id})`);
+    console.log(`Account ${plan.seller.key}: provisioned through Better Auth and verified through the fixture-only allowlist (UUID ${created.id})`);
   }
 
   return userIds;
@@ -1736,7 +1985,7 @@ async function uploadMissingMedia(storagePlan: StoragePlan): Promise<void> {
   for (const entry of storagePlan.missing) {
     const bytes = await readFile(entry.localPath);
     if (bytes.length !== entry.size || bytes.length <= 0 || bytes.length > MAX_MEDIA_FILE_BYTES) {
-      throw new PopulationError(`Local media asset ${entry.listingId}/${entry.filename} changed after preflight or exceeds the shared size limit.`);
+      throw new PopulationError(`Local media asset ${entry.path} changed after preflight or exceeds the shared size limit.`);
     }
     const { error } = await bucket.upload(entry.path, bytes, {
       contentType: entry.contentType,
@@ -1746,20 +1995,23 @@ async function uploadMissingMedia(storagePlan: StoragePlan): Promise<void> {
     if (error) {
       // Another run may have won the non-overwriting upload race. Reuse only
       // after comparing actual downloaded bytes; never replace the object.
-      const { data: files, error: listError } = await bucket.list(`listings/${entry.listingId}`, { limit: 1000 });
+      const folderPath = entry.listingId === null
+        ? ""
+        : `listings/${entry.listingId}`;
+      const { data: files, error: listError } = await bucket.list(folderPath, { limit: 1000 });
       const exists = files?.some((file) => file.name === entry.filename) ?? false;
       if (listError || !exists || !(await compareExistingStorageObject(bucket, entry))) {
-        throw new PopulationError(`Could not upload fixture object ${entry.listingId}/${entry.filename}; any existing object was left unchanged.`);
+        throw new PopulationError(`Could not upload fixture object ${entry.path}; any existing object was left unchanged.`);
       }
-      console.log(`Storage ${entry.listingId}/${entry.filename}: identical concurrent object reused`);
+      console.log(`Storage ${entry.path}: identical concurrent object reused`);
       continue;
     }
 
     if (!(await compareExistingStorageObject(bucket, entry))) {
-      throw new PopulationError(`Uploaded fixture object ${entry.listingId}/${entry.filename} failed byte verification; it was left in place.`);
+      throw new PopulationError(`Uploaded fixture object ${entry.path} failed byte verification; it was left in place.`);
     }
     uploaded += 1;
-    console.log(`Storage ${entry.listingId}/${entry.filename}: uploaded and byte-verified`);
+    console.log(`Storage ${entry.path}: uploaded and byte-verified`);
   }
 
   console.log(`Storage upload phase complete: ${uploaded} new objects uploaded; no objects were deleted or overwritten.`);
@@ -1899,8 +2151,6 @@ async function run(): Promise<void> {
   }
 
   const sellerPlans = await inspectSellerAccounts();
-  validateAuthProvisioningConfig(sellerPlans, options.mode);
-  const passwords = await readSellerCredentials(sellerPlans);
   const databasePlan = await inspectApplicationRecords(sellerPlans);
   const storagePlan = await inspectStorage(mediaManifest);
 
@@ -1915,10 +2165,21 @@ async function run(): Promise<void> {
     return;
   }
 
+  // The exact historical 0011 bytes remain unknown. Do not claim the hash was
+  // resolved or update the ledger. This explicit acknowledgement allows writes
+  // only after migration 0021 is applied and the live preflight passes.
+  if (!HISTORICAL_0011_DISCREPANCY_ACKNOWLEDGED) {
+    throw new PopulationError(
+      "Apply is blocked because the 0011 checksum discrepancy has not been explicitly acknowledged. Dry-run remains available.",
+    );
+  }
+
   if (options.confirmedProject !== EXPECTED_PROJECT_REF) {
     throw new PopulationError("Write mode lost its explicit target project confirmation.");
   }
 
+  validateAuthProvisioningConfig(sellerPlans, options.mode);
+  const passwords = await readSellerCredentials(sellerPlans);
   const userIds = await provisionSellerAccounts(sellerPlans, passwords);
   await createMissingProfiles(sellerPlans, userIds);
   await uploadMissingMedia(storagePlan);

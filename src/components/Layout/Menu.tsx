@@ -1,176 +1,164 @@
-
 "use client";
+
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
+import { AccountNavigation } from "@/components/AccountNavigation";
 
-import { AnimatePresence, motion } from "framer-motion";
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])';
 
-import { useState, useEffect } from "react";
+export default function Menu() {
+  const [open, setOpen] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
 
+  useEffect(() => {
+    const desktopViewport = window.matchMedia("(min-width: 768px)");
+    const closeWhenDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setOpen(false);
+    };
 
-const Menu = () => {
-    const [overlay, setOverlay] = useState(false);
-    const toggleOverlay = () => {
-    
-    setOverlay(!overlay); 
-  };
+    desktopViewport.addEventListener("change", closeWhenDesktop);
+    return () => desktopViewport.removeEventListener("change", closeWhenDesktop);
+  }, []);
 
- useEffect(() => {
-  if (overlay) {
-    document.body.style.overflow = 'hidden';
-  } else {
-    document.body.style.overflow = 'unset';
-  }
+  useEffect(() => {
+    if (!open) return;
 
-  
-  return () => {
-    document.body.style.overflow = 'unset';
-  };
-}, [overlay]); 
+    const previousOverflow = document.body.style.overflow;
+    const previousFocus =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
+    document.body.style.overflow = "hidden";
+    panelRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
 
-    return (
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
 
-        <>
-        
-            
-            <div onClick={toggleOverlay} className="sm:hidden  h-min p-0.5 mr-2 mt-1 justify-end  w-10 bg-[#3A3F42] rounded-md  text-[#228100]">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                </svg>
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
 
-            </div>
+      // Don't send keyboard focus to a trigger that is hidden on desktop.
+      if (!window.matchMedia("(min-width: 768px)").matches) {
+        previousFocus?.focus();
+      }
+    };
+  }, [open]);
 
+  const linkClass =
+    "flex min-h-12 items-center rounded-lg px-4 py-3 text-base font-medium text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]";
 
-            <AnimatePresence>
-                {overlay && (
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+        aria-expanded={open}
+        aria-controls="mobile-navigation"
+        onClick={() => setOpen((current) => !current)}
+        className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/15 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]"
+      >
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true">
+          {open ? (
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          ) : (
+            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          )}
+        </svg>
+      </button>
 
-                    
-                    <motion.div className="fixed flex border-solid border-[#228100] border-t-2 border-r-2 rounded-tr-4xl top-0 left-0 w-[95vw] h-screen  bg-[#202324] text-[#228100] z-10  text-2xl"
-                        
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="mobile-navigation-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0.12 : 0.22 }}
+            className="fixed inset-0 z-50 bg-black/70"
+          >
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label="Close navigation menu"
+              onClick={() => setOpen(false)}
+              className="absolute inset-0 z-0 h-full w-full cursor-default border-0 bg-transparent"
+            />
 
-                        key="menuOverlay"
+            <motion.section
+              ref={panelRef}
+              id="mobile-navigation"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="mobile-navigation-title"
+              initial={prefersReducedMotion ? { opacity: 0 } : { x: "-100%" }}
+              animate={prefersReducedMotion ? { opacity: 1 } : { x: 0 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { x: "-105%" }}
+              transition={
+                prefersReducedMotion
+                  ? { duration: 0.12 }
+                  : { type: "spring", stiffness: 360, damping: 24, bounce: 0.28 }
+              }
+              className="relative z-10 flex h-[100dvh] max-h-[100dvh] w-[88vw] max-w-sm flex-col overflow-y-auto overscroll-contain rounded-r-2xl border-r border-white/10 bg-[#202324] p-4 shadow-2xl sm:w-[80vw] sm:max-w-md sm:p-6"
+              onKeyDown={(event) => {
+                if (!open || event.key !== "Tab") return;
 
-                        initial={{
-                            x: '-100vw',
-                            opacity: 0,
-                        }}
-                        animate = {{
-                            opacity: 1,
-                            x: 0,
-                        }}
+                const focusable = event.currentTarget.querySelectorAll<HTMLElement>(
+                  FOCUSABLE_SELECTOR,
+                );
+                if (focusable.length === 0) return;
 
-                        transition = {{
-                            type: "tween",
-                            
-                        }}
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
 
-                        exit = {{
-                            x: '-100vw',
-                            opacity: 0,
-                        }}>
+                if (!event.currentTarget.contains(document.activeElement)) {
+                  event.preventDefault();
+                  first.focus();
+                } else if (event.shiftKey && document.activeElement === first) {
+                  event.preventDefault();
+                  last.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                  event.preventDefault();
+                  first.focus();
+                }
+              }}
+            >
+              <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <h2 id="mobile-navigation-title" className="text-lg font-semibold text-white">
+                  Navigation
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-white/70 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c]"
+                >
+                  Close
+                </button>
+              </div>
 
+              <nav aria-label="Mobile navigation" className="mt-4 flex flex-col gap-1">
+                <Link href="/" className={linkClass} onClick={() => setOpen(false)}>
+                  Home
+                </Link>
+                <Link href="/search" className={linkClass} onClick={() => setOpen(false)}>
+                  Find homes
+                </Link>
+              </nav>
 
-
-                            <img src={"/images/logo/evergreen_logo.png"} className="w-[10rem] h-[10rem] absolute mt-3 ml-[10vw]"/>
-
-                        
-                        
-
-                        <nav className=" mt-[30vh] w-full  m-7">
-                            
-                            <ul className="grid grid-cols-1 gap-14 text-2xl text-black font-semibold">
-                                
-
-                                <li  className=" w-full flex ">
-                                    <Link href="/search" className="p-2 flex bg-[#3a3f42] w-full rounded-md  border-black border shadow-lg shadow-[#228100]/70 hover:border-[#228100] hover:scale-105 transition-all duration-300 ease-in-out">
-
-                                        
-                                        
-                                        <svg  version="1.1" id="Layer_1" className="text-[#228100] w-20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" enableBackground="new 0 0 50 50"  fill="#228100">
-                                            <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-                                            <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
-                                            <g id="SVGRepo_iconCarrier"> 
-                                            <path fill="#228100" d="M20.745,32.62c2.883,0,5.606-1.022,7.773-2.881L39.052,40.3c0.195,0.196,0.452,0.294,0.708,0.294 c0.255,0,0.511-0.097,0.706-0.292c0.391-0.39,0.392-1.023,0.002-1.414L29.925,28.319c3.947-4.714,3.717-11.773-0.705-16.205 c-2.264-2.27-5.274-3.52-8.476-3.52s-6.212,1.25-8.476,3.52c-4.671,4.683-4.671,12.304,0,16.987 C14.533,31.37,17.543,32.62,20.745,32.62z M13.685,13.526c1.886-1.891,4.393-2.932,7.06-2.932s5.174,1.041,7.06,2.932 c3.895,3.905,3.895,10.258,0,14.163c-1.886,1.891-4.393,2.932-7.06,2.932s-5.174-1.041-7.06-2.932 C9.791,23.784,9.791,17.431,13.685,13.526z"></path></g>
-                                        </svg>
-                                        <div className="flex items-center  justify-center  m-auto">
-
-                                            Find Homes
-
-                                        </div>
-                                        
-                                    </Link>
-                                </li>
-
-
-                                <li className="flex  right-2">
-
-
-                                    <div className="p-2 flex bg-[#3a3f42] w-full rounded-md  border-black border shadow-lg shadow-[#228100]/70 hover:border-[#228100] hover:scale-105 transition-all duration-300 ease-in-out">
-                                    
-                                    
-                                        <svg viewBox="0 0 24 24" fill="none" className="text-[#228100] w-20 " xmlns="http://www.w3.org/2000/svg">
-                                            <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-                                            <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
-                                            <g id="SVGRepo_iconCarrier"> 
-                                            <path fillRule="evenodd" clipRule="evenodd" d="M12 6.00019C10.2006 3.90317 7.19377 3.2551 4.93923 5.17534C2.68468 7.09558 2.36727 10.3061 4.13778 12.5772C5.60984 14.4654 10.0648 18.4479 11.5249 19.7369C11.6882 19.8811 11.7699 19.9532 11.8652 19.9815C11.9483 20.0062 12.0393 20.0062 12.1225 19.9815C12.2178 19.9532 12.2994 19.8811 12.4628 19.7369C13.9229 18.4479 18.3778 14.4654 19.8499 12.5772C21.6204 10.3061 21.3417 7.07538 19.0484 5.17534C16.7551 3.2753 13.7994 3.90317 12 6.00019Z" stroke="currentcolor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                                            </path> 
-                                            </g>
-                                        </svg>
-                                        <div className="flex items-center  justify-center  m-auto">
-
-                                            Saved Homes
-
-                                        </div>
-
-                                    </div>
-                                </li>
- 
-                            
-                                <li className="flex">
-
-
-                                    <div className="p-2 flex bg-[#3a3f42] w-full rounded-md  border-black border shadow-lg shadow-[#228100]/70 hover:border-[#228100] hover:scale-105 transition-all duration-300 ease-in-out">
-                                    
-                                    
-                                        <svg viewBox="0 0 24 24" fill="none" className="text-[#228100] w-20" xmlns="http://www.w3.org/2000/svg">
-                                            <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-                                            <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
-                                            <g id="SVGRepo_iconCarrier"> 
-                                            <circle cx="12" cy="9" r="3"  strokeWidth="1" stroke="currentcolor" ></circle> 
-                                            <circle cx="12" cy="12" r="10"  strokeWidth="1" stroke="currentcolor" ></circle> 
-                                            <path stroke="currentcolor"  d="M17.9691 20C17.81 17.1085 16.9247 15 11.9999 15C7.07521 15 6.18991 17.1085 6.03076 20" strokeWidth="1" strokeLinecap="round"></path> </g>
-                                        </svg>
-                                        <div className="flex items-center  justify-center  m-auto">
-
-                                            Profile
-
-                                        </div>
-                                    </div>
-                                </li>
-
-
-                            </ul>
-                        </nav>
-
-                        <div className=' absolute top-5 right-5' onClick={toggleOverlay}>
-                            <svg className="w-10 h-10" fill="#228100" height="200px" width="200px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460.775 460.775"  stroke="#228100"><g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-                                <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
-                                <g id="SVGRepo_iconCarrier"> 
-                                <path d="M285.08,230.397L456.218,59.27c6.076-6.077,6.076-15.911,0-21.986L423.511,4.565c-2.913-2.911-6.866-4.55-10.992-4.55 c-4.127,0-8.08,1.639-10.993,4.55l-171.138,171.14L59.25,4.565c-2.913-2.911-6.866-4.55-10.993-4.55 c-4.126,0-8.08,1.639-10.992,4.55L4.558,37.284c-6.077,6.075-6.077,15.909,0,21.986l171.138,171.128L4.575,401.505 c-6.074,6.077-6.074,15.911,0,21.986l32.709,32.719c2.911,2.911,6.865,4.55,10.992,4.55c4.127,0,8.08-1.639,10.994-4.55 l171.117-171.12l171.118,171.12c2.913,2.911,6.866,4.55,10.993,4.55c4.128,0,8.081-1.639,10.992-4.55l32.709-32.719 c6.074-6.075,6.074-15.909,0-21.986L285.08,230.397z"></path> </g>
-                            </svg>
-                        </div>
-
-
-                    </motion.div>
-                    
-                    
-                        
-                )}
-            </AnimatePresence>
-
-        </>
-         
-    )}
-
-export default Menu;
+              <div className="mt-auto border-t border-white/10 pt-4">
+                <AccountNavigation mobile onNavigate={() => setOpen(false)} />
+              </div>
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}

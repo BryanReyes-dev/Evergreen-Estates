@@ -134,6 +134,27 @@
       "when": 1792454378303,
       "tag": "0018_remove_public_storage_read_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792675697309,
+      "tag": "0019_saved_listings_on_users",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792680000000,
+      "tag": "0020_user_account_preferences",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792788360000,
+      "tag": "0021_reconcile_shared_read_role",
+      "breakpoints": true
     }
   ]
 }

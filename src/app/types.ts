@@ -6,10 +6,11 @@ export interface User {
   email: string;
 }
 
-export type PublicUserData = Pick<User, "id" | "name">;
+export type PublicUserData = Pick<User, "id" | "name"> & { image?: string | null };
 
 export interface Houselisting {
   id: string;
+  sellerUserId?: string | null;
   media: string[];
   tags: string[];
   title: string;
@@ -58,4 +59,5 @@ export interface SearchParams {
   query?: string;
   price?: string;
   tag?: string | string[];
+  sort?: string;
 }
