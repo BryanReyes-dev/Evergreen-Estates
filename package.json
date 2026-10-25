@@ -83,7 +83,7 @@
     },
     "packageManager": {
       "name": "npm",
-      "version": "11.12.1",
+      "version": "11.19.1",
       "onFail": "download"
     }
   }
