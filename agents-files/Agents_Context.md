@@ -14,7 +14,7 @@ Last reviewed: 2026-10-25.
 
 ## Project status
 
-Evergreen Estates is a Next.js 16 App Router property marketplace. Vite+ is the development check/test workflow; it does not replace Next.js as the app runtime. The active documentation/application branch for this work is `chore/vite-plus-migration`.
+Evergreen Estates is a Next.js 16 App Router property marketplace. Vite+ is the development check/test workflow; it does not replace Next.js as the app runtime. The current default branch is `main`; recent media playback, autoplay, navigation responsiveness, and media-sizing fixes were committed there.
 
 Current source includes public listing browse/detail/search/filtering, seller profiles and published seller storefronts, owner-scoped listing CRUD, review CRUD, Better Auth email/password authentication, account profile/preferences, saved homes, listing media upload/delete/reorder, and video-caption support. Source presence is not proof that every user flow has passed end-to-end verification or works in the current Netlify deployment.
 
@@ -29,6 +29,7 @@ Current source includes public listing browse/detail/search/filtering, seller pr
 - The configured media policy is a private Supabase Storage bucket and server-issued signed URLs. Images include GIF; MP4/WebM are videos; WebVTT caption files are supported for video media. The tested/documented per-file media ceiling is 50,000,000 bytes.
 - `APP_DATABASE_URL` is intended for the restricted `evergreen_app` login; `DIRECT_URL` is for Drizzle migrations only.
 - `scripts/run-test-suite.mjs` owns test-suite categorization and descriptive terminal output. It sets `RUN_DB_INTEGRATION_TESTS=true` only for the explicitly selected database suites.
+- `tests/unit/media-display.test.ts`, exposed as `npm run test:media-display`, covers signed/query-string GIF source detection and shared video-player markup with and without captions, including autoplay/muted/loop attributes. Its presence is confirmed in source; its command was not run during this documentation update.
 - `netlify.toml` defines `npm run build`, `.next` as the publish directory, and the Supabase image-host allowlist. This file alone does not prove a successful current Netlify build or correctly configured Netlify environment variables.
 - No GitHub Actions quality workflow is configured on this branch. Do not reintroduce hosted CI unless requested.
 
@@ -54,7 +55,7 @@ Before treating the public Netlify demo as release-ready, verify the current sit
 
 ## Immediate next work
 
-1. Run the current branch's `vp check`, `vp test`, and `vp run test:all` as appropriate; the full suite requires `DRIZZLE_DATABASE_URL` for read-only integration tests. Run `npm run build` as well. Record actual command results rather than assuming prior checks cover later edits.
+1. Run `npm run test:media-display` to execute the new focused media regression tests. Then run `vp check`, `vp test`, and `vp run test:all` as appropriate; the full suite requires `DRIZZLE_DATABASE_URL` for read-only integration tests. Run `npm run build` as well. Record actual command results rather than assuming prior checks cover later edits.
 2. Connect/verify the Netlify site against this branch, set its runtime environment variables, and use a Deploy Preview before changing the public production site.
 3. On the preview, test sign-up and verification email, sign-in/sign-out, password reset, seller profile publish/unpublish, listing CRUD/ownership, reviews, saved homes, image/GIF/video/caption upload and deletion, and privacy of account data.
 4. Compare the working UI with the linked Figma design; no pixel-level comparison was completed as part of this documentation update.

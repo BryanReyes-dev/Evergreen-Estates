@@ -124,8 +124,9 @@ Useful commands:
 - `vp run test:fast`, `vp run test:unit`, `vp run test:api` — isolated tests without database connections.
 - `vp run test:integration` or `vp run test:db-permissions` — opt-in read-only PostgreSQL permission checks requiring `DRIZZLE_DATABASE_URL` as `evergreen_runtime`.
 - `vp run test:all` — unit, mocked API, and read-only database permission suite.
+- `npm run test:media-display` — focused GIF source URL detection and shared video-player rendering tests, including playback markup when captions are absent or present and muted autoplay/loop attributes.
 
-Do not claim these commands passed unless the result was observed for the relevant current code. The full suite does not replace browser-level, email-provider, and Netlify runtime verification. GitHub Actions is not configured on this branch, so do not assume a remote CI gate ran.
+The media-display suite checks source/rendered markup; it does not by itself prove that browser autoplay policies allow playback on every device. Do not claim these commands passed unless the result was observed for the relevant current code. The full suite does not replace browser-level, email-provider, and Netlify runtime verification. GitHub Actions is not configured on this branch, so do not assume a remote CI gate ran.
 
 ## 8. Fixture population and project safety
 

@@ -98,6 +98,9 @@ Run checks and tests from the repository root with Vite+.
     vp run test:unit
     vp run test:api
 
+    # GIF/media-display and optional-caption/autoplay regression tests
+    npm run test:media-display
+
     # Read-only PostgreSQL permission tests
     vp run test:integration
     vp run test:db-permissions
@@ -130,6 +133,7 @@ Use a specific alias while iterating; all aliases below are defined in package.j
 | test:media-upload | Upload URL/completion input and authorization checks |
 | test:media-delete | Media ownership, registration, and cleanup ordering |
 | test:media-captions | WebVTT validation and authenticated video-caption upload rules |
+| test:media-display | GIF URL detection and video-player rendering with/without captions; checks muted autoplay/loop markup |
 | test:media-filenames | Allowed extensions, path traversal, and filename length |
 | test:media-limits | Decimal 50,000,000-byte media ceiling |
 | test:avatar | Avatar upload authentication and image-signature validation |
@@ -142,7 +146,7 @@ For the lower-level runner, individual categories/files can also be called direc
     vp test run tests/api/listings/listings-collection.test.ts
     vp test run tests/unit/auth-configuration.test.ts
 
-The suite runner prints each selected suite's purpose and paths to the terminal. The repository does not configure a GitHub Actions quality workflow on this branch; do not assume a hosted CI job has run.
+The suite runner prints each selected suite's purpose and paths to the terminal. `test:media-display` is a focused unit suite for the shared video player and GIF URL handling; it does not verify that a browser or production host actually starts media playback. The repository does not configure a GitHub Actions quality workflow on this branch; do not assume a hosted CI job has run.
 
 ## Production
 
