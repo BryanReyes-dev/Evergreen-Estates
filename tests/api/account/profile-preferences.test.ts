@@ -91,3 +91,54 @@ describe("/api/v1/users/me/profile — account preferences", () => {
     expect(errorCode(await bodyOf(extraKey))).toBe("INVALID_PREFERENCES");
   });
 });
+
+
+describe("PATCH /api/v1/users/me/profile — save valid preferences", () => {
+  it("writes preferences through the current user's transaction and returns the normalized profile", async () => {
+    const preferences = { defaultSort: "price-high", viewMode: "list" };
+    const updateReturning = vi.fn().mockResolvedValue([{ id: USER_ID }]);
+    const updateWhere = vi.fn(() => ({ returning: updateReturning }));
+    const updateSet = vi.fn(() => ({ where: updateWhere }));
+    const update = vi.fn(() => ({ set: updateSet }));
+
+    const accountRow = {
+      name: "Example User",
+      image: null,
+      preferences,
+    };
+    const selectLimit = vi.fn().mockResolvedValue([accountRow]);
+    const selectWhere = vi.fn(() => ({ limit: selectLimit }));
+    const selectFrom = vi.fn(() => ({ where: selectWhere }));
+    const select = vi.fn(() => ({ from: selectFrom }));
+
+    mocks.withAppUserTransaction
+      .mockImplementationOnce(async (userId, operation) => operation({ update }))
+      .mockImplementationOnce(async (userId, operation) => operation({ select }));
+    mocks.getUserAvatarUrl.mockResolvedValue(null);
+
+    const response = await PATCH(request({ preferences }));
+
+    expect(response.status).toBe(200);
+    expect(await bodyOf(response)).toMatchObject({
+      data: {
+        name: "Example User",
+        image: null,
+        imageUrl: null,
+        preferences,
+      },
+    });
+    expect(mocks.withAppUserTransaction).toHaveBeenNthCalledWith(
+      1,
+      USER_ID,
+      expect.any(Function),
+    );
+    expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({
+      preferences,
+      updatedAt: expect.any(String),
+    }));
+    expect(mocks.getUserAvatarUrl).toHaveBeenCalledWith({
+      userId: USER_ID,
+      image: null,
+    });
+  });
+});

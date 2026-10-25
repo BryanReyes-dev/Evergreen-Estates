@@ -143,3 +143,49 @@ describe("DELETE /api/v1/seller-profiles — protected profile deletion", () => 
     expect(mocks.withAppUserTransaction).not.toHaveBeenCalled();
   });
 });
+
+
+describe("POST /api/v1/seller-profiles — successful profile enrollment", () => {
+  it("normalizes contact data and creates a private profile owned by the signed-in user", async () => {
+    const createdProfile = {
+      userId: USER_ID,
+      displayName: "Seller One",
+      bio: null,
+      avatarUrl: null,
+      contactEmail: "seller@example.com",
+      contactPhone: null,
+      preferredContactMethod: "email",
+      isPublished: false,
+    };
+    const returning = vi.fn().mockResolvedValue([createdProfile]);
+    const onConflictDoNothing = vi.fn(() => ({ returning }));
+    const values = vi.fn(() => ({ onConflictDoNothing }));
+    const insert = vi.fn(() => ({ values }));
+
+    mocks.withAppUserTransaction.mockImplementation(
+      async (userId, operation) => operation({ insert }),
+    );
+
+    const response = await POST(request({
+      displayName: "  Seller One  ",
+      bio: "  ",
+      preferredContactMethod: "email",
+      contactEmail: " Seller@Example.com ",
+    }, "POST"));
+
+    expect(response.status).toBe(201);
+    expect(await bodyOf(response)).toMatchObject({ data: createdProfile });
+    expect(mocks.withAppUserTransaction).toHaveBeenCalledWith(
+      USER_ID,
+      expect.any(Function),
+    );
+    expect(values).toHaveBeenCalledWith(expect.objectContaining({
+      userId: USER_ID,
+      displayName: "Seller One",
+      bio: null,
+      contactEmail: "seller@example.com",
+      preferredContactMethod: "email",
+      isPublished: false,
+    }));
+  });
+});

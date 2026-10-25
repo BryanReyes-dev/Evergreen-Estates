@@ -91,3 +91,51 @@ describe("DELETE /api/v1/users/me/avatar — restore the initials avatar", () =>
     expect(mocks.deleteUserAvatarObject).not.toHaveBeenCalled();
   });
 });
+
+
+describe("POST /api/v1/users/me/avatar — successful validated upload", () => {
+  it("accepts a matching JPEG signature and attaches the uploaded path to the authenticated account", async () => {
+    const uploadedPath = "avatars/" + USER_ID + "/avatar.jpg";
+    const uploadedBytes = new Uint8Array([0xff, 0xd8, 0xff]);
+    mocks.uploadUserAvatar.mockResolvedValue(uploadedPath);
+    mocks.getUserAvatarUrl.mockResolvedValue("https://example.test/signed-avatar");
+
+    const selectForUpdate = vi.fn().mockResolvedValue([{ image: null }]);
+    const selectLimit = vi.fn(() => ({ for: selectForUpdate }));
+    const selectWhere = vi.fn(() => ({ limit: selectLimit }));
+    const selectFrom = vi.fn(() => ({ where: selectWhere }));
+    const select = vi.fn(() => ({ from: selectFrom }));
+
+    const updateReturning = vi.fn().mockResolvedValue([{ image: uploadedPath }]);
+    const updateWhere = vi.fn(() => ({ returning: updateReturning }));
+    const updateSet = vi.fn(() => ({ where: updateWhere }));
+    const update = vi.fn(() => ({ set: updateSet }));
+
+    mocks.withAppUserTransaction.mockImplementation(
+      async (userId, operation) => operation({ select, update }),
+    );
+
+    const form = new FormData();
+    form.set("file", new File([uploadedBytes], "avatar.jpg", { type: "image/jpeg" }));
+
+    const response = await POST(new Request(URL, { method: "POST", body: form }));
+
+    expect(response.status).toBe(200);
+    expect(await bodyOf(response)).toMatchObject({
+      data: {
+        image: uploadedPath,
+        imageUrl: "https://example.test/signed-avatar",
+      },
+    });
+    expect(mocks.uploadUserAvatar).toHaveBeenCalledWith({
+      userId: USER_ID,
+      contentType: "image/jpeg",
+      bytes: uploadedBytes,
+    });
+    expect(mocks.withAppUserTransaction).toHaveBeenCalledWith(
+      USER_ID,
+      expect.any(Function),
+    );
+    expect(mocks.deleteUserAvatarObject).not.toHaveBeenCalled();
+  });
+});

@@ -177,3 +177,70 @@ describe("POST /api/v1/listings — secure listing creation", () => {
     expect(insert).not.toHaveBeenCalled();
   });
 });
+
+
+describe("POST /api/v1/listings — successful owner-bound creation", () => {
+  it("creates the listing under the authenticated seller after published-profile verification", async () => {
+    const createdAt = "2026-01-01T12:00:00.000Z";
+    const created = {
+      id: "44444444-4444-4444-8444-444444444444",
+      media: [],
+      tags: ["garden"],
+      title: "Quiet family home",
+      price: "250000",
+      beds: 3,
+      baths: 2,
+      sqft: 1500,
+      address: "15 Cedar Street",
+      description: "A comfortable home near parks.",
+      createdAt,
+    };
+
+    const profileLimit = vi.fn().mockResolvedValue([
+      { userId: USER_ID, isPublished: true },
+    ]);
+    const profileForUpdate = vi.fn(() => ({ limit: profileLimit }));
+    const profileWhere = vi.fn(() => ({ for: profileForUpdate }));
+    const profileFrom = vi.fn(() => ({ where: profileWhere }));
+    const select = vi.fn(() => ({ from: profileFrom }));
+    const returning = vi.fn().mockResolvedValue([created]);
+    const values = vi.fn(() => ({ returning }));
+    const insert = vi.fn(() => ({ values }));
+
+    mocks.withAppUserTransaction.mockImplementation(
+      async (userId, operation) => operation({ select, insert }),
+    );
+
+    const response = await POST(jsonRequest(URL, {
+      ...validListing,
+      title: "  Quiet family home  ",
+      address: "  15 Cedar Street  ",
+      tags: ["Garden", "garden"],
+    }));
+
+    expect(response.status).toBe(201);
+    expect(await bodyOf(response)).toMatchObject({
+      data: {
+        id: created.id,
+        title: "Quiet family home",
+        price: 250000,
+        address: "15 Cedar Street",
+        tags: ["garden"],
+        media: [],
+        reviews: [],
+      },
+    });
+    expect(mocks.withAppUserTransaction).toHaveBeenCalledWith(
+      USER_ID,
+      expect.any(Function),
+    );
+    expect(values).toHaveBeenCalledWith(expect.objectContaining({
+      sellerUserId: USER_ID,
+      title: "Quiet family home",
+      price: "250000",
+      address: "15 Cedar Street",
+      tags: ["garden"],
+      media: [],
+    }));
+  });
+});

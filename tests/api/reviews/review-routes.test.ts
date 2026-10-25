@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { NextRequest } from "next/server";
 
+vi.mock("drizzle-orm", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("drizzle-orm")>();
+  return {
+    ...actual,
+    and: (...conditions: unknown[]) => ({ kind: "and", conditions }),
+    eq: (left: unknown, right: unknown) => ({ kind: "eq", left, right }),
+  };
+});
+
 const mocks = vi.hoisted(() => ({
   getAuthenticatedUserId: vi.fn(),
   withAppUserTransaction: vi.fn(),
@@ -14,6 +23,7 @@ vi.mock("server-only", () => ({}));
 
 import { GET, POST } from "@/app/api/v1/listings/[id]/reviews/route";
 import { PATCH, DELETE } from "@/app/api/v1/listings/[id]/reviews/[reviewId]/route";
+import { reviews } from "@/db/schema";
 
 const USER_ID = "22222222-2222-4222-8222-222222222222";
 const LISTING_ID = "11111111-1111-4111-8111-111111111111";
@@ -164,5 +174,92 @@ describe("DELETE /api/v1/listings/[id]/reviews/[reviewId] — author-scoped dele
     expect(invalidId.status).toBe(400);
     expect((await bodyOf(invalidId)).error).toBe("INVALID_ID");
     expect(mocks.withAppUserTransaction).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("PATCH /api/v1/listings/[id]/reviews/[reviewId] — author binding", () => {
+  it("updates only a row matching the authenticated reviewer, listing, and review", async () => {
+    const returnedReview = {
+      id: REVIEW_ID,
+      listingId: LISTING_ID,
+      userId: USER_ID,
+      rating: 4,
+      comment: "Updated comment",
+      createdAt: "2026-01-01T12:00:00.000Z",
+      updatedAt: "2026-01-02T12:00:00.000Z",
+    };
+    const returning = vi.fn().mockResolvedValue([returnedReview]);
+    const where = vi.fn(() => ({ returning }));
+    const set = vi.fn(() => ({ where }));
+    const update = vi.fn(() => ({ set }));
+
+    mocks.withAppUserTransaction.mockImplementation(
+      async (userId, operation) => operation({ update }),
+    );
+
+    const response = await PATCH(
+      jsonRequest(URL, "PATCH", { rating: 4, comment: " Updated comment " }),
+      { params: Promise.resolve({ id: LISTING_ID, reviewId: REVIEW_ID }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await bodyOf(response)).toMatchObject({
+      data: {
+        id: REVIEW_ID,
+        listing_id: LISTING_ID,
+        user_id: USER_ID,
+        rating: 4,
+        comment: "Updated comment",
+      },
+    });
+    expect(mocks.withAppUserTransaction).toHaveBeenCalledWith(
+      USER_ID,
+      expect.any(Function),
+    );
+    expect(set).toHaveBeenCalledWith(expect.objectContaining({
+      rating: 4,
+      comment: "Updated comment",
+      updatedAt: expect.any(String),
+    }));
+
+    const predicate = where.mock.calls[0][0] as {
+      kind: string;
+      conditions: Array<{ kind: string; left: unknown; right: unknown }>;
+    };
+    expect(predicate.kind).toBe("and");
+    expect(predicate.conditions).toContainEqual({
+      kind: "eq",
+      left: reviews.userId,
+      right: USER_ID,
+    });
+    expect(predicate.conditions).toContainEqual({
+      kind: "eq",
+      left: reviews.listingId,
+      right: LISTING_ID,
+    });
+    expect(predicate.conditions).toContainEqual({
+      kind: "eq",
+      left: reviews.id,
+      right: REVIEW_ID,
+    });
+  });
+
+  it("returns not-found if the review is not owned by the authenticated user", async () => {
+    const returning = vi.fn().mockResolvedValue([]);
+    const where = vi.fn(() => ({ returning }));
+    const set = vi.fn(() => ({ where }));
+    const update = vi.fn(() => ({ set }));
+    mocks.withAppUserTransaction.mockImplementation(
+      async (_userId, operation) => operation({ update }),
+    );
+
+    const response = await PATCH(
+      jsonRequest(URL, "PATCH", { rating: 4 }),
+      { params: Promise.resolve({ id: LISTING_ID, reviewId: REVIEW_ID }) },
+    );
+
+    expect(response.status).toBe(404);
+    expect(errorCode(await bodyOf(response))).toBe("REVIEW_NOT_FOUND");
   });
 });

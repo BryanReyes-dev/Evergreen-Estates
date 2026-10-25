@@ -90,3 +90,77 @@ describe("PATCH /api/v1/users/me/saved-listings — owner-bound save state", () 
     expect(mocks.withAppUserTransaction).not.toHaveBeenCalled();
   });
 });
+
+
+describe("GET /api/v1/users/me/saved-listings — current user's saved home IDs", () => {
+  it("returns only the authenticated user's saved-listing state", async () => {
+    const selectLimit = vi.fn().mockResolvedValue([{ savedListingIds: [LISTING_ID] }]);
+    const selectWhere = vi.fn(() => ({ limit: selectLimit }));
+    const selectFrom = vi.fn(() => ({ where: selectWhere }));
+    const select = vi.fn(() => ({ from: selectFrom }));
+    mocks.withAppUserTransaction.mockImplementation(
+      async (_userId, operation) => operation({ select }),
+    );
+
+    const response = await GET(new Request(URL));
+
+    expect(response.status).toBe(200);
+    expect(await bodyOf(response)).toEqual({
+      data: { savedListingIds: [LISTING_ID] },
+    });
+    expect(mocks.withAppUserTransaction).toHaveBeenCalledWith(
+      USER_ID,
+      expect.any(Function),
+    );
+  });
+});
+
+describe("PATCH /api/v1/users/me/saved-listings — successful save transition", () => {
+  it("checks listing existence and writes the change through the authenticated user's transaction", async () => {
+    const listingForShare = vi.fn().mockResolvedValue([{ id: LISTING_ID }]);
+    const selectLimit = vi.fn(() => ({ for: listingForShare }));
+    const selectWhere = vi.fn(() => ({ limit: selectLimit }));
+    const selectFrom = vi.fn(() => ({ where: selectWhere }));
+    const select = vi.fn(() => ({ from: selectFrom }));
+
+    const returning = vi.fn().mockResolvedValue([{ savedListingIds: [LISTING_ID] }]);
+    const updateWhere = vi.fn(() => ({ returning }));
+    const updateSet = vi.fn(() => ({ where: updateWhere }));
+    const update = vi.fn(() => ({ set: updateSet }));
+
+    mocks.withAppUserTransaction.mockImplementation(
+      async (_userId, operation) => operation({ select, update }),
+    );
+
+    const response = await PATCH(request({ listingId: LISTING_ID, saved: true }));
+
+    expect(response.status).toBe(200);
+    expect(await bodyOf(response)).toEqual({
+      data: { savedListingIds: [LISTING_ID] },
+    });
+    expect(mocks.withAppUserTransaction).toHaveBeenCalledWith(
+      USER_ID,
+      expect.any(Function),
+    );
+    expect(update).toHaveBeenCalledOnce();
+  });
+
+  it("does not write a saved state for a listing that no longer exists", async () => {
+    const listingForShare = vi.fn().mockResolvedValue([]);
+    const selectLimit = vi.fn(() => ({ for: listingForShare }));
+    const selectWhere = vi.fn(() => ({ limit: selectLimit }));
+    const selectFrom = vi.fn(() => ({ where: selectWhere }));
+    const select = vi.fn(() => ({ from: selectFrom }));
+    const update = vi.fn();
+
+    mocks.withAppUserTransaction.mockImplementation(
+      async (_userId, operation) => operation({ select, update }),
+    );
+
+    const response = await PATCH(request({ listingId: LISTING_ID, saved: true }));
+
+    expect(response.status).toBe(404);
+    expect(errorCode(await bodyOf(response))).toBe("LISTING_NOT_FOUND");
+    expect(update).not.toHaveBeenCalled();
+  });
+});

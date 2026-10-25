@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { NextRequest } from "next/server";
 
+vi.mock("drizzle-orm", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("drizzle-orm")>();
+  return {
+    ...actual,
+    and: (...conditions: unknown[]) => ({ kind: "and", conditions }),
+    eq: (left: unknown, right: unknown) => ({ kind: "eq", left, right }),
+  };
+});
+
 const mocks = vi.hoisted(() => ({
   getListingById: vi.fn(),
   withAppUserTransaction: vi.fn(),
@@ -15,6 +24,7 @@ vi.mock("@/lib/api/get-authenticated-user-id", () => ({ getAuthenticatedUserId: 
 vi.mock("server-only", () => ({}));
 
 import { GET, PATCH, DELETE } from "@/app/api/v1/listings/[id]/route";
+import { listings } from "@/db/schema";
 
 const USER_ID = "22222222-2222-4222-8222-222222222222";
 const LISTING_ID = "11111111-1111-4111-8111-111111111111";
@@ -160,5 +170,122 @@ describe("DELETE /api/v1/listings/[id] — owner-scoped deletion", () => {
     expect(response.status).toBe(404);
     expect((await bodyOf(response)).error).toBe("LISTING_NOT_FOUND");
     expect(mocks.deleteListingMediaObjects).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("PATCH /api/v1/listings/[id] — successful owner-scoped update", () => {
+  it("normalizes validated fields and predicates the update on the signed-in owner", async () => {
+    const updatedRow = { id: LISTING_ID };
+    const returning = vi.fn().mockResolvedValue([updatedRow]);
+    const where = vi.fn(() => ({ returning }));
+    const set = vi.fn(() => ({ where }));
+    const update = vi.fn(() => ({ set }));
+    const listing = {
+      id: LISTING_ID,
+      title: "Updated title",
+      price: 275000,
+      beds: 3,
+      baths: 2,
+      sqft: 1500,
+      address: "15 Cedar Street",
+      description: "An updated description.",
+      tags: ["garden"],
+      media: [],
+      reviews: [],
+    };
+    mocks.withAppUserTransaction.mockImplementation(
+      async (userId, operation) => operation({ update }),
+    );
+    mocks.getListingById.mockResolvedValue(listing);
+
+    const response = await PATCH(request({
+      title: "  Updated title  ",
+      address: "  15 Cedar Street  ",
+    }, "PATCH"), {
+      params: Promise.resolve({ id: LISTING_ID }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await bodyOf(response)).toEqual({ data: listing });
+    expect(set).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Updated title",
+      address: "15 Cedar Street",
+      updatedAt: expect.any(String),
+    }));
+    expect(mocks.withAppUserTransaction).toHaveBeenCalledWith(
+      USER_ID,
+      expect.any(Function),
+    );
+    const predicate = where.mock.calls[0][0] as {
+      kind: string;
+      conditions: Array<{ kind: string; left: unknown; right: unknown }>;
+    };
+    expect(predicate.kind).toBe("and");
+    expect(predicate.conditions).toContainEqual({
+      kind: "eq",
+      left: listings.id,
+      right: LISTING_ID,
+    });
+    expect(predicate.conditions).toContainEqual({
+      kind: "eq",
+      left: listings.sellerUserId,
+      right: USER_ID,
+    });
+  });
+});
+
+
+describe("DELETE /api/v1/listings/[id] — media cleanup ordering", () => {
+  it("removes registered media before deleting the owned database listing", async () => {
+    const events: string[] = [];
+    const ownedListing = { id: LISTING_ID, media: ["front.jpg", "tour.gif"] };
+
+    const selectLimit = vi.fn().mockResolvedValue([ownedListing]);
+    const selectWhere = vi.fn(() => ({ limit: selectLimit }));
+    const selectFrom = vi.fn(() => ({ where: selectWhere }));
+    const select = vi.fn(() => ({ from: selectFrom }));
+
+    const deleteReturning = vi.fn().mockResolvedValue([{ id: LISTING_ID }]);
+    const deleteWhere = vi.fn(() => ({ returning: deleteReturning }));
+    const deleteRow = vi.fn(() => ({ where: deleteWhere }));
+
+    mocks.withAppUserTransaction
+      .mockImplementationOnce(async (_userId, operation) => {
+        events.push("ownership-read");
+        return operation({ select });
+      })
+      .mockImplementationOnce(async (_userId, operation) => {
+        events.push("database-delete");
+        return operation({ delete: deleteRow });
+      });
+    mocks.deleteListingMediaObjects.mockImplementation(async () => {
+      events.push("storage-delete");
+    });
+
+    const response = await DELETE(request({}, "DELETE"), {
+      params: Promise.resolve({ id: LISTING_ID }),
+    });
+
+    expect(response.status).toBe(204);
+    expect(mocks.deleteListingMediaObjects).toHaveBeenCalledWith({
+      listingId: LISTING_ID,
+      filenames: ["front.jpg", "tour.gif"],
+    });
+    expect(events).toEqual([
+      "ownership-read",
+      "storage-delete",
+      "database-delete",
+    ]);
+    expect(mocks.withAppUserTransaction).toHaveBeenNthCalledWith(
+      1,
+      USER_ID,
+      expect.any(Function),
+    );
+    expect(mocks.withAppUserTransaction).toHaveBeenNthCalledWith(
+      2,
+      USER_ID,
+      expect.any(Function),
+    );
   });
 });

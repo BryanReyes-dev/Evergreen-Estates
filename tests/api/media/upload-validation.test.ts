@@ -129,3 +129,48 @@ describe("POST listing media complete — media path binding", () => {
     expect(mocks.inspectListingMediaObject).not.toHaveBeenCalled();
   });
 });
+
+
+describe("POST listing media upload-url — authorized upload preparation", () => {
+  it("issues a bounded upload only after verifying listing ownership", async () => {
+    const selectLimit = vi.fn().mockResolvedValue([{ id: LISTING_ID }]);
+    const selectWhere = vi.fn(() => ({ limit: selectLimit }));
+    const selectFrom = vi.fn(() => ({ where: selectWhere }));
+    const select = vi.fn(() => ({ from: selectFrom }));
+    const upload = {
+      path: "listings/" + LISTING_ID + "/44444444-4444-4444-8444-444444444444.jpg",
+      token: "mock-upload-token",
+      contentType: "image/jpeg",
+      mediaKind: "image",
+    };
+    mocks.createListingMediaUpload.mockResolvedValue(upload);
+    mocks.withAppUserTransaction.mockImplementation(
+      async (_userId, operation) => operation({ select }),
+    );
+
+    const response = await createUpload(request(URL + "/upload-url", "POST", {
+      contentType: "image/jpeg",
+      size: 1024,
+    }), { params: Promise.resolve({ id: LISTING_ID }) });
+
+    expect(response.status).toBe(201);
+    expect(await bodyOf(response)).toMatchObject({
+      data: {
+        bucket: "property-images",
+        path: upload.path,
+        token: upload.token,
+        contentType: "image/jpeg",
+        mediaKind: "image",
+        uploadMethod: "standard",
+      },
+    });
+    expect(mocks.withAppUserTransaction).toHaveBeenCalledWith(
+      USER_ID,
+      expect.any(Function),
+    );
+    expect(mocks.createListingMediaUpload).toHaveBeenCalledWith({
+      listingId: LISTING_ID,
+      contentType: "image/jpeg",
+    });
+  });
+});
