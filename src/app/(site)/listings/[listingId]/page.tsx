@@ -13,6 +13,7 @@ import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { listings } from "@/db/schema";
 import { getAuth } from "@/lib/auth";
 import { isGifMediaSource } from "@/lib/media/media-source";
+import { ListingVideoPlayer } from "@/components/ListingVideoPlayer";
 
 async function canManageListing(listingId: string): Promise<boolean> {
   try {
@@ -40,37 +41,6 @@ async function canManageListing(listingId: string): Promise<boolean> {
     console.error("Could not verify listing ownership.", error);
     return false;
   }
-}
-
-function FeaturedListingVideo({
-  src,
-  title,
-  captionSrc,
-}: {
-  src: string;
-  title: string;
-  captionSrc?: string;
-}) {
-  return (
-    <video
-      src={src}
-      controls
-      playsInline
-      preload="metadata"
-      className="max-h-[70vh] w-full bg-black object-contain"
-      aria-label={title + " featured video"}
-    >
-      {captionSrc ? (
-        <track
-          kind="captions"
-          src={captionSrc}
-          srcLang="en"
-          label="English captions"
-          default
-        />
-      ) : null}
-    </video>
-  );
 }
 
 export const dynamic = "force-dynamic";
@@ -116,7 +86,12 @@ export default async function ListingDetails({
     <main className="min-h-screen bg-[#141616] pb-8">
       {featuredMedia ? (
         featuredMedia.type === "video" ? (
-          <FeaturedListingVideo src={featuredMedia.src} title={listing.title} captionSrc={featuredMedia.captionSrc} />
+          <ListingVideoPlayer
+            src={featuredMedia.src}
+            captionSrc={featuredMedia.captionSrc}
+            label={listing.title + " featured video"}
+            className="max-h-[70vh] w-full bg-black object-contain"
+          />
         ) : (
           <div className="relative h-[35vh] min-h-64 w-full bg-black sm:h-[55vh]">
             <Image
