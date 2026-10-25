@@ -174,7 +174,7 @@ Set the production BETTER_AUTH_URL to the site URL used by that deployment, and 
 
 ### Database and fixture safety
 
-The latest recorded implementation handoff reports migration 0019 and the forward-only 0021 reconciliation applied to the configured Supabase project, with read-only catalog checks and a full population dry-run passing after 0021. The migration journal orders 0020 before 0021. This documentation update did not make a new live database connection, so confirm the migration ledger, role grants, and RLS policies against the exact project you intend to deploy.
+Recorded database verification from 2026-10-23 reports migration 0019 and the forward-only 0021 reconciliation applied to the configured Supabase project, with read-only catalog checks and a full population dry-run passing after 0021. The migration journal orders 0020 before 0021. This documentation update did not make a new live database connection, so confirm the migration ledger, role grants, and RLS policies against the exact project you intend to deploy.
 
 The population utility is a developer-run script, not part of the Netlify build. It is pinned in source to project ref vcsotaclvwvbpqiljkuk; do not assume it accepts an arbitrary Supabase project. Start with the read-only dry run:
 
