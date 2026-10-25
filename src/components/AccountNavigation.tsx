@@ -36,35 +36,50 @@ export function AccountNavigation({
   const [signingOut, setSigningOut] = useState(false);
   const userId = session?.user?.id;
 
-  const refreshSummary = useCallback(async () => {
-    if (!userId) return;
+  const requestSummary = useCallback(async (): Promise<AccountSummary | null> => {
+    if (!userId) return null;
+
     try {
       const response = await fetch("/api/v1/users/me/profile", {
         credentials: "same-origin",
         cache: "no-store",
       });
-      if (!response.ok) return;
+      if (!response.ok) return null;
+
       const payload: unknown = await response.json();
-      if (typeof payload !== "object" || payload === null || !("data" in payload)) return;
-      const data = (payload as { data?: { name?: unknown; imageUrl?: unknown } }).data;
-      if (typeof data?.name === "string") {
-        setSummary({
-          userId,
-          name: data.name,
-          imageUrl: typeof data.imageUrl === "string" ? data.imageUrl : null,
-        });
+      if (typeof payload !== "object" || payload === null || !("data" in payload)) {
+        return null;
       }
+
+      const data = (payload as { data?: { name?: unknown; imageUrl?: unknown } }).data;
+      if (typeof data?.name !== "string") return null;
+
+      return {
+        userId,
+        name: data.name,
+        imageUrl: typeof data.imageUrl === "string" ? data.imageUrl : null,
+      };
     } catch {
       // The session name and externally hosted avatar remain safe fallbacks.
+      return null;
     }
   }, [userId]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function refreshSummary() {
+      const nextSummary = await requestSummary();
+      if (!cancelled && nextSummary) setSummary(nextSummary);
+    }
+
     void refreshSummary();
-    const refresh = () => { void refreshSummary(); };
-    window.addEventListener("evergreen:account-updated", refresh);
-    return () => window.removeEventListener("evergreen:account-updated", refresh);
-  }, [refreshSummary, pathname, session?.user?.image]);
+    window.addEventListener("evergreen:account-updated", refreshSummary);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("evergreen:account-updated", refreshSummary);
+    };
+  }, [requestSummary, pathname, session?.user?.image]);
 
   async function handleSignOut() {
     setSigningOut(true);

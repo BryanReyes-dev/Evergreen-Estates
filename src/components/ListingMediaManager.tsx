@@ -141,21 +141,29 @@ export function ListingMediaManager({
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadMedia = useCallback(async (): Promise<boolean> => {
+  const fetchMedia = useCallback(async (): Promise<ListingMediaData> => {
+    const response = await fetch(mediaEndpoint(listingId), {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const data = await readData<ListingMediaData>(
+      response,
+      "Unable to load this listing's media.",
+    );
+
+    if (!Array.isArray(data.media)) {
+      throw new Error("The server returned an invalid media list.");
+    }
+
+    return data;
+  }, [listingId]);
+
+  const refreshMedia = useCallback(async (): Promise<boolean> => {
+    setRefreshing(true);
+    setLoadError(null);
+
     try {
-      const response = await fetch(mediaEndpoint(listingId), {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
-      const data = await readData<ListingMediaData>(
-        response,
-        "Unable to load this listing's media.",
-      );
-
-      if (!Array.isArray(data.media)) {
-        throw new Error("The server returned an invalid media list.");
-      }
-
+      const data = await fetchMedia();
       setMedia(data.media);
       setSavedFilenames(data.media.map((item) => item.filename));
       setCanManage(true);
@@ -173,17 +181,39 @@ export function ListingMediaManager({
       setLoading(false);
       setRefreshing(false);
     }
-  }, [listingId]);
-
-  const refreshMedia = useCallback(async (): Promise<boolean> => {
-    setRefreshing(true);
-    setLoadError(null);
-    return loadMedia();
-  }, [loadMedia]);
+  }, [fetchMedia]);
 
   useEffect(() => {
-    void loadMedia();
-  }, [loadMedia]);
+    let cancelled = false;
+
+    async function loadInitialMedia() {
+      try {
+        const data = await fetchMedia();
+        if (cancelled) return;
+
+        setMedia(data.media);
+        setSavedFilenames(data.media.map((item) => item.filename));
+        setCanManage(true);
+        setLoadError(null);
+      } catch (cause) {
+        if (cancelled) return;
+
+        setMedia([]);
+        setSavedFilenames([]);
+        setCanManage(false);
+        setLoadError(
+          describeError(cause, "Unable to load this listing's media."),
+        );
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadInitialMedia();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchMedia]);
 
   const filenames = media.map((item) => item.filename);
   const hasUnsavedOrder =
