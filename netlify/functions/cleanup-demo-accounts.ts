@@ -91,7 +91,7 @@ export default async function cleanupDemoAccounts(): Promise<Response> {
     const dependencies = {
       listExpiredAccounts: async (limit: number): Promise<ExpiredDemoAccount[]> => {
         const rows = await authDb!.unsafe(
-          "SELECT id::text AS id, image FROM public.users WHERE demo_expires_at IS NOT NULL AND demo_expires_at <= now() ORDER BY demo_expires_at LIMIT $1",
+          "SELECT id, image FROM private.list_expired_demo_accounts($1)",
           [limit],
         );
         return rows.map((row) => ({
