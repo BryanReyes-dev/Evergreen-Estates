@@ -445,57 +445,6 @@ async function buildMediaManifest(): Promise<MediaManifestEntry[]> {
   }
 
   for (const listing of seedListings) {
-      const homeImagePath = path.resolve(
-        repositoryRoot,
-        "seed",
-        "images",
-        "home-image.jpg",
-      );
-
-      const homeImagePathReal = await realpath(homeImagePath).catch(() => {
-        throw new PopulationError(
-          "Missing local root Storage asset: home-image.jpg.",
-        );
-      });
-
-      if (!isPathInside(repositoryRootReal, homeImagePathReal)) {
-        throw new PopulationError(
-          "The home image resolves outside the repository.",
-        );
-      }
-
-      const homeImageStat = await lstat(homeImagePath).catch(() => {
-        throw new PopulationError("Could not inspect home-image.jpg.");
-      });
-
-      if (
-        homeImageStat.isSymbolicLink() ||
-        !homeImageStat.isFile() ||
-        homeImageStat.size <= 0 ||
-        homeImageStat.size > MAX_MEDIA_FILE_BYTES
-      ) {
-        throw new PopulationError(
-          "home-image.jpg must be a non-empty, regular file within the media size limit.",
-        );
-      }
-
-      const homeImageContentType =
-        CONTENT_TYPES[path.extname(homeImagePath).slice(1).toLowerCase()];
-
-      if (!homeImageContentType) {
-        throw new PopulationError(
-          "home-image.jpg has an unsupported media type.",
-        );
-      }
-
-      entries.push({
-        listingId: null,
-        filename: "home-image.jpg",
-        path: "home-image.jpg",
-        localPath: homeImagePath,
-        size: homeImageStat.size,
-        contentType: homeImageContentType,
-      });
     const listingDirectory = path.resolve(mediaRoot, listing.id);
     if (!isPathInside(mediaRoot, listingDirectory)) {
       throw new PopulationError(`Unsafe local fixture directory for listing ${listing.id}.`);
@@ -550,8 +499,57 @@ async function buildMediaManifest(): Promise<MediaManifestEntry[]> {
     }
   }
 
-  if (entries.length !== 48 || new Set(entries.map(({ path: objectPath }) => objectPath)).size !== 48) {
-    throw new PopulationError(`Expected 48 unique fixture media paths; found ${entries.length}.`);
+  // This image is a root-level Storage object used by the original homepage
+  // fixture. It is deliberately separate from each listing's media array.
+  const homeImagePath = path.resolve(repositoryRoot, "seed", "images", "home-image.jpg");
+  const homeImagePathReal = await realpath(homeImagePath).catch(() => {
+    throw new PopulationError("Missing local root Storage asset: home-image.jpg.");
+  });
+
+  if (!isPathInside(repositoryRootReal, homeImagePathReal)) {
+    throw new PopulationError("The home image resolves outside the repository.");
+  }
+
+  const homeImageStat = await lstat(homeImagePath).catch(() => {
+    throw new PopulationError("Could not inspect home-image.jpg.");
+  });
+
+  if (
+    homeImageStat.isSymbolicLink() ||
+    !homeImageStat.isFile() ||
+    homeImageStat.size <= 0 ||
+    homeImageStat.size > MAX_MEDIA_FILE_BYTES
+  ) {
+    throw new PopulationError(
+      "home-image.jpg must be a non-empty, regular file within the media size limit.",
+    );
+  }
+
+  const homeImageContentType = CONTENT_TYPES[
+    path.extname(homeImagePath).slice(1).toLowerCase()
+  ];
+  if (!homeImageContentType) {
+    throw new PopulationError("home-image.jpg has an unsupported media type.");
+  }
+
+  entries.push({
+    listingId: null,
+    filename: "home-image.jpg",
+    path: "home-image.jpg",
+    localPath: homeImagePath,
+    size: homeImageStat.size,
+    contentType: homeImageContentType,
+  });
+
+  const listingMediaCount = entries.filter((entry) => entry.listingId !== null).length;
+  if (
+    listingMediaCount !== 48 ||
+    entries.length !== 49 ||
+    new Set(entries.map(({ path: objectPath }) => objectPath)).size !== 49
+  ) {
+    throw new PopulationError(
+      `Expected 48 listing media assets and one root image; found ${entries.length} total assets.`,
+    );
   }
 
   return entries;
@@ -1681,7 +1679,7 @@ async function compareExistingStorageObject(
 ): Promise<boolean> {
   const { data, error } = await storageBucket.download(entry.path);
   if (error || !data) {
-    throw new PopulationError(`Could not download existing fixture object ${entry.listingId}/${entry.filename} for byte comparison.`);
+    throw new PopulationError(`Could not download existing fixture object ${entry.path} for byte comparison.`);
   }
   const [remoteBytes, localBytes] = await Promise.all([
     data.arrayBuffer().then((value) => Buffer.from(value)),
@@ -1698,9 +1696,15 @@ async function inspectStorage(entries: MediaManifestEntry[]): Promise<StoragePla
   const missing: MediaManifestEntry[] = [];
   const conflicts: string[] = [];
   const expectedNamesByListing = new Map<string, Set<string>>();
+  const expectedRootNames = new Set<string>();
   const existingNamesByListing = new Map<string, Set<string>>();
 
   for (const entry of entries) {
+    if (entry.listingId === null) {
+      expectedRootNames.add(entry.filename);
+      continue;
+    }
+
     const filenames = expectedNamesByListing.get(entry.listingId) ?? new Set<string>();
     filenames.add(entry.filename);
     expectedNamesByListing.set(entry.listingId, filenames);
@@ -1716,8 +1720,25 @@ async function inspectStorage(entries: MediaManifestEntry[]): Promise<StoragePla
     extraObjects += data.filter((item) => !expectedNames.has(item.name)).length;
   }
 
+  const { data: rootItems, error: rootError } = await bucket.list("", { limit: 1000 });
+  if (rootError || !rootItems) {
+    throw new PopulationError("Could not inspect root-level Storage objects.");
+  }
+
+  // Supabase returns folder entries alongside files at the root. Count only
+  // actual files as extras, not virtual folders such as "listings" or "avatars".
+  const existingRootFileNames = new Set(
+    rootItems.filter((item) => item.id !== null).map((item) => item.name),
+  );
+  extraObjects += rootItems.filter(
+    (item) => item.id !== null && !expectedRootNames.has(item.name),
+  ).length;
+
   for (const entry of entries) {
-    const isListed = existingNamesByListing.get(entry.listingId)?.has(entry.filename) ?? false;
+    const isListed = entry.listingId === null
+      ? existingRootFileNames.has(entry.filename)
+      : (existingNamesByListing.get(entry.listingId)?.has(entry.filename) ?? false);
+
     if (!isListed) {
       missing.push(entry);
       continue;
@@ -1725,12 +1746,12 @@ async function inspectStorage(entries: MediaManifestEntry[]): Promise<StoragePla
 
     try {
       if (!(await compareExistingStorageObject(bucket, entry))) {
-        conflicts.push(`Storage byte conflict at ${entry.listingId}/${entry.filename}; the object was left unchanged`);
+        conflicts.push(`Storage byte conflict at ${entry.path}; the object was left unchanged`);
       } else {
         identical.push(entry);
       }
     } catch {
-      conflicts.push(`Could not byte-verify existing Storage object ${entry.listingId}/${entry.filename}`);
+      conflicts.push(`Could not byte-verify existing Storage object ${entry.path}`);
     }
   }
 
@@ -1746,14 +1767,15 @@ function printPlan(input: {
   const { options, sellerPlans, databasePlan, storagePlan } = input;
   console.log(`Mode: ${options.mode}`);
   console.log(`Target project: ${EXPECTED_PROJECT_REF} (all configured connection targets verified)`);
-  console.log(`Fixture records: ${seedSellers.length} sellers, ${seedListings.length} listings, ${seedReviews.length} reviews, ${storagePlan.entries.length} media assets`);
+  console.log(`Fixture records: ${seedSellers.length} sellers, ${seedListings.length} listings, ${seedReviews.length} reviews.`);
+  console.log(`Storage manifest: 48 listing media assets plus one root-level image (${storagePlan.entries.length} total objects).`);
   console.log(`Better Auth: ${sellerPlans.filter(({ status }) => status === "create").length} planned account creations; ${sellerPlans.filter(({ status }) => status === "reuse").length} valid accounts reused`);
   console.log(`Seller profiles: ${databasePlan.profileCreations} planned creations; ${databasePlan.profileReuses} reused`);
   console.log(`Listings: ${databasePlan.listingCreations} planned creations; ${databasePlan.listingReuses} reused`);
   console.log(`Reviews: ${databasePlan.reviewCreations} planned creations; ${databasePlan.reviewReuses} reused`);
   console.log(`Storage: ${storagePlan.missing.length} missing; ${storagePlan.identical.length} existing objects verified byte-for-byte and skipped`);
   if (storagePlan.extraObjects > 0) {
-    console.log(`Storage: ${storagePlan.extraObjects} additional objects in fixture listing folders will be preserved untouched`);
+    console.log(`Storage: ${storagePlan.extraObjects} additional objects in checked fixture Storage paths will be preserved untouched`);
   }
   if (HISTORICAL_0011_DISCREPANCY_ACKNOWLEDGED) {
     console.log("Migration provenance: the 0011 checksum mismatch remains unresolved but explicitly acknowledged; migration 0021 is applied, live schema/security checks passed, and no checksum or ledger repair was attempted.");
@@ -1963,7 +1985,7 @@ async function uploadMissingMedia(storagePlan: StoragePlan): Promise<void> {
   for (const entry of storagePlan.missing) {
     const bytes = await readFile(entry.localPath);
     if (bytes.length !== entry.size || bytes.length <= 0 || bytes.length > MAX_MEDIA_FILE_BYTES) {
-      throw new PopulationError(`Local media asset ${entry.listingId}/${entry.filename} changed after preflight or exceeds the shared size limit.`);
+      throw new PopulationError(`Local media asset ${entry.path} changed after preflight or exceeds the shared size limit.`);
     }
     const { error } = await bucket.upload(entry.path, bytes, {
       contentType: entry.contentType,
@@ -1973,20 +1995,23 @@ async function uploadMissingMedia(storagePlan: StoragePlan): Promise<void> {
     if (error) {
       // Another run may have won the non-overwriting upload race. Reuse only
       // after comparing actual downloaded bytes; never replace the object.
-      const { data: files, error: listError } = await bucket.list(`listings/${entry.listingId}`, { limit: 1000 });
+      const folderPath = entry.listingId === null
+        ? ""
+        : `listings/${entry.listingId}`;
+      const { data: files, error: listError } = await bucket.list(folderPath, { limit: 1000 });
       const exists = files?.some((file) => file.name === entry.filename) ?? false;
       if (listError || !exists || !(await compareExistingStorageObject(bucket, entry))) {
-        throw new PopulationError(`Could not upload fixture object ${entry.listingId}/${entry.filename}; any existing object was left unchanged.`);
+        throw new PopulationError(`Could not upload fixture object ${entry.path}; any existing object was left unchanged.`);
       }
-      console.log(`Storage ${entry.listingId}/${entry.filename}: identical concurrent object reused`);
+      console.log(`Storage ${entry.path}: identical concurrent object reused`);
       continue;
     }
 
     if (!(await compareExistingStorageObject(bucket, entry))) {
-      throw new PopulationError(`Uploaded fixture object ${entry.listingId}/${entry.filename} failed byte verification; it was left in place.`);
+      throw new PopulationError(`Uploaded fixture object ${entry.path} failed byte verification; it was left in place.`);
     }
     uploaded += 1;
-    console.log(`Storage ${entry.listingId}/${entry.filename}: uploaded and byte-verified`);
+    console.log(`Storage ${entry.path}: uploaded and byte-verified`);
   }
 
   console.log(`Storage upload phase complete: ${uploaded} new objects uploaded; no objects were deleted or overwritten.`);
