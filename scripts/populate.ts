@@ -58,7 +58,6 @@ let storageAdminModule: StorageAdminModule | undefined;
 let appDatabase: ReturnType<AppClientModule["getAppDrizzleDb"]> | undefined;
 let authDatabase: ReturnType<AuthClientModule["getAuthDrizzleDb"]> | undefined;
 
-const authSchema = { user: users, session, account, verification };
 
 type CliOptions = {
   mode: Mode;
@@ -89,7 +88,7 @@ type SellerPlan = {
 };
 
 type MediaManifestEntry = {
-  listingId: string;
+  listingId: string | null;
   filename: string;
   path: string;
   localPath: string;
@@ -445,6 +444,57 @@ async function buildMediaManifest(): Promise<MediaManifestEntry[]> {
   }
 
   for (const listing of seedListings) {
+      const homeImagePath = path.resolve(
+        repositoryRoot,
+        "seed",
+        "images",
+        "home-image.jpg",
+      );
+
+      const homeImagePathReal = await realpath(homeImagePath).catch(() => {
+        throw new PopulationError(
+          "Missing local root Storage asset: home-image.jpg.",
+        );
+      });
+
+      if (!isPathInside(repositoryRootReal, homeImagePathReal)) {
+        throw new PopulationError(
+          "The home image resolves outside the repository.",
+        );
+      }
+
+      const homeImageStat = await lstat(homeImagePath).catch(() => {
+        throw new PopulationError("Could not inspect home-image.jpg.");
+      });
+
+      if (
+        homeImageStat.isSymbolicLink() ||
+        !homeImageStat.isFile() ||
+        homeImageStat.size <= 0 ||
+        homeImageStat.size > MAX_MEDIA_FILE_BYTES
+      ) {
+        throw new PopulationError(
+          "home-image.jpg must be a non-empty, regular file within the media size limit.",
+        );
+      }
+
+      const homeImageContentType =
+        CONTENT_TYPES[path.extname(homeImagePath).slice(1).toLowerCase()];
+
+      if (!homeImageContentType) {
+        throw new PopulationError(
+          "home-image.jpg has an unsupported media type.",
+        );
+      }
+
+      entries.push({
+        listingId: null,
+        filename: "home-image.jpg",
+        path: "home-image.jpg",
+        localPath: homeImagePath,
+        size: homeImageStat.size,
+        contentType: homeImageContentType,
+      });
     const listingDirectory = path.resolve(mediaRoot, listing.id);
     if (!isPathInside(mediaRoot, listingDirectory)) {
       throw new PopulationError(`Unsafe local fixture directory for listing ${listing.id}.`);
@@ -1714,13 +1764,18 @@ function printPlan(input: {
 
 function createPopulationAuth() {
   requireDbHelpers();
+  if (!authClientModule) {
+    throw new PopulationError(
+      "The restricted Better Auth schema projection was not initialized."
+    );
+  }
   return betterAuth({
     appName: "Evergreen Estates",
     baseURL: getRequiredEnv("BETTER_AUTH_URL"),
     secret: getRequiredEnv("BETTER_AUTH_SECRET"),
     database: drizzleAdapter(getAuthDb(), {
       provider: "pg",
-      schema: authSchema,
+      schema: authClientModule.authSchema,
     }),
     emailAndPassword: {
       enabled: true,
