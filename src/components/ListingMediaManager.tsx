@@ -122,14 +122,14 @@ function mediaEndpoint(listingId: string): string {
   return `/api/v1/listings/${encodeURIComponent(listingId)}/media`;
 }
 
-function CaptionedListingVideoPreview({
+function ListingVideoPreview({
   src,
   filename,
   captionUrl,
 }: {
   src: string;
   filename: string;
-  captionUrl: string;
+  captionUrl: string | null;
 }) {
   return (
     <video
@@ -140,42 +140,16 @@ function CaptionedListingVideoPreview({
       aria-label={`Video preview: ${filename}`}
       className="h-full w-full object-contain"
     >
-      <track
-        kind="captions"
-        src={captionUrl}
-        srcLang="en"
-        label="English captions"
-        default
-      />
+      {captionUrl ? (
+        <track
+          kind="captions"
+          src={captionUrl}
+          srcLang="en"
+          label="English captions"
+          default
+        />
+      ) : null}
     </video>
-  );
-}
-
-function ListingVideoPreview({
-  src,
-  filename,
-  captionUrl,
-}: {
-  src: string;
-  filename: string;
-  captionUrl: string | null;
-}) {
-  if (captionUrl) {
-    return (
-      <CaptionedListingVideoPreview
-        src={src}
-        filename={filename}
-        captionUrl={captionUrl}
-      />
-    );
-  }
-
-  return (
-    <div className="flex h-full w-full items-center justify-center bg-[#202324] p-3 text-center">
-      <p className="text-xs text-white/70">
-        Upload English captions (.vtt) to preview this video.
-      </p>
-    </div>
   );
 }
 
