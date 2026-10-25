@@ -95,6 +95,23 @@ describe.skipIf(!RUN_DB_INTEGRATION_TESTS)(
     expect(permissions.can_access_migrations).toBe(false);
   });
 
+  it("has an explicit app-role read policy for saved-home row locking", async () => {
+    const db = getDatabase();
+
+    const [policy] = await db`
+      SELECT count(*)::int AS policy_count
+      FROM pg_policies
+      WHERE schemaname = 'public'
+        AND tablename = 'listings'
+        AND policyname = 'App can read listings for saved homes'
+        AND cmd = 'SELECT'
+        AND 'evergreen_app' = ANY(roles)
+        AND qual = 'true'
+    `;
+
+    expect(policy.policy_count).toBe(1);
+  });
+
   it("can execute the approved public read queries", async () => {
     const db = getDatabase();
 
