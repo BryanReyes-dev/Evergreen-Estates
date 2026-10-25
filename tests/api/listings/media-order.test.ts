@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   getAuthenticatedUserId: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
 });
 
 import { listings } from "@/db/schema";
-import { PATCH } from "../src/app/api/v1/listings/[id]/media/route";
+import { PATCH } from "@/app/api/v1/listings/[id]/media/route";
 
 const LISTING_ID = "11111111-1111-4111-8111-111111111111";
 const USER_ID = "22222222-2222-4222-8222-222222222222";
@@ -40,12 +40,12 @@ function makeTransaction(
   listing: { id: string; media: string[] } | null,
   updated: { id: string; media: string[] } | null,
 ) {
-  const selectLimit = vi.fn(async () => listing ? [listing] : []);
+  const selectLimit = vi.fn(async () => (listing ? [listing] : []));
   const selectWhere = vi.fn(() => ({ limit: selectLimit }));
   const selectFrom = vi.fn(() => ({ where: selectWhere }));
   const select = vi.fn(() => ({ from: selectFrom }));
 
-  const updateReturning = vi.fn(async () => updated ? [updated] : []);
+  const updateReturning = vi.fn(async () => (updated ? [updated] : []));
   const updateWhere = vi.fn((condition: unknown) => {
     void condition;
     return { returning: updateReturning };
@@ -127,8 +127,8 @@ describe("PATCH /api/v1/listings/[id]/media", () => {
       { id: LISTING_ID, media: currentMedia },
       { id: LISTING_ID, media: filenames },
     );
-    mocks.withAppUserTransaction.mockImplementation(
-      async (_userId, operation) => operation(transaction.tx),
+    mocks.withAppUserTransaction.mockImplementation(async (_userId, operation) =>
+      operation(transaction.tx),
     );
 
     const response = await PATCH(makeRequest({ filenames }), {
@@ -139,10 +139,7 @@ describe("PATCH /api/v1/listings/[id]/media", () => {
     expect(await responseBody(response)).toEqual({
       data: { listingId: LISTING_ID, filenames },
     });
-    expect(mocks.withAppUserTransaction).toHaveBeenCalledWith(
-      USER_ID,
-      expect.any(Function),
-    );
+    expect(mocks.withAppUserTransaction).toHaveBeenCalledWith(USER_ID, expect.any(Function));
     expect(transaction.updateSet).toHaveBeenCalledWith({
       media: filenames,
       updatedAt: expect.any(String),
@@ -160,8 +157,8 @@ describe("PATCH /api/v1/listings/[id]/media", () => {
 
   it("returns 404 for a listing not owned by the authenticated user", async () => {
     const transaction = makeTransaction(null, null);
-    mocks.withAppUserTransaction.mockImplementation(
-      async (_userId, operation) => operation(transaction.tx),
+    mocks.withAppUserTransaction.mockImplementation(async (_userId, operation) =>
+      operation(transaction.tx),
     );
 
     const response = await PATCH(makeRequest({ filenames: [] }), {
@@ -178,14 +175,13 @@ describe("PATCH /api/v1/listings/[id]/media", () => {
       { id: LISTING_ID, media: ["front.jpg", "inside.jpg"] },
       null,
     );
-    mocks.withAppUserTransaction.mockImplementation(
-      async (_userId, operation) => operation(transaction.tx),
+    mocks.withAppUserTransaction.mockImplementation(async (_userId, operation) =>
+      operation(transaction.tx),
     );
 
-    const response = await PATCH(
-      makeRequest({ filenames: ["front.jpg", "new.jpg"] }),
-      { params: Promise.resolve({ id: LISTING_ID }) },
-    );
+    const response = await PATCH(makeRequest({ filenames: ["front.jpg", "new.jpg"] }), {
+      params: Promise.resolve({ id: LISTING_ID }),
+    });
 
     expect(response.status).toBe(409);
     expect((await responseBody(response)).error?.code).toBe("MEDIA_ORDER_CONFLICT");
@@ -197,14 +193,13 @@ describe("PATCH /api/v1/listings/[id]/media", () => {
       { id: LISTING_ID, media: ["front.jpg", "inside.jpg"] },
       null,
     );
-    mocks.withAppUserTransaction.mockImplementation(
-      async (_userId, operation) => operation(transaction.tx),
+    mocks.withAppUserTransaction.mockImplementation(async (_userId, operation) =>
+      operation(transaction.tx),
     );
 
-    const response = await PATCH(
-      makeRequest({ filenames: ["inside.jpg", "front.jpg"] }),
-      { params: Promise.resolve({ id: LISTING_ID }) },
-    );
+    const response = await PATCH(makeRequest({ filenames: ["inside.jpg", "front.jpg"] }), {
+      params: Promise.resolve({ id: LISTING_ID }),
+    });
 
     expect(response.status).toBe(409);
     expect((await responseBody(response)).error?.code).toBe("MEDIA_ORDER_CONFLICT");
