@@ -12,6 +12,8 @@
 
 ## Project and workflow
 
+GitHub Actions is intentionally unused: `.github/workflows/quality-checks.yml` was removed on 2026-10-25 to avoid hosted-runner usage. Do not recreate CI workflows unless requested. Run test, lint, type-check, and build setup after the planned Vite+ migration.
+
 Evergreen Estates is a Next.js 16 App Router real-estate marketplace using TypeScript, React, Supabase/PostgreSQL and Storage, Drizzle ORM, Better Auth, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
 The branch and working-tree state must be checked at the start of each task; this file does not record a durable current branch.
@@ -180,7 +182,7 @@ The pushed repository now includes:
 
 - Public listing browsing, details, and URL-driven search/filtering.
 - Better Auth email/password backend plus user-facing sign-up/sign-in and session-aware account navigation with initials/photo avatars.
-- New `/account` settings UI for personal name, uploaded avatar, password changes, default listing sort, and results layout; seller storefronts and reviews use the account avatar. ESLint, TypeScript, and the production build passed GitHub Actions run 21 on 2026-10-22. Migration 0020 remains source-only and browser/responsive end-to-end checks have not been run.
+- New `/account` settings UI for personal name, uploaded avatar, password changes, default listing sort, and results layout; seller storefronts and reviews use the account avatar. ESLint, TypeScript, and the production build passed a historical GitHub Actions run on 2026-10-22, before CI was intentionally disabled. The `.github/workflows/quality-checks.yml` workflow has been removed; do not restore GitHub Actions checks unless explicitly requested. Migration 0020 remains source-only and browser/responsive end-to-end checks have not been run.
 - Seller-profile create/read/update/delete UI connected to the existing seller-profile API, plus a public storefront page for profiles explicitly marked published.
 - Listing create/edit/delete UI connected to the existing listing Route Handlers, with owner-scoped edit access and a seller page listing the current user's properties.
 - Review create/edit/delete controls connected to the existing review Route Handlers; only the review author sees mutation controls, and the server remains authoritative.
@@ -188,7 +190,7 @@ The pushed repository now includes:
 - Saved-home buttons on listing cards and details, Saved homes page, and GET/PATCH `/api/v1/users/me/saved-listings` backed by migration 0019.
 - Synthetic fixtures and 48 local media files, plus scripts/populate.ts with read-only preflight and explicit write-mode safeguards.
 
-Static checks (ESLint, `npx tsc --noEmit`, and production build) passed in GitHub Actions run 21 on 2026-10-22. Automated tests remain deferred until after Vite+, as planned, and browser/responsive user flows have not yet been manually verified. Account settings and private avatar upload require migration 0020 to be applied safely before runtime use.
+Historical static checks (ESLint, `npx tsc --noEmit`, and production build) passed on 2026-10-22. GitHub Actions has been intentionally disabled by removing `.github/workflows/quality-checks.yml`; no workflow should run on pull requests. Automated tests, lint/type-check/build checks for current code, and browser/responsive verification are deferred until after the planned Vite+ migration. Account settings and private avatar upload require migration 0020 to be applied safely before runtime use.
 
 ### Population script status
 
@@ -237,7 +239,7 @@ For non-fixture users, configure mandatory Better Auth email verification with t
 The intended mock seller accounts must be usable for a demo without requiring a developer to click verification links for each one. This must be a narrow, script-only exception, not a global bypass:
 - Keep verification mandatory for normal public registration.
 - `scripts/populate.ts` provisions credentials through Better Auth, then updates `email_verified` only for identities passing the script-only `src/db/seed/auth-fixtures.ts` exact email + name allowlist and a matching user UUID.
-- Public registration and request handlers do not import the fixture allowlist. Do not add a public verification-bypass endpoint or flag; focused tests cover the allowlist.
+- Public registration and request handlers do not import the fixture allowlist. Do not add a public verification-bypass endpoint or flag. Test coverage is intentionally deferred until after the Vite+ migration.
 - Continue to use ignored local `seed/credentials`, random unique passwords, explicit target project confirmation, dry-run, and no credential logging.
 - If demo accounts should be forced to rotate their initial password, add an explicit server-enforced first-login password-change state and block protected app routes until the password changes. Email reset and forced first-login change are different features; reset-email delivery requires mailbox access.
 - Add tests showing normal registration requires verification and the seed-only exception works only for enumerated fixture accounts. The populate script now marks only exact allowlisted fixture identities as verified. Public sign-up remains verification-gated.
@@ -245,11 +247,11 @@ The intended mock seller accounts must be usable for a demo without requiring a 
 ### Required release gates before opening the Netlify demo to real users
 
 - [ ] Netlify production env is configured with the exact HTTPS `BETTER_AUTH_URL`/trusted origin, strong `BETTER_AUTH_SECRET`, least-privilege `AUTH_DATABASE_URL` and `APP_DATABASE_URL`, Supabase URL/server-only key, and email provider credentials. Keep `DIRECT_URL` migration-only.
-- [x] Source implementation and unit tests exist for required verification, reset email callbacks, one-hour token lifetime, session revocation after reset, auth screens, and fixture-only verification bypass.
+- [x] Source implementation exists for required verification, reset email callbacks, one-hour token lifetime, session revocation after reset, auth screens, and fixture-only verification bypass. Automated tests are intentionally deferred until after the Vite+ migration.
 - [ ] Configure Resend in local `.env` and Netlify; verify inbox delivery, sender-domain authentication, callback URLs, expired/single-use tokens, and abuse controls end-to-end.
 - [ ] Decide and implement forced password rotation for seeded demo accounts if required.
 - [ ] Test cross-account authorization for listings, reviews, seller profiles, saved homes, avatars and listing media; verify role grants/RLS and private bucket behavior.
-- [ ] Run automated auth/route/RLS/IDOR/media/population tests and full type/lint/build checks; do not rely on CI's build alone.
+- [ ] After the Vite+ migration, run auth/route/RLS/IDOR/media/population tests and full type/lint/build checks locally. No GitHub Actions workflow is currently configured.
 - [ ] Manually verify desktop/tablet/mobile, keyboard navigation, error/loading/empty states, session expiry and sign-out.
 - [ ] Check Netlify preview versus production environment variables, callback URLs, cookies, secrets, logging, privacy/terms/contact and demo-data disclosure.
 - [ ] Record backup/restore and rollback plan; review all database and Storage objects before any destructive cleanup.
