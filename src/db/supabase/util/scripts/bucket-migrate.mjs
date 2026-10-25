@@ -67,4 +67,7 @@ async function migrateFolder(path = "") {
 }
 
 
-migrateFolder();
+migrateFolder().catch((error) => {
+  console.error("Storage bucket migration failed:", error);
+  process.exitCode = 1;
+});

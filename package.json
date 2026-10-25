@@ -4,14 +4,34 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build ",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "tailwind:init": "tailwindcss init -p",
-    "populate": "npx --yes tsx@4.20.6 scripts/populate.ts",
-    "populate:dry-run": "npm run populate -- --dry-run"
+    "tailwind:init": "vp exec tailwindcss init -p",
+    "populate": "vpx scripts/populate.ts",
+    "populate:dry-run": "vpx scripts/populate.ts --dry-run",
+    "test:all": "vpx scripts/run-test-suite.mjs all",
+    "test:fast": "vpx scripts/run-test-suite.mjs fast",
+    "test:unit": "vpx scripts/run-test-suite.mjs unit",
+    "test:account-preferences": "vpx scripts/run-test-suite.mjs account-preferences",
+    "test:auth-config": "vpx scripts/run-test-suite.mjs auth-config",
+    "test:fixture-auth": "vpx scripts/run-test-suite.mjs fixture-auth",
+    "test:media-filenames": "vpx scripts/run-test-suite.mjs media-filenames",
+    "test:media-limits": "vpx scripts/run-test-suite.mjs media-limits",
+    "test:api": "vpx scripts/run-test-suite.mjs api",
+    "test:integration": "vpx scripts/run-test-suite.mjs integration",
+    "test:seed-data": "vpx scripts/run-test-suite.mjs seed-data",
+    "test:listing-collection": "vpx scripts/run-test-suite.mjs listing-collection",
+    "test:listing-item": "vpx scripts/run-test-suite.mjs listing-item",
+    "test:listing-media": "vpx scripts/run-test-suite.mjs listing-media",
+    "test:reviews": "vpx scripts/run-test-suite.mjs reviews",
+    "test:seller-profiles": "vpx scripts/run-test-suite.mjs seller-profiles",
+    "test:saved-listings": "vpx scripts/run-test-suite.mjs saved-listings",
+    "test:account-profile": "vpx scripts/run-test-suite.mjs account-profile",
+    "test:media-upload": "vpx scripts/run-test-suite.mjs media-upload",
+    "test:avatar": "vpx scripts/run-test-suite.mjs avatar",
+    "test:db-permissions": "vpx scripts/run-test-suite.mjs db-permissions",
+    "test:media-delete": "vpx scripts/run-test-suite.mjs media-delete",
+    "test:media-captions": "vpx scripts/run-test-suite.mjs media-captions"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -46,12 +66,25 @@
     "autoprefixer": "^10.4.22",
     "babel-plugin-react-compiler": "1.0.0",
     "drizzle-kit": "^0.31.11",
-    "eslint": "^9",
-    "eslint-config-next": "^16.2.12",
     "postcss": "^8.5.6",
     "shadcn": "^4.15.0",
     "tailwindcss": "^3.3.4",
     "typescript": "^5",
-    "vitest": "^3.2.7"
+    "vite-plus": "1.4.0"
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.22.1",
+      "onFail": "download"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": "11.12.1",
+      "onFail": "download"
+    }
   }
 }

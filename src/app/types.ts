@@ -12,6 +12,7 @@ export interface Houselisting {
   id: string;
   sellerUserId?: string | null;
   media: string[];
+  mediaCaptions?: Record<string, string>;
   tags: string[];
   title: string;
   price: number;
@@ -41,6 +42,7 @@ export interface FeaturedCommunitiesProps {
 export type ListingMedia = {
   type: "image" | "video";
   src: string;
+  captionSrc?: string;
   alt?: string;
 };
 

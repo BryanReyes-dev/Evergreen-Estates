@@ -488,11 +488,11 @@ export const seedReviews: SeedReview[] = seedSellerReviews;
  */
 export function validateSeedData(): void {
   if (seedSellers.length !== 4) {
-    throw new Error(`Expected 4 sellers; found ${seedSellers.length}.`);
+    throw new Error("Expected exactly four sellers.");
   }
 
   if (seedListings.length !== 12) {
-    throw new Error(`Expected 12 listings; found ${seedListings.length}.`);
+    throw new Error("Expected exactly twelve listings.");
   }
 
   if (seedReviews.length !== 48) {

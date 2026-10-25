@@ -34,8 +34,6 @@ export function LoadingState({
 
   return (
     <div
-      role="status"
-      aria-live="polite"
       aria-busy="true"
       className={`flex w-full flex-col items-center justify-center gap-3 px-4 py-8 text-center ${
         fullScreen ? "min-h-[60vh]" : "min-h-32"
@@ -60,7 +58,7 @@ export function LoadingState({
           className="h-full w-full object-contain"
         />
       </motion.div>
-      <span className="text-sm text-white/70">{label}</span>
+      <p aria-live="polite" className="text-sm text-white/70">{label}</p>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MAX_CAPTION_FILE_BYTES, validateWebVttCaptionFile } from "@/lib/media/captions";
 import { MAX_MEDIA_FILE_BYTES } from "@/lib/media/file-limits";
 import {
   SUPPORTED_LISTING_MEDIA_TYPES,
@@ -24,6 +25,7 @@ type ListingMediaEntry = {
   filename: string;
   previewUrl: string | null;
   mediaKind: "image" | "video";
+  captionUrl: string | null;
 };
 
 type ListingMediaData = {
@@ -120,6 +122,63 @@ function mediaEndpoint(listingId: string): string {
   return `/api/v1/listings/${encodeURIComponent(listingId)}/media`;
 }
 
+function CaptionedListingVideoPreview({
+  src,
+  filename,
+  captionUrl,
+}: {
+  src: string;
+  filename: string;
+  captionUrl: string;
+}) {
+  return (
+    <video
+      src={src}
+      controls
+      playsInline
+      preload="metadata"
+      aria-label={`Video preview: ${filename}`}
+      className="h-full w-full object-contain"
+    >
+      <track
+        kind="captions"
+        src={captionUrl}
+        srcLang="en"
+        label="English captions"
+        default
+      />
+    </video>
+  );
+}
+
+function ListingVideoPreview({
+  src,
+  filename,
+  captionUrl,
+}: {
+  src: string;
+  filename: string;
+  captionUrl: string | null;
+}) {
+  if (captionUrl) {
+    return (
+      <CaptionedListingVideoPreview
+        src={src}
+        filename={filename}
+        captionUrl={captionUrl}
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-[#202324] p-3 text-center">
+      <p className="text-xs text-white/70">
+        Upload English captions (.vtt) to preview this video.
+      </p>
+    </div>
+  );
+}
+
 export function ListingMediaManager({
   listingId,
 }: {
@@ -136,32 +195,39 @@ export function ListingMediaManager({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [captionUploadingFilename, setCaptionUploadingFilename] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingFilename, setDeletingFilename] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchMedia = useCallback(async (): Promise<ListingMediaData> => {
+    const response = await fetch(mediaEndpoint(listingId), {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const data = await readData<ListingMediaData>(
+      response,
+      "Unable to load this listing's media.",
+    );
+
+    if (!Array.isArray(data.media)) {
+      throw new Error("The server returned an invalid media list.");
+    }
+
+    return data;
+  }, [listingId]);
 
   const refreshMedia = useCallback(async (): Promise<boolean> => {
     setRefreshing(true);
     setLoadError(null);
 
     try {
-      const response = await fetch(mediaEndpoint(listingId), {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
-      const data = await readData<ListingMediaData>(
-        response,
-        "Unable to load this listing's media.",
-      );
-
-      if (!Array.isArray(data.media)) {
-        throw new Error("The server returned an invalid media list.");
-      }
-
+      const data = await fetchMedia();
       setMedia(data.media);
       setSavedFilenames(data.media.map((item) => item.filename));
       setCanManage(true);
+      setLoadError(null);
       return true;
     } catch (cause) {
       setMedia([]);
@@ -175,17 +241,45 @@ export function ListingMediaManager({
       setLoading(false);
       setRefreshing(false);
     }
-  }, [listingId]);
+  }, [fetchMedia]);
 
   useEffect(() => {
-    void refreshMedia();
-  }, [refreshMedia]);
+    let cancelled = false;
+
+    async function loadInitialMedia() {
+      try {
+        const data = await fetchMedia();
+        if (cancelled) return;
+
+        setMedia(data.media);
+        setSavedFilenames(data.media.map((item) => item.filename));
+        setCanManage(true);
+        setLoadError(null);
+      } catch (cause) {
+        if (cancelled) return;
+
+        setMedia([]);
+        setSavedFilenames([]);
+        setCanManage(false);
+        setLoadError(
+          describeError(cause, "Unable to load this listing's media."),
+        );
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadInitialMedia();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchMedia]);
 
   const filenames = media.map((item) => item.filename);
   const hasUnsavedOrder =
     filenames.length !== savedFilenames.length ||
     filenames.some((filename, index) => filename !== savedFilenames[index]);
-  const busy = refreshing || uploading || saving || deletingFilename !== null;
+  const busy = refreshing || uploading || captionUploadingFilename !== null || saving || deletingFilename !== null;
 
   function moveTo(index: number, destination: number) {
     if (destination < 0 || destination >= media.length) return;
@@ -256,6 +350,54 @@ export function ListingMediaManager({
     } finally {
       setUploading(false);
       setUploadProgress(0);
+    }
+  }
+
+  async function handleCaptionFileChange(
+    event: ChangeEvent<HTMLInputElement>,
+    filename: string,
+  ) {
+    const file = event.currentTarget.files?.[0] ?? null;
+    event.currentTarget.value = "";
+
+    if (!file) return;
+
+    const content = await file.text();
+    const validationError = validateWebVttCaptionFile(file, content);
+    if (validationError) {
+      setActionError(validationError);
+      setSuccessMessage(null);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.set("file", file);
+    setActionError(null);
+    setSuccessMessage(null);
+    setCaptionUploadingFilename(filename);
+
+    try {
+      const response = await fetch(
+        `${mediaEndpoint(listingId)}/${encodeURIComponent(filename)}/captions`,
+        {
+          method: "POST",
+          credentials: "same-origin",
+          body: formData,
+        },
+      );
+      await readData<{ listingId: string; videoFilename: string; filename: string; uploaded: boolean }>(
+        response,
+        "Unable to upload video captions.",
+      );
+
+      await refreshMedia();
+      setSuccessMessage(`English captions were saved for ${filename}.`);
+    } catch (cause) {
+      setActionError(
+        describeError(cause, "Unable to upload video captions."),
+      );
+    } finally {
+      setCaptionUploadingFilename(null);
     }
   }
 
@@ -395,9 +537,11 @@ export function ListingMediaManager({
         </form>
 
         {uploading && (
-          <div className="mt-5 space-y-2" role="status" aria-live="polite">
+          <div className="mt-5 space-y-2">
             <div className="flex justify-between gap-3 text-sm">
-              <span className="break-all">Uploading {selectedFile?.name}</span>
+              <p aria-live="polite" className="break-all">
+                Uploading {selectedFile?.name}
+              </p>
               <span>{uploadProgress}%</span>
             </div>
             <progress
@@ -407,6 +551,11 @@ export function ListingMediaManager({
               className="w-full accent-[#78b75c]"
             />
           </div>
+        )}
+        {captionUploadingFilename && (
+          <p aria-live="polite" className="mt-4 text-sm text-white/75">
+            Uploading English captions for {captionUploadingFilename}.
+          </p>
         )}
       </div>
 
@@ -423,13 +572,13 @@ export function ListingMediaManager({
       )}
 
       {successMessage && (
-        <p role="status" aria-live="polite" className="mt-6 rounded-xl border border-green-400/40 bg-green-950/30 p-4 text-sm text-green-100">
+        <p aria-live="polite" className="mt-6 rounded-xl border border-green-400/40 bg-green-950/30 p-4 text-sm text-green-100">
           {successMessage}
         </p>
       )}
 
       {loading ? (
-        <p role="status" className="mt-8 text-white/75">
+        <p aria-live="polite" className="mt-8 text-white/75">
           Loading your gallery...
         </p>
       ) : canManage ? (
@@ -453,7 +602,7 @@ export function ListingMediaManager({
           </div>
 
           {hasUnsavedOrder && (
-            <p className="mb-4 text-sm text-[#bfe3ae]" role="status">
+            <p className="mb-4 text-sm text-[#bfe3ae]">
               Order changes are not saved yet.
             </p>
           )}
@@ -475,14 +624,7 @@ export function ListingMediaManager({
                   <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-black/40">
                     {item.previewUrl ? (
                       item.mediaKind === "video" ? (
-                        <video
-                          src={item.previewUrl}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          aria-label={`Video preview: ${item.filename}`}
-                          className="h-full w-full object-contain"
-                        />
+                        <ListingVideoPreview src={item.previewUrl} filename={item.filename} captionUrl={item.captionUrl} />
                       ) : (
                         <Image
                           src={item.previewUrl}
@@ -511,6 +653,27 @@ export function ListingMediaManager({
                       <p className="mt-2 inline-flex rounded-full bg-[#78b75c]/15 px-3 py-1 text-xs font-medium text-[#bfe3ae]">
                         {item.mediaKind === "image" ? "Thumbnail photo" : "First in gallery"}
                       </p>
+                    )}
+                    {item.mediaKind === "video" && (
+                      <div className="mt-3 space-y-2">
+                        <Label htmlFor={`caption-file-${index}`} className="text-white">
+                          {item.captionUrl ? "Replace English captions (.vtt)" : "Add English captions (.vtt)"}
+                        </Label>
+                        <Input
+                          id={`caption-file-${index}`}
+                          type="file"
+                          accept=".vtt,text/vtt"
+                          disabled={!canManage || busy}
+                          onChange={(event) => void handleCaptionFileChange(event, item.filename)}
+                          aria-describedby={`caption-help-${index}`}
+                          className="border-white/20 bg-[#202324] text-white file:text-white"
+                        />
+                        <p id={`caption-help-${index}`} className="text-sm text-white/60">
+                          {item.captionUrl
+                            ? "English captions are active, so visitors can enable video audio."
+                            : `Upload a WebVTT file up to ${MAX_CAPTION_FILE_BYTES.toLocaleString()} bytes. Video playback is available after English captions are uploaded.`}
+                        </p>
+                      </div>
                     )}
                   </div>
 

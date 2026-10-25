@@ -95,14 +95,9 @@ export function AccountSettingsForm() {
   }, [reloadAttempt]);
 
   useEffect(() => {
-    if (!selectedFile) {
-      setSelectedPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(selectedFile);
-    setSelectedPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [selectedFile]);
+    if (!selectedPreview) return;
+    return () => URL.revokeObjectURL(selectedPreview);
+  }, [selectedPreview]);
 
   function changePreference<K extends keyof AccountPreferences>(
     key: K,
@@ -117,21 +112,25 @@ export function AccountSettingsForm() {
     const file = event.target.files?.[0] ?? null;
     if (!file) {
       setSelectedFile(null);
+      setSelectedPreview(null);
       return;
     }
     if (!["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"].includes(file.type)) {
       setError("Choose a JPEG, PNG, WebP, AVIF, or GIF image.");
       event.target.value = "";
       setSelectedFile(null);
+      setSelectedPreview(null);
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       setError("Avatar images must be 5 MB or smaller.");
       event.target.value = "";
       setSelectedFile(null);
+      setSelectedPreview(null);
       return;
     }
     setSelectedFile(file);
+    setSelectedPreview(URL.createObjectURL(file));
   }
 
   async function uploadAvatar() {
@@ -152,6 +151,7 @@ export function AccountSettingsForm() {
       );
       setAccount((current) => current ? { ...current, image: saved.image, imageUrl: saved.imageUrl } : current);
       setSelectedFile(null);
+      setSelectedPreview(null);
       if (fileInput.current) fileInput.current.value = "";
 
       let sessionRefreshFailed = false;
@@ -187,6 +187,7 @@ export function AccountSettingsForm() {
       );
       setAccount((current) => current ? { ...current, image: null, imageUrl: null } : current);
       setSelectedFile(null);
+      setSelectedPreview(null);
       if (fileInput.current) fileInput.current.value = "";
       let sessionRefreshFailed = false;
       try {
@@ -287,7 +288,7 @@ export function AccountSettingsForm() {
     }
   }
 
-  if (loading) return <p className="p-4 text-sm text-white/70" role="status">Loading account settings…</p>;
+  if (loading) return <p aria-live="polite" className="block p-4 text-sm text-white/70">Loading account settings…</p>;
 
   if (!account) {
     return (
@@ -379,7 +380,7 @@ export function AccountSettingsForm() {
           </div>
 
           {error && <p role="alert" className="rounded-md border border-red-400/30 bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}
-          {notice && <p role="status" className="rounded-md border border-green-400/25 bg-green-950/25 p-3 text-sm text-green-200">{notice}</p>}
+          {notice && <p aria-live="polite" className="block rounded-md border border-green-400/25 bg-green-950/25 p-3 text-sm text-green-200">{notice}</p>}
           <Button type="submit" disabled={pending} className="min-h-11 w-full sm:w-auto">{pending ? "Saving…" : "Save profile and preferences"}</Button>
         </form>
       </section>
@@ -403,7 +404,7 @@ export function AccountSettingsForm() {
             </div>
           </div>
           {passwordError && <p role="alert" className="rounded-md border border-red-400/30 bg-red-950/40 p-3 text-sm text-red-200">{passwordError}</p>}
-          {passwordNotice && <p role="status" className="rounded-md border border-green-400/25 bg-green-950/25 p-3 text-sm text-green-200">{passwordNotice}</p>}
+          {passwordNotice && <p aria-live="polite" className="block rounded-md border border-green-400/25 bg-green-950/25 p-3 text-sm text-green-200">{passwordNotice}</p>}
           <Button type="submit" disabled={passwordPending} className="min-h-11 w-full sm:w-auto">{passwordPending ? "Changing password…" : "Change password"}</Button>
         </form>
       </section>

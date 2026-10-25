@@ -2,7 +2,6 @@ import { Houselisting } from "@/app/types";
 import Listing from "./Listing";
 import Nav from "./Layout/Nav";
 import Image from "next/image";
-import Menu from "./Layout/Menu";
 
 interface FeaturedCommunitiesProps {
     listings: Houselisting[]

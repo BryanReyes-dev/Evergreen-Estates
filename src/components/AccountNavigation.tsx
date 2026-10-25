@@ -36,38 +36,50 @@ export function AccountNavigation({
   const [signingOut, setSigningOut] = useState(false);
   const userId = session?.user?.id;
 
-  const refreshSummary = useCallback(async () => {
-    if (!userId) {
-      setSummary(null);
-      return;
-    }
+  const requestSummary = useCallback(async (): Promise<AccountSummary | null> => {
+    if (!userId) return null;
+
     try {
       const response = await fetch("/api/v1/users/me/profile", {
         credentials: "same-origin",
         cache: "no-store",
       });
-      if (!response.ok) return;
+      if (!response.ok) return null;
+
       const payload: unknown = await response.json();
-      if (typeof payload !== "object" || payload === null || !("data" in payload)) return;
-      const data = (payload as { data?: { name?: unknown; imageUrl?: unknown } }).data;
-      if (typeof data?.name === "string") {
-        setSummary({
-          userId,
-          name: data.name,
-          imageUrl: typeof data.imageUrl === "string" ? data.imageUrl : null,
-        });
+      if (typeof payload !== "object" || payload === null || !("data" in payload)) {
+        return null;
       }
+
+      const data = (payload as { data?: { name?: unknown; imageUrl?: unknown } }).data;
+      if (typeof data?.name !== "string") return null;
+
+      return {
+        userId,
+        name: data.name,
+        imageUrl: typeof data.imageUrl === "string" ? data.imageUrl : null,
+      };
     } catch {
       // The session name and externally hosted avatar remain safe fallbacks.
+      return null;
     }
   }, [userId]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function refreshSummary() {
+      const nextSummary = await requestSummary();
+      if (!cancelled && nextSummary) setSummary(nextSummary);
+    }
+
     void refreshSummary();
-    const refresh = () => { void refreshSummary(); };
-    window.addEventListener("evergreen:account-updated", refresh);
-    return () => window.removeEventListener("evergreen:account-updated", refresh);
-  }, [refreshSummary, pathname, session?.user?.image]);
+    window.addEventListener("evergreen:account-updated", refreshSummary);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("evergreen:account-updated", refreshSummary);
+    };
+  }, [requestSummary, pathname, session?.user?.image]);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -128,15 +140,7 @@ export function AccountNavigation({
   }
 
   return (
-    <details
-      className="group relative"
-      onClick={(event) => {
-        const target = event.target;
-        if (target instanceof HTMLElement && target.closest("a")) {
-          event.currentTarget.open = false;
-        }
-      }}
-    >
+    <details className="group relative">
       <summary className="inline-flex min-h-11 max-w-48 cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1 text-sm text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c] [&::-webkit-details-marker]:hidden">
         <UserAvatar name={userName} imageUrl={imageUrl} identity={userId} className="h-8 w-8 text-xs" />
         <span className="max-w-24 truncate">{userName}</span>
@@ -146,10 +150,10 @@ export function AccountNavigation({
       </summary>
       <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-white/10 bg-[#202324] p-2 shadow-2xl">
         <p className="truncate px-3 py-2 text-xs text-white/50">{session.user.email}</p>
-        <Link href="/account" className={linkClass}>Account settings</Link>
-        <Link href="/profile" className={linkClass}>Seller profile</Link>
-        <Link href="/Saved" className={linkClass}>Saved homes</Link>
-        <Link href="/listings/new" className={linkClass}>Create listing</Link>
+        <Link href="/account" className={linkClass} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}>Account settings</Link>
+        <Link href="/profile" className={linkClass} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}>Seller profile</Link>
+        <Link href="/Saved" className={linkClass} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}>Saved homes</Link>
+        <Link href="/listings/new" className={linkClass} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}>Create listing</Link>
         <div className="my-1 border-t border-white/10" />
         <Button type="button" disabled={signingOut} onClick={handleSignOut} className="min-h-11 w-full">
           {signingOut ? "Signing out…" : "Sign out"}

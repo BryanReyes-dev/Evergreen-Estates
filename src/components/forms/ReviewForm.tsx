@@ -111,7 +111,7 @@ export function ReviewForm({ listingId }: { listingId: string }) {
           <p className="text-right text-xs text-white/50">{comment.length}/5000</p>
         </div>
         {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
-        {success && <p role="status" className="text-sm text-green-300">{success}</p>}
+        {success && <p aria-live="polite" className="block text-sm text-green-300">{success}</p>}
         <Button type="submit" disabled={pending} className="min-h-11">
           {pending ? "Submitting…" : "Submit review"}
         </Button>

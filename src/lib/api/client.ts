@@ -6,11 +6,6 @@
  * server exceptions into the interface.
  */
 
-type ErrorPayload = {
-  error?: string | { code?: string; message?: string };
-  message?: string;
-};
-
 const ERROR_MESSAGES: Record<string, string> = {
   UNAUTHENTICATED: "Please sign in and try again.",
   INVALID_JSON: "The request could not be read. Check the fields and try again.",

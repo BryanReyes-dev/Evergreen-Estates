@@ -12,7 +12,6 @@ import { MAX_MEDIA_FILE_BYTES } from "@/lib/media/file-limits";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const maxBytes = MAX_MEDIA_FILE_BYTES;
 const RESUMABLE_THRESHOLD_BYTES = 6 * 1024 * 1024;
 
 const ALLOWED_MEDIA_TYPES = new Set<SupportedMediaContentType>([

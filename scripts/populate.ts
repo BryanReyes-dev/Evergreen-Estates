@@ -10,7 +10,7 @@ import path from "node:path";
 
 import { seedListings, seedReviews, seedSellers, validateSeedData } from "@/db/seed/data";
 import { isSeedFixtureIdentity } from "@/db/seed/auth-fixtures";
-import { account, session, verification } from "@/db/auth-schema";
+import { account } from "@/db/auth-schema";
 import { listings, reviews, sellerProfiles, users } from "@/db/schema";
 import { MAX_MEDIA_FILE_BYTES } from "@/lib/media/file-limits";
 

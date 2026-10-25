@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { readApiData } from "@/lib/api/client";
@@ -21,8 +21,10 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const userId = session?.user?.id;
-  const activeUserIdRef = useRef<string | undefined>(undefined);
-  activeUserIdRef.current = userId;
+  const activeUserIdRef = useRef<string | undefined>(userId);
+  useLayoutEffect(() => {
+    activeUserIdRef.current = userId;
+  }, [userId]);
 
   const [savedListingIds, setSavedListingIds] = useState<string[]>([]);
   const [savedForUserId, setSavedForUserId] = useState<string | null>(null);
@@ -36,21 +38,12 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
     if (sessionPending) return;
     let cancelled = false;
 
-    setSavedListingIds([]);
-    setSavedForUserId(null);
-    setLoadError(null);
-    setLoadErrorForUserId(null);
-    setPendingActions((current) => current.filter((action) => action.userId === userId));
-
     if (!userId) {
-      setPendingActions([]);
-      setIsLoading(false);
       return () => { cancelled = true; };
     }
 
     // Capture the narrowed ID so TypeScript can verify it inside the async closure.
     const requestedUserId = userId;
-    setIsLoading(true);
     async function loadSavedListings() {
       try {
         const result = await readApiData<SavedListingsResponse>(
@@ -60,6 +53,8 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setSavedListingIds(result.savedListingIds);
           setSavedForUserId(requestedUserId);
+          setLoadError(null);
+          setLoadErrorForUserId(null);
         }
       } catch (error) {
         if (!cancelled) {
@@ -74,7 +69,12 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [sessionPending, userId, loadAttempt]);
 
-  const retryLoad = useCallback(() => setLoadAttempt((attempt) => attempt + 1), []);
+  const retryLoad = useCallback(() => {
+    setLoadError(null);
+    setLoadErrorForUserId(null);
+    setIsLoading(true);
+    setLoadAttempt((attempt) => attempt + 1);
+  }, []);
   const toggleSavedListing = useCallback(async (listingId: string): Promise<boolean> => {
     if (!userId) throw new Error("Sign in to save homes.");
     const currentUserSavedIds = savedForUserId === userId ? savedListingIds : [];
@@ -113,8 +113,8 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
 
   const visibleSavedListingIds = savedForUserId === userId ? savedListingIds : [];
   const visibleLoadError = loadErrorForUserId === userId ? loadError : null;
-  const isLoadingForCurrentUser = isLoading ||
-    (Boolean(userId) && savedForUserId !== userId && loadErrorForUserId !== userId);
+  const isLoadingForCurrentUser = sessionPending ||
+    (Boolean(userId) && (isLoading || (savedForUserId !== userId && loadErrorForUserId !== userId)));
   const visiblePendingListingIds = pendingActions
     .filter((action) => action.userId === userId)
     .map((action) => action.listingId);
