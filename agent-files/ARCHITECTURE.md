@@ -329,12 +329,12 @@ DIRECT_URL → Drizzle Kit migrations only
 
 ### Authentication policy
 
-The current `src/lib/auth.ts` enables Better Auth email/password but does not yet explicitly require email verification or configure verification and password-reset delivery. Treat this as an implementation gap, not a production-ready authentication policy.
+The source now requires email verification before public email/password sign-in, sends verification links on sign-up and unverified sign-in, and supports one-hour forgotten-password reset links with session revocation after reset. `src/lib/auth-email.ts` sends through Resend using server-only `RESEND_API_KEY` and `AUTH_EMAIL_FROM`. Real delivery and deployed callback URLs remain unverified until the provider is configured in Netlify and exercised end-to-end.
 
 Before inviting real people to the Netlify demo:
-- Configure Better Auth's supported `emailAndPassword.requireEmailVerification` and `sendVerificationEmail` flow using the installed Better Auth version's documentation.
-- Configure `sendResetPassword` and verify reset tokens, expiry, single-use behavior, and user-facing responses.
-- Configure a real transactional email provider through server-only environment variables; verify the sender/domain and production callback URL.
+- Keep `emailAndPassword.requireEmailVerification` enabled and test the implemented `sendVerificationEmail` flow.
+- Keep `sendResetPassword`, one-hour token expiry, and `revokeSessionsOnPasswordReset` enabled; test invalid/expired/single-use tokens and session revocation.
+- Configure Resend through server-only `RESEND_API_KEY` and `AUTH_EMAIL_FROM`; verify sender-domain authentication and production callback URLs in Netlify.
 - Enforce that an unverified user cannot establish an authenticated session / access protected app features. Test sign-up, verification link, expired/invalid link, sign-in before verification, resend throttling, and verified sign-in.
 - Configure and test rate limiting for sign-in, sign-up, verification resend, and password reset; review session lifetime, cookie security, trusted origins, HTTPS, generic responses against account enumeration, and production secrets.
 - Never expose auth/database/storage secrets to client bundles or commit them.
@@ -357,7 +357,8 @@ Preferred design to implement/review:
 A successful build and passing population preflight are not a release sign-off. Before opening the deployed Netlify URL to real visitors:
 - [ ] Set production-only environment variables in Netlify: `BETTER_AUTH_URL`, strong `BETTER_AUTH_SECRET`, the least-privilege `AUTH_DATABASE_URL` and `APP_DATABASE_URL`, Supabase URL and server-only secret key, and transactional email provider credentials. Keep `DIRECT_URL` migration-only; do not make it available to runtime handlers if unnecessary.
 - [ ] Set Better Auth's production URL/trusted origins to the exact HTTPS Netlify domain(s); verify callback URLs and secure cookies on the deployed domain and preview deployments.
-- [ ] Implement and end-to-end test mandatory email verification for all non-fixture registrations and password-reset emails; test invalid/expired tokens and abuse/rate limiting.
+- [x] Source implementation and unit tests cover mandatory verification, forgotten-password email, one-hour reset lifetime, session revocation, auth UI, and fixture-only verification bypass.
+- [ ] Configure Resend credentials/sender in Netlify and end-to-end test real email delivery, invalid/expired tokens, rate limits, and production callback URLs.
 - [ ] Implement forced first-login password change for seeded demo accounts if that remains a requirement; verify protected routes are blocked until it succeeds.
 - [ ] Keep mock accounts synthetic, visibly documented as demo accounts, and separate from real-user registration. Never reuse real personal email addresses or real passwords in fixtures.
 - [ ] Confirm RLS, role grants, private Storage, signed URL expiry, upload MIME/size/path checks, and authorization for every read/write route. Test cross-account listing/review/profile/saved-home/media access.
