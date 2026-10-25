@@ -38,7 +38,7 @@ Vite+ is the development check/test workflow. Next.js remains the application fr
 
 ### Requirements and setup
 
-The package declares Node.js 24.22.1 and npm 11.12.1 through devEngines. Use the configured versions when possible.
+The package declares Node.js 24.22.1 and npm 11.19.1 through devEngines, matching the Node/npm versions shown in the Netlify build environment. Use the configured versions when possible.
 
 Clone the repository and install dependencies:
 
