@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Houselisting } from "@/app/types";
 import { getMediaType } from "@/db/supabase/util/MediaType";
 import { SaveListingButton } from "@/components/SaveListingButton";
+import { isGifMediaSource } from "@/lib/media/media-source";
 
 export interface ListingProps {
   listing: Pick<
@@ -38,6 +39,7 @@ const Listing = ({ listing }: ListingProps) => {
             alt={`${listing.title} Image`}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25rem"
+            unoptimized={isGifMediaSource(featuredMedia)}
             className="w-full object-cover"
           />
         ) : (
