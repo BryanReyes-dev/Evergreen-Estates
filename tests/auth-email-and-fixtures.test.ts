@@ -31,8 +31,8 @@ describe("transactional auth email sender", () => {
     await sendAuthEmail({
       to: "person@example.test",
       subject: "Verify",
-      heading: "Verify your account",
-      message: "Please verify your email.",
+      heading: "Verify <script>alert(1)</script>",
+      message: "Please verify <script>alert(1)</script> & continue.",
       actionLabel: "Verify email",
       actionUrl: "https://example.test/verify?token=a&next=%3Cscript%3E",
     });
@@ -45,8 +45,10 @@ describe("transactional auth email sender", () => {
     expect(body.from).toBe("Evergreen Estates <auth@example.test>");
     expect(body.to).toEqual(["person@example.test"]);
     expect(body.html).toContain("&amp;next=%3Cscript%3E");
+    expect(body.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(body.html).not.toContain("<script>");
     expect(body.text).toContain("https://example.test/verify?token=a&next=%3Cscript%3E");
+    expect(body.text).toContain("Please verify <script>alert(1)</script> & continue.");
   });
 
   it("fails closed when provider secrets are missing", async () => {

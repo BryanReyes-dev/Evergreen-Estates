@@ -36,6 +36,9 @@ jobs:
       - name: Check TypeScript
         run: npx tsc --noEmit
 
+      - name: Run focused auth and fixture tests
+        run: npx vitest run tests/auth-email-and-fixtures.test.ts tests/data.test.ts
+
       - name: Build production app
         run: npm run build
         env:

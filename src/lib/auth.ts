@@ -1,5 +1,6 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
+import { after } from "next/server";
 
 import { authSchema, getAuthDrizzleDb } from "@/db/drizzle/auth-client";
 import { sendAuthEmail } from "@/lib/auth-email";
@@ -21,13 +22,20 @@ function createAuth() {
       resetPasswordTokenExpiresIn: 60 * 60,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
-        await sendAuthEmail({
-          to: user.email,
-          subject: "Reset your Evergreen Estates password",
-          heading: "Reset your password",
-          message: "We received a request to reset the password for your Evergreen Estates account. This link expires in one hour.",
-          actionLabel: "Reset password",
-          actionUrl: url,
+        after(async () => {
+          try {
+            await sendAuthEmail({
+              to: user.email,
+              subject: "Reset your Evergreen Estates password",
+              heading: "Reset your password",
+              message: "We received a request to reset the password for your Evergreen Estates account. This link expires in one hour.",
+              actionLabel: "Reset password",
+              actionUrl: url,
+            });
+          } catch {
+            // Keep responses generic and avoid logging tokens or recipient details.
+            console.error("Evergreen Estates authentication email delivery failed.");
+          }
         });
       },
     },
@@ -37,13 +45,20 @@ function createAuth() {
       autoSignInAfterVerification: true,
       expiresIn: 60 * 60,
       sendVerificationEmail: async ({ user, url }) => {
-        await sendAuthEmail({
-          to: user.email,
-          subject: "Verify your Evergreen Estates email",
-          heading: "Verify your email address",
-          message: "Use this link to verify your email address and finish setting up your Evergreen Estates account. The link expires in one hour.",
-          actionLabel: "Verify email address",
-          actionUrl: url,
+        after(async () => {
+          try {
+            await sendAuthEmail({
+              to: user.email,
+              subject: "Verify your Evergreen Estates email",
+              heading: "Verify your email address",
+              message: "Use this link to verify your email address and finish setting up your Evergreen Estates account. The link expires in one hour.",
+              actionLabel: "Verify email address",
+              actionUrl: url,
+            });
+          } catch {
+            // Keep responses generic and avoid logging tokens or recipient details.
+            console.error("Evergreen Estates authentication email delivery failed.");
+          }
         });
       },
     },
