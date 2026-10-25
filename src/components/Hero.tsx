@@ -1,53 +1,30 @@
-import Menu from "./Layout/Menu";
 const Hero = () => {
-
-
-    
-
-
-    
-
-
-
-
-
-    
   return (
-  
-    <div className="w-full h-[90vh] med:bg-[url(/images/home-image.jpg)] bg-[url(/images/header-bg.jpg)] bg-cover bg-center flex flex-col  text-5xl ">
-        <div className=" w-full h-[90vh]  bg-gradient-to-t from-[#141616] to-[#141616]/50   flex  relative  ">
-        
-
-           
-            
-
-            <div className="ml-2 w-full max-w-full md:text-6xl text-4xl    ">
-                <span className=" font-semibold font-sans  " 
-                style={{ 
-                    
-                    color: '#228100', opacity: 0.9,
-                    textShadow:' 0px 3px 3px rgba(0, 0, 0, .7)',
-                    
-                }}
-                >Welcome To Evergreen Estates</span> 
-                
-                <br/>
-
-
-                <span className=" text-[#228100] font-semibold font-sans"
-                style={{
-                    textShadow: '0px 4px 5px rgba(0, 0, 0, .7)',
-                    
-                }}>Where Comfort Meets Convenience</span>
-                
-            </div>
-            <Menu/>
-            
-        </div>
-    </div>
-    
-    
-)};
-    
+    <section className="relative flex min-h-[75svh] w-full items-center bg-[url(/images/header-bg.jpg)] med:bg-[url(/images/home-image.jpg)] bg-cover bg-center sm:min-h-[82svh] lg:min-h-[90svh]">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-gradient-to-t from-[#141616] to-[#141616]/50"
+      />
+      <div className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+        <h1
+          className="max-w-4xl text-3xl font-semibold leading-tight font-sans sm:text-4xl md:text-6xl"
+          style={{
+            color: "#228100",
+            opacity: 0.9,
+            textShadow: "0 3px 3px rgba(0, 0, 0, .7)",
+          }}
+        >
+          Welcome To Evergreen Estates
+        </h1>
+        <p
+          className="mt-4 max-w-4xl text-xl font-semibold leading-snug font-sans text-[#228100] sm:text-2xl md:text-4xl"
+          style={{ textShadow: "0 4px 5px rgba(0, 0, 0, .7)" }}
+        >
+          Where Comfort Meets Convenience
+        </p>
+      </div>
+    </section>
+  );
+};
 
 export default Hero;

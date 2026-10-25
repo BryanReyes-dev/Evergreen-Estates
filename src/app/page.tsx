@@ -1,6 +1,7 @@
 
 import  {Houselisting}  from "@/app/types";
 import { getListingById } from "@/db/queries/listings";
+import Header from "@/components/Layout/Header";
 import FeaturedCommunities from "../components/FeaturedCommunities"
 import Hero from "../components/Hero"
 
@@ -33,9 +34,10 @@ const Home = async () => {
   return (
     <>
 
+      <Header />
       <Hero/>
       
-      <div className="flex justify-center w-screen bg-[#141616]">
+      <div className="w-full min-w-0 bg-[#141616]">
         <FeaturedCommunities listings={featuredListings}/>
         
       </div>

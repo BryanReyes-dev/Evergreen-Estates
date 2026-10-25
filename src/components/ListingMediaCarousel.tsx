@@ -71,30 +71,31 @@ export const ListingMediaCarousel = ({
         <div className="flex">
           {media.map((item, index) => (
             <div className="min-w-0 flex-[0_0_100%]" key={`${item.src}-${index}`}>
-              {item.type === "video" ? (
-                <ListingVideoPlayer
-                  src={item.src}
-                  captionSrc={item.captionSrc}
-                  label={item.alt ?? `Listing video ${index + 1}`}
-                  className="h-full w-full object-cover"
-                  autoPlay={selectedIndex === index}
-                  loop
-                  disablePictureInPicture
-                  disableRemotePlayback
-                />
-              ) : (
-                <Image
-                  src={item.src}
-                  alt={item.alt ?? `Listing Image ${index + 1}`}
-                  className="h-full w-full object-cover"
-                  width={1200}
-                  height={800}
-                  sizes="(max-width: 640px) 100vw, 1024px"
-                  loading="lazy"
-                  decoding="async"
-                  unoptimized={isGifMediaSource(item.src)}
-                />
-              )}
+              <div className="relative aspect-[16/9] w-full overflow-hidden bg-black">
+                {item.type === "video" ? (
+                  <ListingVideoPlayer
+                    src={item.src}
+                    captionSrc={item.captionSrc}
+                    label={item.alt ?? `Listing video ${index + 1}`}
+                    className="h-full w-full object-cover"
+                    autoPlay={selectedIndex === index}
+                    loop
+                    disablePictureInPicture
+                    disableRemotePlayback
+                  />
+                ) : (
+                  <Image
+                    src={item.src}
+                    alt={item.alt ?? `Listing Image ${index + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 639px) calc(100vw - 2rem), (max-width: 1072px) calc(100vw - 3rem), 976px"
+                    loading="lazy"
+                    decoding="async"
+                    unoptimized={isGifMediaSource(item.src)}
+                  />
+                )}
+              </div>
             </div>
           ))}
         </div>

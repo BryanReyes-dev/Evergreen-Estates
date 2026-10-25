@@ -40,7 +40,7 @@ const Listing = ({ listing }: ListingProps) => {
             src={featuredMedia}
             alt={`${listing.title} Image`}
             fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25rem"
+            sizes="(max-width: 519px) calc(100vw - 2rem), (max-width: 1023px) calc((100vw - 3rem) / 2), (max-width: 1279px) calc((100vw - 4rem) / 3), (max-width: 1535px) calc((100vw - 5rem) / 4), 25rem"
             unoptimized={isGifMediaSource(featuredMedia)}
             className="w-full object-cover"
           />

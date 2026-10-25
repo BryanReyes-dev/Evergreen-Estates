@@ -1,24 +1,4 @@
-
 @import "shadcn/tailwind.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Keep desktop links and the mobile-menu trigger mutually exclusive. */
-.site-desktop-navigation {
-  display: none;
-}
-
-.site-mobile-navigation {
-  display: flex;
-}
-
-@media (min-width: 768px) {
-  .site-desktop-navigation {
-    display: block;
-  }
-
-  .site-mobile-navigation {
-    display: none;
-  }
-}

@@ -21,10 +21,10 @@ export default function Header() {
         </span>
       </Link>
 
-      <div className="site-desktop-navigation ml-auto">
+      <div className="ml-auto hidden md:block">
         <Nav />
       </div>
-      <div className="site-mobile-navigation ml-auto">
+      <div className="ml-auto flex md:hidden">
         <Menu />
       </div>
     </header>

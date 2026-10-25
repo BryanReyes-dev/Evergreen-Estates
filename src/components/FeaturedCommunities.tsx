@@ -1,68 +1,34 @@
-import { Houselisting } from "@/app/types";
-import Listing from "./Listing";
-import Nav from "./Layout/Nav";
+import type { Houselisting } from "@/app/types";
 import Image from "next/image";
 
+import Listing from "./Listing";
+
 interface FeaturedCommunitiesProps {
-    listings: Houselisting[]
+  listings: Houselisting[];
 }
 
-
-
 const FeaturedCommunities = ({ listings }: FeaturedCommunitiesProps) => {
-
-    
   return (
-
-    <>
-
-
-        <div  className="w-full h-full bg-[#141616] text-2xl text-[#228100] ">
-        
-                
-            <div className="flex items-center gap-2 ml-2">
-
-
-                <Image src={"/images/logo/evergreen_logo.png"} 
-                alt="Evergreen Estates Logo"
-                width={50}
-                height={50}
-                
-                />
-                <span className="items-center xs:text-[2rem] mt-1 md:text-4xl  text-2xl font-bold">
-                    Featured Communities
-                </span>
-                <Nav/>
-
-                
-            </div>
-
-            <div className="grid grid-cols-1 sml:grid-cols-2 med:grid-cols-3 justify-items-center ">
-                {listings.map((listing: Houselisting) => (
-                    <Listing
-                        key={listing.id}
-                        listing={listing}
-                    />
-                ))}
-            </div>
-                
-                    
-                
-
-             
-                
-    
-
-                
-            
-
-            
-        </div>
-
-        
-
-    </>
-
-)}
+    <section className="mx-auto w-full min-w-0 max-w-7xl bg-[#141616] px-4 py-8 text-[#228100] sm:px-6 lg:px-8">
+      <div className="mb-5 flex min-w-0 items-center gap-3">
+        <Image
+          src="/images/logo/evergreen_logo.png"
+          alt="Evergreen Estates Logo"
+          width={50}
+          height={50}
+          className="h-10 w-10 shrink-0 sm:h-12 sm:w-12"
+        />
+        <h2 className="min-w-0 break-words text-xl font-bold leading-tight sm:text-2xl md:text-4xl">
+          Featured Communities
+        </h2>
+      </div>
+      <div className="grid min-w-0 grid-cols-1 justify-items-center gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {listings.map((listing) => (
+          <Listing key={listing.id} listing={listing} />
+        ))}
+      </div>
+    </section>
+  );
+};
 
 export default FeaturedCommunities;
