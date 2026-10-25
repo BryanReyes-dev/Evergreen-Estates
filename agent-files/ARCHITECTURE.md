@@ -11,9 +11,11 @@ This is the authoritative record of finalized Evergreen Estates architecture. Pr
 
 ## 1. Project Identity and Stack
 
+GitHub Actions is intentionally unused. `.github/workflows/quality-checks.yml` was removed on 2026-10-25 at the user's request; do not restore hosted CI without explicit approval. Automated test and static-check setup is deferred until after the planned Vite+ migration.
+
 Evergreen Estates is a real-estate marketplace built with Next.js 16.x App Router, React, TypeScript, Supabase/PostgreSQL and Storage, Drizzle ORM, Better Auth, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
-Implemented source includes public property browsing, listing details, URL-driven search/filtering, Better Auth email/password auth, account settings for name/avatar/password and browsing preferences, seller-profile editing and published storefronts, owner-scoped listing CRUD, review CRUD, listing media management, and a guarded population script. Account avatars use initials with stable per-user color fallbacks or uploaded images, and are rendered in navigation, published seller storefronts, and reviews. ESLint, TypeScript, and the production build passed in GitHub Actions run 21 on 2026-10-22. Migration 0020 has not been applied or live-verified, and browser/end-to-end verification at target widths remains outstanding.
+Implemented source includes public property browsing, listing details, URL-driven search/filtering, Better Auth email/password auth, account settings for name/avatar/password and browsing preferences, seller-profile editing and published storefronts, owner-scoped listing CRUD, review CRUD, listing media management, and a guarded population script. Account avatars use initials with stable per-user color fallbacks or uploaded images, and are rendered in navigation, published seller storefronts, and reviews. ESLint, TypeScript, and production build passed in a historical GitHub Actions run on 2026-10-22. The workflow was removed on 2026-10-25 at the user's request; do not re-add GitHub Actions without explicit approval. Current checks and tests are deferred until after the Vite+ migration. Migration 0020 has not been applied or live-verified, and browser/end-to-end verification at target widths remains outstanding.
 
 ## 2. Application Structure and Boundaries
 
@@ -324,3 +326,52 @@ Next.js App Router
 DIRECT_URL → Drizzle Kit migrations only
 ```
 
+
+## Demo readiness, email verification, and mock-account policy (2026-10-23)
+
+### Authentication policy
+
+The source now requires email verification before public email/password sign-in, sends verification links on sign-up and unverified sign-in, and supports one-hour forgotten-password reset links with session revocation after reset. `src/lib/auth-email.ts` sends through Resend using server-only `RESEND_API_KEY` and `AUTH_EMAIL_FROM`. Real delivery and deployed callback URLs remain unverified until the provider is configured in Netlify and exercised end-to-end.
+
+Before inviting real people to the Netlify demo:
+- Keep `emailAndPassword.requireEmailVerification` enabled and test the implemented `sendVerificationEmail` flow.
+- Keep `sendResetPassword`, one-hour token expiry, and `revokeSessionsOnPasswordReset` enabled; test invalid/expired/single-use tokens and session revocation.
+- Configure Resend through server-only `RESEND_API_KEY` and `AUTH_EMAIL_FROM`; verify sender-domain authentication and production callback URLs in Netlify.
+- Enforce that an unverified user cannot establish an authenticated session / access protected app features. Test sign-up, verification link, expired/invalid link, sign-in before verification, resend throttling, and verified sign-in.
+- Configure and test rate limiting for sign-in, sign-up, verification resend, and password reset; review session lifetime, cookie security, trusted origins, HTTPS, generic responses against account enumeration, and production secrets.
+- Never expose auth/database/storage secrets to client bundles or commit them.
+
+### Synthetic mock-account exception
+
+Mock accounts are developer-created fixtures, not public sign-ups. They need deterministic access for reviewers without relying on inboxes controlled by the developer. Keep this exception inside the local, manually invoked population script and its explicit fixture-account contract; do not weaken the global Better Auth policy.
+
+Preferred design to implement/review:
+- Keep `requireEmailVerification: true` for ordinary registrations.
+- Provision only the exact, enumerated synthetic fixture emails in `src/db/seed/data.ts` through a dedicated script-only Better Auth admin/create-user API (or a narrowly scoped script-only operation supported by the installed version) that explicitly sets the fixture user's email-verified state. Do not use ordinary public sign-up as a hidden bypass and do not add a public endpoint, query parameter, environment flag exposed to the client, or email-domain wildcard to skip verification.
+- Use the normal Better Auth password hashing/session/account model; do not insert plaintext passwords or hand-built password hashes directly into the database.
+- Fixture passwords must be unique random local secrets from ignored `seed/credentials`; do not commit or log them. Make demo credentials available only through the intended private/demo instructions, and rotate them if exposed.
+- Keep a strict allowlist matching the exact fixture emails/keys; abort if a fixture identity is not in that allowlist or already belongs to a non-fixture user. Never mark arbitrary existing users as verified.
+- After the planned Vite+ migration, add tests proving ordinary sign-up cannot bypass verification and only exact fixture identities can be marked verified. `scripts/populate.ts` provisions accounts through Better Auth and then uses the script-only `markFixtureSellerVerified` allowlist helper; run those tests and `npm run populate:dry-run` after the migration.
+- Forced password reset: if the intent is for mock accounts to require changing their initial password on first use, a verified flag alone is not enough. Add an explicit server-enforced `mustResetPassword`/credential-rotation state for fixture users (or another supported, secure equivalent), gate protected routes until completion, provide a reset/change flow, and clear the flag only after the password has actually changed. Do not confuse password-reset email delivery with forced reset: a reset email requires control of the mailbox, while mock-account first-login rotation can use an authenticated change-password flow. Do not ship a shared mock password for accounts intended for real users.
+
+### Netlify public-demo release gate
+
+A successful build and passing population preflight are not a release sign-off. Before opening the deployed Netlify URL to real visitors:
+- [ ] Set production-only environment variables in Netlify: `BETTER_AUTH_URL`, strong `BETTER_AUTH_SECRET`, the least-privilege `AUTH_DATABASE_URL` and `APP_DATABASE_URL`, Supabase URL and server-only secret key, and transactional email provider credentials. Keep `DIRECT_URL` migration-only; do not make it available to runtime handlers if unnecessary.
+- [ ] Set Better Auth's production URL/trusted origins to the exact HTTPS Netlify domain(s); verify callback URLs and secure cookies on the deployed domain and preview deployments.
+- [x] Source implementation is present for mandatory verification, forgotten-password email, one-hour reset lifetime, session revocation, auth UI, and fixture-only verification bypass. Automated tests are intentionally deferred until after the Vite+ migration.
+- [ ] Configure Resend credentials/sender in Netlify and, after the Vite+ migration, end-to-end test real email delivery, invalid/expired tokens, rate limits, and production callback URLs.
+- [ ] Implement forced first-login password change for seeded demo accounts if that remains a requirement; verify protected routes are blocked until it succeeds.
+- [ ] Keep mock accounts synthetic, visibly documented as demo accounts, and separate from real-user registration. Never reuse real personal email addresses or real passwords in fixtures.
+- [ ] Confirm RLS, role grants, private Storage, signed URL expiry, upload MIME/size/path checks, and authorization for every read/write route. Test cross-account listing/review/profile/saved-home/media access.
+- [ ] Add and run tests for auth/verification/reset, ownership/IDOR, route validation, rate limits, media lifecycle, RLS/role assumptions, population safety, and fixture-only auth bypass.
+- [ ] Manually test all main flows at mobile/tablet/desktop widths and keyboard-only; verify loading, error, empty, and expired-session states.
+- [ ] Verify backup/restore and incident/rollback plan, privacy/terms/contact information, logging that excludes secrets/passwords/tokens, and appropriate demo data disclosure.
+- [ ] Review current database and Storage contents before any cleanup; run the population script in dry-run mode after all changes, then review the exact write plan.
+- [ ] Keep a written residual-risk list. Do not call the app production-ready until all critical/high findings are resolved.
+
+### Data reset and fixture population
+
+Do not drop/recreate the database, delete the Drizzle migration ledger, or reset role/policy objects to get a clean mock-data install. The current seed operation is additive and intentionally preserves unrelated records and Storage objects. A clean fixture reset must be a separately reviewed, explicit development-only cleanup with a backup and an exact allowlist of disposable user IDs, fixture-owned database rows, and fixture-owned Storage paths. Preserve migrations, schema, grants, RLS, triggers, and unrelated objects. The currently observed non-fixture Storage objects (including root `home-image.jpg`) must be classified before deleting anything. Never delete all users by broad predicate without tracing account/session/profile/listing/review foreign-key effects and confirming the target environment.
+
+Migration provenance note: migration `0021_reconcile_shared_read_role.sql` reconciles the live shared-read security contract forward. The historical `0011` checksum discrepancy remains acknowledged; do not edit the historical SQL or ledger row to silence it.
