@@ -141,10 +141,7 @@ export function ListingMediaManager({
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const refreshMedia = useCallback(async (): Promise<boolean> => {
-    setRefreshing(true);
-    setLoadError(null);
-
+  const loadMedia = useCallback(async (): Promise<boolean> => {
     try {
       const response = await fetch(mediaEndpoint(listingId), {
         credentials: "same-origin",
@@ -162,6 +159,7 @@ export function ListingMediaManager({
       setMedia(data.media);
       setSavedFilenames(data.media.map((item) => item.filename));
       setCanManage(true);
+      setLoadError(null);
       return true;
     } catch (cause) {
       setMedia([]);
@@ -177,9 +175,15 @@ export function ListingMediaManager({
     }
   }, [listingId]);
 
+  const refreshMedia = useCallback(async (): Promise<boolean> => {
+    setRefreshing(true);
+    setLoadError(null);
+    return loadMedia();
+  }, [loadMedia]);
+
   useEffect(() => {
-    void refreshMedia();
-  }, [refreshMedia]);
+    void loadMedia();
+  }, [loadMedia]);
 
   const filenames = media.map((item) => item.filename);
   const hasUnsavedOrder =

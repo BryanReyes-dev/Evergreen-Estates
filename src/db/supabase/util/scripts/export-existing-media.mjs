@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import {
   mkdir,
-  readFile,
   rename,
   stat,
   writeFile,

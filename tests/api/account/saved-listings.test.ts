@@ -23,11 +23,12 @@ function errorCode(body: ApiBody) {
   return typeof body.error === "string" ? body.error : body.error?.code;
 }
 function request(body: unknown, method = "PATCH") {
-  return new Request(URL, {
+  const init: RequestInit = {
     method,
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  };
+  if (method !== "GET" && method !== "HEAD") init.body = JSON.stringify(body);
+  return new Request(URL, init);
 }
 
 beforeEach(() => {

@@ -15,13 +15,6 @@ export interface filters {
 
 }
 
-const initialFilters: filters = {
-    minPrice: null,
-    maxPrice: null,
-    tags: [],
-    search: "",
-};
-
 export const dynamic = "force-dynamic";
 
 const Home = async () => {

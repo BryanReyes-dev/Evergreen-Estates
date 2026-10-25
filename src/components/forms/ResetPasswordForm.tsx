@@ -1,29 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
-export function ResetPasswordForm() {
-  const [token, setToken] = useState<string | null>(null);
-  const [tokenChecked, setTokenChecked] = useState(false);
-  const [invalidLink, setInvalidLink] = useState(false);
+export function ResetPasswordForm({ tokenParam, hasError }: { tokenParam: string | null; hasError: boolean }) {
+  const token = tokenParam;
+  const [invalidLink, setInvalidLink] = useState(hasError || !tokenParam);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const value = params.get("token");
-    setToken(value);
-    setInvalidLink(Boolean(params.get("error")) || !value);
-    setTokenChecked(true);
-  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,10 +47,6 @@ export function ResetPasswordForm() {
     } finally {
       setPending(false);
     }
-  }
-
-  if (!tokenChecked) {
-    return <section className="mx-auto w-full max-w-md rounded-xl border border-white/10 bg-[#202324] p-4 text-white shadow-lg sm:p-7"><p role="status">Checking your reset link…</p></section>;
   }
 
   return (

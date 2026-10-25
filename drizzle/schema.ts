@@ -17,7 +17,7 @@ export const listings = pgTable("listings", {
 	description: text().notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	seller: text().notNull(),
-}, (table) => [
+}, () => [
 	pgPolicy("Enable read access for all users", { as: "permissive", for: "select", to: ["anon", "authenticated"], using: sql`true` }),
 ]);
 

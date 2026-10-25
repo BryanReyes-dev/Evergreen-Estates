@@ -60,4 +60,7 @@ async function main() {
   console.log("Done.");
 }
 
-main();
+main().catch((error) => {
+  console.error("Image organization failed:", error);
+  process.exitCode = 1;
+});

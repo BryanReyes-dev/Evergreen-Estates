@@ -95,14 +95,9 @@ export function AccountSettingsForm() {
   }, [reloadAttempt]);
 
   useEffect(() => {
-    if (!selectedFile) {
-      setSelectedPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(selectedFile);
-    setSelectedPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [selectedFile]);
+    if (!selectedPreview) return;
+    return () => URL.revokeObjectURL(selectedPreview);
+  }, [selectedPreview]);
 
   function changePreference<K extends keyof AccountPreferences>(
     key: K,
@@ -117,21 +112,25 @@ export function AccountSettingsForm() {
     const file = event.target.files?.[0] ?? null;
     if (!file) {
       setSelectedFile(null);
+      setSelectedPreview(null);
       return;
     }
     if (!["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"].includes(file.type)) {
       setError("Choose a JPEG, PNG, WebP, AVIF, or GIF image.");
       event.target.value = "";
       setSelectedFile(null);
+      setSelectedPreview(null);
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       setError("Avatar images must be 5 MB or smaller.");
       event.target.value = "";
       setSelectedFile(null);
+      setSelectedPreview(null);
       return;
     }
     setSelectedFile(file);
+    setSelectedPreview(URL.createObjectURL(file));
   }
 
   async function uploadAvatar() {
@@ -152,6 +151,7 @@ export function AccountSettingsForm() {
       );
       setAccount((current) => current ? { ...current, image: saved.image, imageUrl: saved.imageUrl } : current);
       setSelectedFile(null);
+      setSelectedPreview(null);
       if (fileInput.current) fileInput.current.value = "";
 
       let sessionRefreshFailed = false;
@@ -187,6 +187,7 @@ export function AccountSettingsForm() {
       );
       setAccount((current) => current ? { ...current, image: null, imageUrl: null } : current);
       setSelectedFile(null);
+      setSelectedPreview(null);
       if (fileInput.current) fileInput.current.value = "";
       let sessionRefreshFailed = false;
       try {

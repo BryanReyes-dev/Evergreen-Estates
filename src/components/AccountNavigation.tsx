@@ -37,10 +37,7 @@ export function AccountNavigation({
   const userId = session?.user?.id;
 
   const refreshSummary = useCallback(async () => {
-    if (!userId) {
-      setSummary(null);
-      return;
-    }
+    if (!userId) return;
     try {
       const response = await fetch("/api/v1/users/me/profile", {
         credentials: "same-origin",

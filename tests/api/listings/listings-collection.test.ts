@@ -30,11 +30,12 @@ const validListing = {
 };
 
 function jsonRequest(url: string, body: unknown, method = "POST") {
-  return new Request(url, {
+  const init: RequestInit = {
     method,
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  };
+  if (method !== "GET" && method !== "HEAD") init.body = JSON.stringify(body);
+  return new Request(url, init);
 }
 
 type ApiBody = { error?: string | { code?: string; message?: string; fields?: string[] }; data?: unknown };
