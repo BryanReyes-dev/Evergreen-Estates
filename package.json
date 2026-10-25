@@ -24,7 +24,8 @@
     "test:account-profile": "vp node scripts/run-test-suite.mjs account-profile",
     "test:media-upload": "vp node scripts/run-test-suite.mjs media-upload",
     "test:avatar": "vp node scripts/run-test-suite.mjs avatar",
-    "test:db-permissions": "vp node scripts/run-test-suite.mjs db-permissions"
+    "test:db-permissions": "vp node scripts/run-test-suite.mjs db-permissions",
+    "test:media-delete": "vp node scripts/run-test-suite.mjs media-delete"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

@@ -59,6 +59,10 @@ const suites = {
     description: "Listing media upload URL and completion path validation before database or Storage operations.",
     paths: ["tests/api/media/upload-validation.test.ts"],
   },
+  "media-delete": {
+    description: "Listing media deletion authentication, ownership, registration, and Storage/database cleanup ordering.",
+    paths: ["tests/api/media/delete-media.test.ts"],
+  },
   avatar: {
     description: "Avatar authentication, multipart input, and actual image-signature validation.",
     paths: ["tests/api/account/avatar.test.ts"],

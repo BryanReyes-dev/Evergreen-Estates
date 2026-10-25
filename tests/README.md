@@ -24,6 +24,7 @@ Run these from the repository root:
 | `vp run test:saved-listings` | Test private saved-home authorization and request validation. |
 | `vp run test:account-profile` | Test account preference validation. |
 | `vp run test:media-upload` | Test listing-media upload URL and completion guards. |
+| `vp run test:media-delete` | Test listing-media deletion authorization and Storage/database cleanup ordering. |
 | `vp run test:avatar` | Test avatar multipart input and image signature validation. |
 | `vp run test:db-permissions` | Run the read-only database role permission contract. |
 
