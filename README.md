@@ -4,6 +4,24 @@ Evergreen Estates is a full-stack real-estate marketplace built with Next.js, Ty
 
 **Links:** [Live demo](https://evergreen-estates.netlify.app/) · [GitHub repository](https://github.com/BryanReyes-dev/Evergreen-Estates) · [Figma design](https://www.figma.com/design/SY5C36osUoFZLUtlRC3RDg/Evergreen-Estates?node-id=0-1&p=f&t=dISV54YArH5wU4rl-0)
 
+## Screenshots
+
+A quick look at the current interface across desktop and mobile, including the property search filters and loading experience.
+
+### Home screen
+
+| Desktop | Mobile |
+|---|---|
+| ![Evergreen Estates desktop home screen](./dev-images/homescreen-desktop.png) | ![Evergreen Estates mobile home screen](./dev-images/homescreen-mobile.png) |
+
+### Search filters
+
+![Evergreen Estates property search filters](./dev-images/filters.png)
+
+### Loading experience
+
+![Evergreen Estates loading screen](./dev-images/loadingscreen.png)
+
 ## Overview & Tech Stack
 
 ### Features in source
