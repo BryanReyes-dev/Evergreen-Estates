@@ -91,7 +91,9 @@ The byte-level provenance/checksum discrepancy for historical migration `0011_sh
 
 ## 5. Authentication and account security
 
-Better Auth email/password authentication maps its user model to `public.users`. Its database adapter uses `AUTH_DATABASE_URL`, not the read-only runtime client or privileged migration URL. Source configuration requires email verification; verification links and password-reset links expire after one hour, password reset revokes existing sessions, and custom rate limits cover sign-in, sign-up, verification requests, and reset requests.
+Better Auth email/password authentication maps its user model to `public.users`. Its database adapter uses `AUTH_DATABASE_URL`, not the read-only runtime client or privileged migration URL. Normal mode requires email verification; verification links and password-reset links expire after one hour, password reset revokes existing sessions, and custom rate limits cover sign-in, sign-up, verification requests, and reset requests.
+
+The opt-in `ENABLE_DEMO_AUTH_BYPASS=true` mode disables verification only for deliberate development/demo testing, auto-signs-in new accounts, and stamps `users.demo_expires_at` at `created_at + 24 hours`. It is disabled by default. Migration `0022_demo_account_retention.sql` grants only `evergreen_auth` execution of the private `private.delete_expired_demo_account(uuid)` routine, which rechecks expiry before deleting rows. A Netlify Scheduled Function runs every 15 minutes, purges media folders before invoking database deletion, and processes up to five accounts per run. It uses `AUTH_DATABASE_URL`, `APP_DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SECRET_KEY`; it must not use `DIRECT_URL` at runtime. Keep the flag disabled for production-ready deployments and apply the migration before enabling it.
 
 `src/lib/auth-email.ts` sends email through Resend with `RESEND_API_KEY` and `AUTH_EMAIL_FROM`. Missing configuration or provider failure prevents delivery; handlers avoid logging verification/reset tokens and recipient details. Production setup must set the correct `BETTER_AUTH_URL`, provision a strong `BETTER_AUTH_SECRET`, verify the Resend sender domain/address, and test the real email links against the deployed domain.
 
@@ -125,8 +127,9 @@ Useful commands:
 - `vp run test:integration` or `vp run test:db-permissions` — opt-in read-only PostgreSQL permission checks requiring `DRIZZLE_DATABASE_URL` as `evergreen_runtime`.
 - `vp run test:all` — unit, mocked API, and read-only database permission suite.
 - `npm run test:media-display` — focused GIF source URL detection and shared video-player rendering tests, including playback markup when captions are absent or present and muted autoplay/loop attributes.
+- `npm run test:demo-retention` — demo-mode auth configuration, 24-hour expiry, and cleanup ordering/failure isolation tests.
 
-The media-display suite checks source/rendered markup; it does not by itself prove that browser autoplay policies allow playback on every device. Do not claim these commands passed unless the result was observed for the relevant current code. The full suite does not replace browser-level, email-provider, and Netlify runtime verification. GitHub Actions is not configured on this branch, so do not assume a remote CI gate ran.
+The demo-retention suite tests cleanup orchestration with mocked dependencies; it does not prove that the migration has been applied or that the live Netlify scheduler/Storage permissions work. The media-display suite checks source/rendered markup; it does not by itself prove that browser autoplay policies allow playback on every device. Do not claim these commands passed unless the result was observed for the relevant current code. The full suite does not replace browser-level, email-provider, and Netlify runtime verification. GitHub Actions is not configured on this branch, so do not assume a remote CI gate ran.
 
 ## 8. Fixture population and project safety
 

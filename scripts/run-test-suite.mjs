@@ -113,6 +113,11 @@ const suites = {
       "GIF source URL detection and optional-caption video-player rendering.",
     paths: ["tests/unit/media-display.test.ts"],
   },
+  "demo-retention": {
+    description:
+      "Demo-mode verification bypass, 24-hour retention, storage-before-database cleanup ordering, concurrency guard, and skip-button copy.",
+    paths: ["tests/unit/auth-configuration.test.ts", "tests/unit/demo-account-retention.test.ts"],
+  },
   avatar: {
     description:
       "Avatar upload authentication, multipart input handling, and actual image-signature validation.",

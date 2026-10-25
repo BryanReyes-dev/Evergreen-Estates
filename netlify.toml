@@ -7,5 +7,8 @@ publish = ".next"
 NODE_VERSION = "24.22.1"
 NPM_VERSION = "11.19.1"
 
+[functions]
+directory = "netlify/functions"
+
 [images]
 remote_images = ["https://vcsotaclvwvbpqiljkuk\\.supabase\\.co/.*"]

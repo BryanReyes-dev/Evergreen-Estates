@@ -25,11 +25,13 @@ Current source includes public listing browse/detail/search/filtering, seller pr
 - Listing/application-table reads use Drizzle with `DRIZZLE_DATABASE_URL`.
 - Owner-scoped writes use the separate app Drizzle client in `src/db/drizzle/app-client.ts`; write handlers set `app.current_user_id` transaction-locally from a verified Better Auth session.
 - Better Auth uses the existing `public.users` table and `AUTH_DATABASE_URL`; `account`, `session`, and `verification` are separate auth tables.
+- Optional demo auth bypass is controlled by `ENABLE_DEMO_AUTH_BYPASS=true` (disabled by default); new demo accounts expire at their original creation time plus 24 hours. Migration `0022_demo_account_retention.sql` and the Netlify scheduled cleanup function must be configured before enabling it.
 - Supabase JS is used for Storage operations, not as the application-table query layer.
 - The configured media policy is a private Supabase Storage bucket and server-issued signed URLs. Images include GIF; MP4/WebM are videos; WebVTT caption files are supported for video media. The tested/documented per-file media ceiling is 50,000,000 bytes.
 - `APP_DATABASE_URL` is intended for the restricted `evergreen_app` login; `DIRECT_URL` is for Drizzle migrations only.
 - `scripts/run-test-suite.mjs` owns test-suite categorization and descriptive terminal output. It sets `RUN_DB_INTEGRATION_TESTS=true` only for the explicitly selected database suites.
-- `tests/unit/media-display.test.ts`, exposed as `npm run test:media-display`, covers signed/query-string GIF source detection and shared video-player markup with and without captions, including autoplay/muted/loop attributes. Its presence is confirmed in source; its command was not run during this documentation update.
+- `tests/unit/media-display.test.ts`, exposed as `npm run test:media-display`, covers signed/query-string GIF source detection and shared video-player markup with and without captions, including autoplay/muted/loop attributes. Its presence is confirmed in source; its command was not run during the previous documentation update.
+- `tests/unit/demo-account-retention.test.ts` and `npm run test:demo-retention` cover auth bypass configuration, 24-hour retention and cleanup orchestration; the command has not yet been run for this change.
 - `netlify.toml` defines `npm run build`, `.next` as the publish directory, and the Supabase image-host allowlist. This file alone does not prove a successful current Netlify build or correctly configured Netlify environment variables.
 - No GitHub Actions quality workflow is configured on this branch. Do not reintroduce hosted CI unless requested.
 
@@ -55,7 +57,7 @@ Before treating the public Netlify demo as release-ready, verify the current sit
 
 ## Immediate next work
 
-1. Run `npm run test:media-display` to execute the new focused media regression tests. Then run `vp check`, `vp test`, and `vp run test:all` as appropriate; the full suite requires `DRIZZLE_DATABASE_URL` for read-only integration tests. Run `npm run build` as well. Record actual command results rather than assuming prior checks cover later edits.
+1. Apply and verify migration `0022_demo_account_retention.sql` against the intended Supabase project before setting `ENABLE_DEMO_AUTH_BYPASS=true`. Run `npm run test:demo-retention`, `vp check`, `vp run test:all` as appropriate, and `npm run build`; record observed results rather than assuming verification.
 2. Connect/verify the Netlify site against this branch, set its runtime environment variables, and use a Deploy Preview before changing the public production site.
 3. On the preview, test sign-up and verification email, sign-in/sign-out, password reset, seller profile publish/unpublish, listing CRUD/ownership, reviews, saved homes, image/GIF/video/caption upload and deletion, and privacy of account data.
 4. Compare the working UI with the linked Figma design; no pixel-level comparison was completed as part of this documentation update.

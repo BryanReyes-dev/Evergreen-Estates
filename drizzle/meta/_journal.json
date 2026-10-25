@@ -155,6 +155,13 @@
       "when": 1792788360000,
       "tag": "0021_reconcile_shared_read_role",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792966929106,
+      "tag": "0022_demo_account_retention",
+      "breakpoints": true
     }
   ]
 }

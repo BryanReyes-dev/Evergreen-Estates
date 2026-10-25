@@ -32,7 +32,8 @@
     "test:db-permissions": "vpx scripts/run-test-suite.mjs db-permissions",
     "test:media-delete": "vpx scripts/run-test-suite.mjs media-delete",
     "test:media-captions": "vpx scripts/run-test-suite.mjs media-captions",
-    "test:media-display": "vpx scripts/run-test-suite.mjs media-display"
+    "test:media-display": "vpx scripts/run-test-suite.mjs media-display",
+    "test:demo-retention": "vpx scripts/run-test-suite.mjs demo-retention"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

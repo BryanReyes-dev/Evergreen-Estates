@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vite-plus/test";
 const mocks = vi.hoisted(() => ({
   betterAuth: vi.fn((options: unknown) => ({ options })),
   drizzleAdapter: vi.fn(() => ({ kind: "mock-drizzle-adapter" })),
-  getAuthDrizzleDb: vi.fn(() => ({})),
+  databaseExecute: vi.fn(),
+  getAuthDrizzleDb: vi.fn(() => ({ execute: mocks.databaseExecute })),
   after: vi.fn(),
   sendAuthEmail: vi.fn(),
 }));
@@ -35,6 +36,13 @@ type TestedAuthOptions = {
     autoSignInAfterVerification: boolean;
     expiresIn: number;
   };
+  databaseHooks?: {
+    user?: {
+      create?: {
+        after?: (user: { id: string }) => Promise<void>;
+      };
+    };
+  };
   rateLimit: {
     enabled: boolean;
     customRules: Record<string, { window: number; max: number }>;
@@ -56,6 +64,29 @@ describe("Better Auth security configuration", () => {
     expect(options.emailVerification.sendOnSignUp).toBe(true);
     expect(options.emailVerification.sendOnSignIn).toBe(true);
     expect(options.emailVerification.autoSignInAfterVerification).toBe(true);
+  });
+
+  it("allows email-verification bypass only when explicitly enabled for demo accounts", async () => {
+    const previousValue = process.env.ENABLE_DEMO_AUTH_BYPASS;
+    try {
+      process.env.ENABLE_DEMO_AUTH_BYPASS = "true";
+      mocks.databaseExecute.mockClear();
+
+      const options = authOptions();
+      expect(options.emailAndPassword.requireEmailVerification).toBe(false);
+      expect(options.emailAndPassword.autoSignIn).toBe(true);
+      expect(options.emailVerification.sendOnSignUp).toBe(false);
+      expect(options.emailVerification.sendOnSignIn).toBe(false);
+
+      const onCreate = options.databaseHooks?.user?.create?.after;
+      expect(onCreate).toBeTypeOf("function");
+      await onCreate?.({ id: "11111111-1111-4111-8111-111111111111" });
+      expect(mocks.databaseExecute).toHaveBeenCalledOnce();
+    } finally {
+      if (previousValue === undefined) delete process.env.ENABLE_DEMO_AUTH_BYPASS;
+      else process.env.ENABLE_DEMO_AUTH_BYPASS = previousValue;
+      getAuth();
+    }
   });
 
   it("expires verification and password-reset tokens after one hour", () => {

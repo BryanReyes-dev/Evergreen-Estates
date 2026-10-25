@@ -7,12 +7,13 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { DEMO_ACCOUNT_RETENTION_NOTICE } from "@/lib/demo-mode";
 
 type AuthMode = "sign-in" | "sign-up";
 const validEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 const absoluteUrl = (path: string) => new URL(path, window.location.origin).toString();
 
-export function AuthForm() {
+export function AuthForm({ demoModeEnabled }: { demoModeEnabled: boolean }) {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [name, setName] = useState("");
@@ -23,6 +24,7 @@ export function AuthForm() {
   const [error, setError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [demoSignupReady, setDemoSignupReady] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   async function resendVerification() {
@@ -102,6 +104,13 @@ export function AuthForm() {
         return;
       }
       setPassword("");
+      if (demoModeEnabled) {
+        // Better Auth auto-creates a session in demo mode; the user explicitly
+        // chooses to continue without clicking an email verification link.
+        setDemoSignupReady(true);
+        setNotice(DEMO_ACCOUNT_RETENTION_NOTICE);
+        return;
+      }
       setVerificationSent(true);
       setNotice("If this address can receive account email, a verification link has been sent. The link expires in one hour.");
     } catch {
@@ -119,6 +128,7 @@ export function AuthForm() {
     setNotice(null);
     setNeedsVerification(false);
     setVerificationSent(false);
+    setDemoSignupReady(false);
   }
 
   if (verificationSent) {
@@ -137,19 +147,47 @@ export function AuthForm() {
     );
   }
 
+  if (demoSignupReady) {
+    return (
+      <section className="mx-auto w-full max-w-md rounded-xl border border-amber-300/30 bg-[#202324] p-4 text-white shadow-lg sm:p-7">
+        <h1 className="text-2xl font-semibold">Temporary development account created</h1>
+        <p className="mt-3 text-sm leading-6 text-amber-100/90">{DEMO_ACCOUNT_RETENTION_NOTICE}</p>
+        <Button
+          type="button"
+          onClick={() => {
+            router.replace("/profile");
+            router.refresh();
+          }}
+          className="mt-5 min-h-11 w-full"
+        >
+          Skip email verification and continue
+        </Button>
+      </section>
+    );
+  }
+
   return (
     <section className="mx-auto w-full max-w-md rounded-xl border border-white/10 bg-[#202324] p-4 text-white shadow-lg sm:p-7">
       <h1 className="text-2xl font-semibold">{mode === "sign-in" ? "Welcome back" : "Create your account"}</h1>
       <p className="mt-2 text-sm leading-6 text-white/70">
         {mode === "sign-in"
           ? "Sign in to manage your seller profile, listings, and reviews."
-          : "Create an account to set up your seller profile and publish listings. Verify your email before signing in."}
+          : demoModeEnabled
+            ? "Create a temporary development account to manage your seller profile, listings, and reviews without email verification."
+            : "Create an account to set up your seller profile and publish listings. Verify your email before signing in."}
       </p>
 
       <div className="mt-5 grid grid-cols-2 rounded-lg bg-black/20 p-1" aria-label="Authentication mode">
         <button type="button" onClick={() => changeMode("sign-in")} aria-pressed={mode === "sign-in"} className="min-h-11 rounded-md px-3 text-sm font-medium aria-pressed:bg-[#78b75c] aria-pressed:text-black">Sign in</button>
         <button type="button" onClick={() => changeMode("sign-up")} aria-pressed={mode === "sign-up"} className="min-h-11 rounded-md px-3 text-sm font-medium aria-pressed:bg-[#78b75c] aria-pressed:text-black">Create account</button>
       </div>
+
+      {demoModeEnabled && mode === "sign-up" && (
+        <div className="mt-4 rounded-lg border border-amber-300/30 bg-amber-950/25 p-3 text-sm leading-6 text-amber-100" role="status">
+          <p className="font-semibold">Development/demo mode only</p>
+          <p className="mt-1">{DEMO_ACCOUNT_RETENTION_NOTICE}</p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
         {mode === "sign-up" && <div className="space-y-2">

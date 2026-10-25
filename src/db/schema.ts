@@ -34,7 +34,11 @@ export const users = pgTable(
     image: text("image"),
     savedListings: uuid("saved_listings").array().notNull().default(sql`ARRAY[]::uuid[]`),
     preferences: jsonb("preferences").$type<AccountPreferences>().notNull().default(sql`'{"defaultSort":"newest","viewMode":"grid"}'::jsonb`),
-
+    // Non-null only for explicitly opted-in temporary demo accounts.
+    demoExpiresAt: timestamp("demo_expires_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
 
     createdAt: timestamp("created_at", {
       withTimezone: true,

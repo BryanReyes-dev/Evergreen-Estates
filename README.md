@@ -12,6 +12,7 @@ Evergreen Estates is a full-stack real-estate marketplace built with Next.js, Ty
 - Seller profiles, published seller storefronts, and owner-scoped listing create/edit/delete flows.
 - Review display and author-scoped create/edit/delete flows.
 - Better Auth email/password sign-up, sign-in, session, sign-out, email verification, and password reset.
+- Optional demo signup bypass for development, with scheduled 24-hour cleanup of temporary accounts and owned content (disabled by default).
 - Saved homes with persistent account state and a 100-listing limit.
 - Account profile/avatar handling and saved browsing preferences.
 - Supabase Storage listing media for images, GIFs, and videos, plus WebVTT video captions; private objects are delivered through signed URLs.
@@ -101,6 +102,9 @@ Run checks and tests from the repository root with Vite+.
     # GIF/media-display and optional-caption/autoplay regression tests
     npm run test:media-display
 
+    # Demo-mode auth bypass and 24-hour retention/cleanup tests
+    npm run test:demo-retention
+
     # Read-only PostgreSQL permission tests
     vp run test:integration
     vp run test:db-permissions
@@ -134,6 +138,7 @@ Use a specific alias while iterating; all aliases below are defined in package.j
 | test:media-delete | Media ownership, registration, and cleanup ordering |
 | test:media-captions | WebVTT validation and authenticated video-caption upload rules |
 | test:media-display | GIF URL detection and video-player rendering with/without captions; checks muted autoplay/loop markup |
+| test:demo-retention | Demo auth opt-in, account expiry, cleanup ordering/failure isolation, and demo skip-button notice |
 | test:media-filenames | Allowed extensions, path traversal, and filename length |
 | test:media-limits | Decimal 50,000,000-byte media ceiling |
 | test:avatar | Avatar upload authentication and image-signature validation |
@@ -170,11 +175,20 @@ Copy the names from .env.example. Add values in Netlify's site environment-varia
 | APP_DATABASE_URL | Owner-scoped writes | Secret; restricted evergreen_app login |
 | BETTER_AUTH_URL | Canonical deployed auth base URL | Public URL, not a secret; use the active production site origin |
 | BETTER_AUTH_SECRET | Better Auth signing/encryption secret | Secret; use a strong unique value |
+| ENABLE_DEMO_AUTH_BYPASS | Opt-in signup without email verification | Server-side boolean; leave false unless deliberately testing temporary demo accounts |
 | RESEND_API_KEY | Verification/reset email delivery | Secret |
 | AUTH_EMAIL_FROM | Verified sender used by Resend | Must use a sender/domain verified in Resend |
 | DIRECT_URL | Drizzle migrations | Privileged; use in a controlled migration environment, not request-time application code |
 
 Set BETTER_AUTH_URL to the canonical public site origin (currently https://evergreen-estates.netlify.app for the linked demo); a production value that points to localhost is incorrect because it can generate local authentication/email links. This URL is public configuration, not a secret: in Netlify, store it as a regular environment variable rather than marking it secret for secret-value scanning. If your Netlify site URL differs, use that site's actual origin. Verify preview origins separately. Configure and verify a Resend sender domain/address before expecting verification and password-reset emails to arrive. Do not put seed/credentials or fixture passwords in Netlify variables.
+
+### Temporary demo accounts and automated expiry
+
+`ENABLE_DEMO_AUTH_BYPASS=true` enables a visibly labeled demo signup path: email verification emails are skipped, new accounts receive an expiry at their original creation time plus 24 hours, and the success screen offers an explicit **Skip email verification and continue** button. The flag is disabled by default.
+
+Apply `drizzle/0022_demo_account_retention.sql` before enabling the flag. The migration adds the nullable `users.demo_expires_at` marker and a private database function that deletes only accounts whose marker has expired. Netlify's scheduled function runs every 15 minutes and handles up to five expired accounts per run. It removes the demo account's listing media and caption files plus its owned avatar first, then deletes its listings, seller profile, user row, sessions, auth records, and reviews through database constraints/cascades. A Storage cleanup failure leaves the account rows in place for a later retry.
+
+Set the flag only in a deliberate development/demo environment; do not leave verification bypass enabled for a real production launch. Configure `AUTH_DATABASE_URL`, `APP_DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SECRET_KEY` for the scheduled function. Migration application, scheduler execution, and live account expiry have not been verified against the remote database/Storage project by this code edit.
 
 ### Database and fixture safety
 
