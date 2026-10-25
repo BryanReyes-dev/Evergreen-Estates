@@ -3,7 +3,6 @@ import { useDebouncedCallback } from 'use-debounce';
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox"
 import { useState } from 'react'
-import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import { Button } from './ui/button';
@@ -164,20 +163,29 @@ export const Filters =() => {
                 
 
                 <form  className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-5 p-3 text-[.9rem]">
-                    {SUPPORTED_LISTING_TAGS.map(tag => ( 
-                        <div key={tag} className="flex items-center gap-2" >
-                            <Checkbox 
-                            className="w-5 h-5" 
-                            checked={selectedTags.includes(tag.toLowerCase())}
-                            
-                            onCheckedChange={(checked) => {handleTagToggle(tag, checked as boolean)}}
-                             id={tag}/> 
-                            <FieldLabel htmlFor={tag} >
-                                {tag}
-                            </FieldLabel>
-                        </div>
-                        
-                    ))}
+                    {SUPPORTED_LISTING_TAGS.map((tag) => {
+                        const tagId = `listing-tag-${tag.toLowerCase().replace(/[^a-z0-9_-]+/g, "-")}`;
+
+                        return (
+                            <div key={tag} className="flex items-center gap-2">
+                                <Checkbox
+                                    className="w-5 h-5"
+                                    checked={selectedTags.includes(tag.toLowerCase())}
+                                    onCheckedChange={(checked) => {
+                                        handleTagToggle(tag, checked as boolean);
+                                    }}
+                                    id={tagId}
+                                    aria-labelledby={`${tagId}-label`}
+                                />
+                                <span
+                                    id={`${tagId}-label`}
+                                    className="text-sm font-medium leading-none"
+                                >
+                                    {tag}
+                                </span>
+                            </div>
+                        );
+                    })}
                 
                     
                         
