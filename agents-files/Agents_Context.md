@@ -37,7 +37,7 @@ Current source includes public listing browse/detail/search/filtering, seller pr
 
 ## Database and migration status
 
-The migration journal orders `0019_saved_listings_on_users.sql`, `0020_user_account_preferences.sql`, then `0021_reconcile_shared_read_role.sql`.
+The migration journal orders `0019_saved_listings_on_users.sql`, `0020_user_account_preferences.sql`, `0021_reconcile_shared_read_role.sql`, then `0022_demo_account_retention.sql`.
 
 **Latest recorded live-check evidence, not freshly re-queried during this documentation change:**
 
@@ -45,7 +45,7 @@ The migration journal orders `0019_saved_listings_on_users.sql`, `0020_user_acco
 - Recorded verification from 2026-10-23 reports migration 0021 applied by Drizzle Kit. It also reports a successful full read-only population preflight after the migration, including role, grant, membership, RLS/policy, fixture, and Storage checks.
 - Since migration 0021 revokes access to `users.preferences`, a column introduced by migration 0020, that recorded successful migration chain is consistent with 0020 also having run. Verify the migration ledger and effective privileges against the exact Supabase project intended for Netlify before relying on this historical evidence.
 - No synthetic user/database/Storage population writes were run in the recorded dry-run.
-- The historical checksum/provenance mismatch for migration 0011 remains unresolved. The forward-only migration 0021 reasserts the expected shared-read contract; it does not resolve the old checksum. Never edit migration 0011 or rewrite its existing Drizzle ledger row to force the hashes to match.
+- Migration `0022_demo_account_retention.sql` was applied to Supabase project `vcsotaclvwvbpqiljkuk` on 2026-10-25. Live checks confirmed `users.demo_expires_at`, `private.delete_expired_demo_account(uuid)`, execution by `evergreen_auth`, and no execution by `anon`, `authenticated`, `service_role`, or `evergreen_app`. Zero users are marked for demo deletion; user/listing/review counts remain 6/12/48. Supabase's migration history contains 0022, while `drizzle.__drizzle_migrations` remains at 0021; the next controlled `vp exec drizzle-kit migrate` should re-run the idempotent 0022 SQL and sync the Drizzle ledger.
 
 The fixture population script is deliberately pinned in source to Supabase project ref `vcsotaclvwvbpqiljkuk`. A dry-run is read-only. Apply mode requires explicit `--apply --confirm-project vcsotaclvwvbpqiljkuk`, a successful preflight, and private local `seed/credentials`. Do not run it during a build/deploy or against another project without intentionally changing and reviewing the script's target guard.
 
@@ -57,11 +57,11 @@ Before treating the public Netlify demo as release-ready, verify the current sit
 
 ## Immediate next work
 
-1. Apply and verify migration `0022_demo_account_retention.sql` against the intended Supabase project before setting `ENABLE_DEMO_AUTH_BYPASS=true`. Run `npm run test:demo-retention`, `vp check`, `vp run test:all` as appropriate, and `npm run build`; record observed results rather than assuming verification.
-2. Connect/verify the Netlify site against this branch, set its runtime environment variables, and use a Deploy Preview before changing the public production site.
-3. On the preview, test sign-up and verification email, sign-in/sign-out, password reset, seller profile publish/unpublish, listing CRUD/ownership, reviews, saved homes, image/GIF/video/caption upload and deletion, and privacy of account data.
-4. Compare the working UI with the linked Figma design; no pixel-level comparison was completed as part of this documentation update.
-5. Only after those gates are recorded should documentation status be changed from “not verified” to “verified”.
+1. With `DIRECT_URL` configured in a controlled local environment, run `vp exec drizzle-kit migrate` to synchronize Drizzle's ledger after the idempotent 0022 migration was applied through Supabase. Do not edit the Drizzle ledger manually.
+2. Run `npm run test:demo-retention`, `vp check`, the relevant unit/API tests, and `npm run build`; this environment could not run the repository test commands, so record their actual results.
+3. In Netlify's runtime environment settings for the intended demo deploy, set `ENABLE_DEMO_AUTH_BYPASS=true` and verify the required `AUTH_DATABASE_URL`, `APP_DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SECRET_KEY`. No Netlify settings connector was available to set those values in this change.
+4. Verify the published Netlify deployment and scheduled cleanup manually. Netlify Scheduled Functions run automatically only on published deploys, not Deploy Previews; verify signup, listing CRUD/ownership, reviews, saved homes, media deletion, and account expiry.
+5. Compare the working UI with the linked Figma design; no pixel-level comparison was completed as part of this work.
 
 ## Working style and safety
 

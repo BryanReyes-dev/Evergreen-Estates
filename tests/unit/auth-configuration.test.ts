@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   betterAuth: vi.fn((options: unknown) => ({ options })),
@@ -53,6 +53,22 @@ function authOptions(): TestedAuthOptions {
   const auth = getAuth() as unknown as { options: TestedAuthOptions };
   return auth.options;
 }
+
+const originalDemoBypassSetting = process.env.ENABLE_DEMO_AUTH_BYPASS;
+
+beforeEach(() => {
+  process.env.ENABLE_DEMO_AUTH_BYPASS = "false";
+  getAuth();
+});
+
+afterEach(() => {
+  if (originalDemoBypassSetting === undefined) {
+    delete process.env.ENABLE_DEMO_AUTH_BYPASS;
+  } else {
+    process.env.ENABLE_DEMO_AUTH_BYPASS = originalDemoBypassSetting;
+  }
+  getAuth();
+});
 
 describe("Better Auth security configuration", () => {
   it("requires email verification and disables sign-in before verification", () => {

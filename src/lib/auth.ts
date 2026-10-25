@@ -5,7 +5,7 @@ import { after } from "next/server";
 
 import { authSchema, getAuthDrizzleDb } from "@/db/drizzle/auth-client";
 import { sendAuthEmail } from "@/lib/auth-email";
-import { isDemoAuthBypassEnabled } from "@/lib/demo-mode";
+import { DEMO_ACCOUNT_LIFETIME_MS, isDemoAuthBypassEnabled } from "@/lib/demo-mode";
 
 function createAuth(demoModeEnabled: boolean) {
   return betterAuth({
@@ -83,7 +83,7 @@ function createAuth(demoModeEnabled: boolean) {
                 // Anchor expiry to account creation, not the timing of this hook.
                 await getAuthDrizzleDb().execute(sql`
                   UPDATE public.users
-                  SET demo_expires_at = created_at + interval '24 hours'
+                  SET demo_expires_at = created_at + make_interval(secs => ${DEMO_ACCOUNT_LIFETIME_MS / 1000}::double precision)
                   WHERE id = ${user.id}
                     AND demo_expires_at IS NULL
                 `);

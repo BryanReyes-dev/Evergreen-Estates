@@ -90,7 +90,10 @@ describe("temporary demo account retention", () => {
     const form = readFileSync(new URL("../../src/components/forms/AuthForm.tsx", import.meta.url), "utf8");
     const scheduledFunction = readFileSync(new URL("../../netlify/functions/cleanup-demo-accounts.ts", import.meta.url), "utf8");
     const migration = readFileSync(new URL("../../drizzle/0022_demo_account_retention.sql", import.meta.url), "utf8");
+    const auth = readFileSync(new URL("../../src/lib/auth.ts", import.meta.url), "utf8");
 
+    expect(auth).toContain("DEMO_ACCOUNT_LIFETIME_MS / 1000");
+    expect(auth).toContain("created_at + make_interval");
     expect(form).toContain("Skip email verification and continue");
     expect(form).toContain("DEMO_ACCOUNT_RETENTION_NOTICE");
     expect(scheduledFunction).toContain('schedule: "*/15 * * * *"');
