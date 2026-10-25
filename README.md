@@ -148,13 +148,13 @@ The suite runner prints each selected suite's purpose and paths to the terminal.
 
 ### Netlify build configuration
 
-The repository includes netlify.toml with the build command npm run build, publish directory .next, and an allowlist for the configured Supabase image host used by Netlify Image CDN.
+The repository includes netlify.toml with the build command npm run build, publish directory .next, and an allowlist for the configured Supabase image host used by Netlify Image CDN. Netlify's current Next.js adapter supports App Router, server rendering, Route Handlers, and image optimization; the typical build settings are next build and .next, and the committed npm run build command invokes next build. See [Netlify's Next.js setup guide](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/) and [Next.js build configuration values](https://docs.netlify.com/snippets/frameworks/nextjs-config-values/).
 
 That is repository configuration, not proof of a successful Netlify build. Before promoting a deploy, verify the Netlify site is connected to the intended repository/branch, the preview build completes, environment variables are set for the right deploy contexts, and the production runtime works. Use a Deploy Preview before changing the public site.
 
 ### Environment variables
 
-Copy the names from .env.example. Add values in Netlify's site environment-variable settings rather than committing them.
+Copy the names from .env.example. Add values in Netlify's site environment-variable settings rather than committing them. Netlify supports context-specific values for Production, Deploy Previews, and branch deploys; use separate values when the preview and production environments should not share credentials or data. See the [Netlify environment-variable guide](https://docs.netlify.com/build/environment-variables/overview/) and [Deploy Previews guide](https://docs.netlify.com/deploy/deploy-types/deploy-previews/).
 
 | Variable | Purpose | Handling |
 |---|---|---|
