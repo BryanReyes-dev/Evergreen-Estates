@@ -1,299 +1,197 @@
-# EverGreen Estates
+# Evergreen Estates
 
-## Overview
+Evergreen Estates is a full-stack real-estate marketplace built with Next.js, TypeScript, PostgreSQL, and Supabase. It supports public property discovery, URL-driven search and filtering, seller storefronts and listing management, reviews, saved homes, account preferences, authentication, and private listing media.
 
-EverGreen Estates is a full-stack real estate web application built with Next.js, TypeScript, Supabase, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
+**Links:** [Live demo](https://evergreen-estates.netlify.app/) · [GitHub repository](https://github.com/BryanReyes-dev/Evergreen-Estates) · [Figma design](https://www.figma.com/design/SY5C36osUoFZLUtlRC3RDg/Evergreen-Estates?node-id=0-1&p=f&t=dISV54YArH5wU4rl-0)
 
-The project uses the Next.js App Router, Server Components for data fetching and rendering, and focused Client Components for browser interactivity. Users can browse property listings, view property details, search listings, and filter properties through URL-based search parameters connected to server-side Drizzle ORM queries against PostgreSQL.
+## Overview & Tech Stack
 
-## Live Demo Link
+### Features in source
 
-[Visit site](https://evergreen-estates.netlify.app/)
+- Public property browse and detail pages, server-side search, and shareable URL-driven filters.
+- Seller profiles, published seller storefronts, and owner-scoped listing create/edit/delete flows.
+- Review display and author-scoped create/edit/delete flows.
+- Better Auth email/password sign-up, sign-in, session, sign-out, email verification, and password reset.
+- Saved homes with persistent account state and a 100-listing limit.
+- Account profile/avatar handling and saved browsing preferences.
+- Supabase Storage listing media for images, GIFs, and videos, plus WebVTT video captions; private objects are delivered through signed URLs.
+- Server-rendered pages with focused Client Components for interactive behavior.
 
-![Evergreen Estates Homepage](./dev-images/Screenshot%202026-06-28%20134531.png)
+The capabilities above are visible in the current source. They should not be interpreted as proof that every browser workflow, authentication email, database permission, or Netlify production behavior has passed a fresh end-to-end check.
 
-![Async UI State Pattern (Loading, Error, Empty, Success)](./dev-images/Screenshot%202026-06-28%20132230.png)
+### Stack
 
-## Features
+| Area | Technologies |
+|---|---|
+| Application | Next.js 16 App Router, React 19, TypeScript |
+| UI | Tailwind CSS, shadcn/ui, Base UI, Framer Motion, Embla Carousel, Hugeicons |
+| Database | Supabase PostgreSQL, Drizzle ORM, Drizzle Kit, RLS |
+| Authentication | Better Auth with the canonical public.users table |
+| Media | Private Supabase Storage and server-issued signed URLs |
+| Transactional email | Resend |
+| Developer checks/tests | Vite+ (vp) with verbose Vitest-compatible tests |
+| Hosting | Netlify, with production image optimization through Netlify Image CDN |
 
-- Responsive mobile-first design
-- Property browsing and listing pages
-- Property media galleries using Supabase Storage
-- Two media categories: images and videos
-- JPG, JPEG, PNG, WebP, AVIF, and GIF media use Next.js `<Image>`
-- MP4 and WebM media use native `<video controls>`
-- Server-side search and URL-driven filtering
-- Shareable filtered URLs
-- Featured property listings
-- Loading, error, and data components
-- Responsive component-based UI
-- Seller storefront pages for profiles marked public
-- Accessibility and SEO considerations
-- Server-side data fetching with async Server Components
-- Better Auth email/password authentication with a canonical `public.users` table
-- Authenticated seller-profile creation, read, update, and deletion endpoints
-- Authenticated listing create, update, and delete endpoints
-- Review read, create, update, and delete endpoints
-- Listing media upload-url, completion, and file-delete endpoints
-- Saved-home GET/PATCH persistence for authenticated users
-- Tailwind CSS and shadcn/ui styling
+Vite+ is the development check/test workflow. Next.js remains the application framework and runtime.
 
-The current source includes email/password authentication, seller-profile management, published seller storefronts, listing create/edit/delete, saved-home add/remove and listing, review create/edit/delete, and listing media management. Source still requires TypeScript, lint, production build, automated tests, and manual end-to-end verification. Migration 0019_saved_listings_on_users.sql has been applied to the configured Supabase project and its schema, grants, policies, and trigger were checked; saved-home workflows are not yet browser-verified. The forward-only migration `0021_reconcile_shared_read_role.sql` has now been applied and recorded in the Drizzle ledger; its live role, grant, membership, policy, and RLS contracts pass the population preflight. The historical `0011` checksum discrepancy remains unresolved at the byte level (ledger hash `d23ee45d...` versus tracked SQL hash `5f654419...`), but has been explicitly reviewed and acknowledged for the fixture-population workflow. No historical migration or ledger row was edited.
+## Development
 
-## Media and Image Delivery
+### Requirements and setup
 
-Listing media is stored in Supabase Storage and resolved to signed URLs by the server-side database layer.
+The package declares Node.js 24.22.1 and npm 11.12.1 through devEngines. Use the configured versions when possible.
 
-The application intentionally keeps only two media categories:
+Clone the repository and install dependencies:
 
-```text
-JPG / JPEG / PNG / WebP / AVIF / GIF → image
-MP4 / WebM                           → video
-```
+    git clone https://github.com/BryanReyes-dev/Evergreen-Estates.git
+    cd Evergreen-Estates
+    npm install
 
-GIF remains an image category and is rendered through Next.js `<Image>`.
+Copy the environment template into a local ignored environment file and fill in values for the services you use:
 
-Production uses a custom Next.js image loader at `src/lib/netlifyImageLoader.ts`. It generates Netlify Image CDN requests under `/.netlify/images`. The Supabase remote host is allowlisted in `netlify.toml` so Netlify can optimize those remote images.
+    cp .env.example .env.local
 
-Local development intentionally bypasses that Netlify-only optimization endpoint. `next.config.ts` sets `images.unoptimized` to `true` when `NODE_ENV` is `development`, so `npm run dev` loads the original Supabase image URL instead of requesting `/.netlify/images` from the local Next.js server.
+Next.js loads .env.local; Drizzle Kit imports dotenv/config, which reads .env by default. For local migration commands, make sure DIRECT_URL is actually available to the process (for example, through an ignored local .env file or the shell). Never commit .env, .env.local, credentials, or generated fixture passwords.
 
-This keeps development and production functional without introducing a second image service locally.
+Start the Next.js dev server:
 
-## Technologies Used
+    npm run dev
 
-### Frontend
+### Architecture and security boundaries
 
-- Next.js 16.x (App Router)
-- React
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
-- Framer Motion
-- Embla Carousel
-- Hugeicons
+- DRIZZLE_DATABASE_URL is the read-only evergreen_runtime database connection for application reads.
+- AUTH_DATABASE_URL is the restricted evergreen_auth connection for Better Auth data.
+- APP_DATABASE_URL is the restricted evergreen_app connection for owner-scoped application writes.
+- DIRECT_URL is a privileged Drizzle migration connection only; do not use it for request-time queries.
+- Supabase JS is used for Storage operations, not as the application-table query layer.
+- Keep secrets server-side. Only variables intentionally prefixed NEXT_PUBLIC_ should be exposed to the browser.
+- Keep listing media in private Storage and use the existing signed-URL flow. GIF remains an image; MP4/WebM are videos; WebVTT is supported for video captions.
 
-### Backend / Database
+The full architecture and role boundaries are documented in [agents-files/ARCHITECTURE.md](./agents-files/ARCHITECTURE.md). Agent operating rules and current work status live in [agents-files/AGENTS.md](./agents-files/AGENTS.md) and [agents-files/Agents_Context.md](./agents-files/Agents_Context.md).
 
-- Drizzle ORM for server-side PostgreSQL queries
-- Drizzle Kit for versioned schema migrations
-- Supabase
-  - PostgreSQL database and Row Level Security
-  - Storage bucket for property media
-  - Supabase JS client for Storage operations only
+### Schema migrations
 
-### Deployment
+Migrations are versioned in drizzle/ and are applied using the privileged migration connection configured as DIRECT_URL. Review new SQL before applying it to a live database.
 
-- Netlify
-- Next.js Runtime
-- Netlify Image CDN for production image optimization
+    vp exec drizzle-kit migrate
 
-### Development Tools
+Never use the runtime read-only role or auth role for migrations. Do not edit the historical 0011_shared_read_role.sql migration or its Drizzle ledger row to force the known checksum/provenance discrepancy to disappear; migration 0021_reconcile_shared_read_role.sql is the forward-only reconciliation.
 
-- Git
-- GitHub
-- VS Code
-- ESLint
-- npm
+## Testing
 
-## Repository
+Run checks and tests from the repository root with Vite+.
 
-[View Repository](https://github.com/BryanReyes-dev/evergreen-estates)
+### Main commands
 
-## Agent Files
+    # Formatting, lint, and static/type checks
+    vp check
 
-The `agent-files/` directory contains documentation for AI coding agents. `AGENTS.md` contains agent operating instructions, `Agents_Context.md` stores short-term working context, and `CLAUDE.md` is the Claude entry point.
+    # Run the checks without the formatting stage
+    vp check --no-fmt
 
-There is exactly one architecture document: `agent-files/ARCHITECTURE.md`. It is the authoritative record of finalized project architecture.
+    # Default test suite (database integration remains opt-in)
+    vp test
 
-## Project Architecture
+    # Fast isolated unit + mocked API tests; no database connection
+    vp run test:fast
 
-The application separates route/page composition, reusable UI, database access, and shared utilities. Listing read queries, schemas, Drizzle clients, and Storage helpers live under `src/db`. Current write Route Handlers issue Drizzle statements in the route files and use the shared transaction helper in `src/db/drizzle/app-client.ts`; dedicated mutation modules have not been extracted.
+    # Run suites separately
+    vp run test:unit
+    vp run test:api
 
-Server Components handle property-data fetching and rendering by default. Client Components are used for browser-specific behavior such as interactive filtering, navigation state, animation, and Embla carousel interaction.
+    # Read-only PostgreSQL permission tests
+    vp run test:integration
+    vp run test:db-permissions
 
-Property filtering is URL-driven: filter controls update search parameters, Next.js renders the server-side result, and Drizzle ORM executes parameterized PostgreSQL queries. Supabase JS remains for Storage signed URLs.
+    # Full unit + mocked API + read-only database permission suite
+    vp run test:all
 
-For the complete finalized architecture, see `agent-files/ARCHITECTURE.md`.
+    # Production build
+    npm run build
 
-## Installation Steps
+The database integration suites require DRIZZLE_DATABASE_URL to use the restricted evergreen_runtime role. They are intended for read-only permission checks, not fixture population. Avoid running them against an unintended project. A passing unit/API suite does not replace browser, email-delivery, and deployment verification.
 
-Clone the repository:
+### Focused test aliases
 
-```bash
-git clone https://github.com/BryanReyes-dev/evergreen-estates.git
-```
+Use a specific alias while iterating; all aliases below are defined in package.json.
 
-Navigate into the project:
+| Alias | Primary coverage |
+|---|---|
+| test:seed-data | Fixture counts, relationships, timestamps, contact values, and media manifest integrity |
+| test:account-preferences | Preference defaults and accepted sort/layout values |
+| test:auth-config | Email verification, token lifetime, reset-session revocation, and rate limits |
+| test:fixture-auth | Allowlist for exact synthetic fixture identities |
+| test:listing-collection | Listing search parsing and create validation/ownership rules |
+| test:listing-item | Listing detail behavior and owner-scoped update/delete |
+| test:listing-media | Media ordering, reorder validation, and stale-write conflicts |
+| test:reviews | Review authentication, validation, author-scoped operations |
+| test:seller-profiles | Seller enrollment/update validation and contact preferences |
+| test:saved-listings | Saved-home authentication, user-ID protection, and UUID/state validation |
+| test:account-profile | Account preferences and avatar URL handling |
+| test:media-upload | Upload URL/completion input and authorization checks |
+| test:media-delete | Media ownership, registration, and cleanup ordering |
+| test:media-captions | WebVTT validation and authenticated video-caption upload rules |
+| test:media-filenames | Allowed extensions, path traversal, and filename length |
+| test:media-limits | Decimal 50,000,000-byte media ceiling |
+| test:avatar | Avatar upload authentication and image-signature validation |
+| test:db-permissions | Read-only allowed/denied PostgreSQL permission checks |
 
-```bash
-cd evergreen-estates
-```
+For the lower-level runner, individual categories/files can also be called directly:
 
-Install dependencies:
+    vp test run tests/unit
+    vp test run tests/api
+    vp test run tests/api/listings/listings-collection.test.ts
+    vp test run tests/unit/auth-configuration.test.ts
 
-```bash
-npm install
-```
+The suite runner prints each selected suite's purpose and paths to the terminal. The repository does not configure a GitHub Actions quality workflow on this branch; do not assume a hosted CI job has run.
 
-Create environment variables:
+## Production
 
-```text
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SECRET_KEY=
-DIRECT_URL=
-DRIZZLE_DATABASE_URL=
-AUTH_DATABASE_URL=
-APP_DATABASE_URL=
-BETTER_AUTH_URL=http://localhost:3000
-BETTER_AUTH_SECRET=
-```
+### Netlify build configuration
 
-`SUPABASE_SECRET_KEY` is server-only and is used by the Storage admin helper. `APP_DATABASE_URL` uses the restricted `evergreen_app` login for owner-scoped writes. Keep both, all database URLs, and `BETTER_AUTH_SECRET` out of client code and version control. See [agent-files/ARCHITECTURE.md](./agent-files/ARCHITECTURE.md) for the role boundaries and endpoint details.
+The repository includes netlify.toml with the build command npm run build, publish directory .next, and an allowlist for the configured Supabase image host used by Netlify Image CDN.
 
-### Configure the Drizzle runtime role
+That is repository configuration, not proof of a successful Netlify build. Before promoting a deploy, verify the Netlify site is connected to the intended repository/branch, the preview build completes, environment variables are set for the right deploy contexts, and the production runtime works. Use a Deploy Preview before changing the public site.
 
-The Drizzle read path uses `DRIZZLE_DATABASE_URL` and must not use the privileged `postgres` migration connection. Pull the branch and apply the pending migration:
+### Environment variables
 
-```bash
-npx drizzle-kit migrate
-```
+Copy the names from .env.example. Add values in Netlify's site environment-variable settings rather than committing them.
 
-Migration `0006` replaces the temporary `evergreen_readonly` group with a single, restricted `evergreen_runtime` login. The migration creates the login without a password so the credential is not committed to Git. After the migration succeeds, set its password separately in the Supabase SQL Editor (use a strong, unique password generated in a password manager):
+| Variable | Purpose | Handling |
+|---|---|---|
+| NEXT_PUBLIC_SUPABASE_URL | Supabase project URL | Public/client configuration |
+| NEXT_PUBLIC_SUPABASE_ANON_KEY | Supabase public client key | Public/client configuration; keep RLS correct |
+| SUPABASE_SECRET_KEY | Server-side Storage administration | Secret; never use in client code |
+| DRIZZLE_DATABASE_URL | Read-only application reads | Secret; restricted evergreen_runtime login |
+| AUTH_DATABASE_URL | Better Auth operations | Secret; restricted evergreen_auth login |
+| APP_DATABASE_URL | Owner-scoped writes | Secret; restricted evergreen_app login |
+| BETTER_AUTH_URL | Canonical deployed auth base URL | Must match the active site URL |
+| BETTER_AUTH_SECRET | Better Auth signing/encryption secret | Secret; use a strong unique value |
+| RESEND_API_KEY | Verification/reset email delivery | Secret |
+| AUTH_EMAIL_FROM | Verified sender used by Resend | Must use a sender/domain verified in Resend |
+| DIRECT_URL | Drizzle migrations | Privileged; use in a controlled migration environment, not request-time application code |
 
-```sql
-ALTER ROLE evergreen_runtime WITH PASSWORD '<your-strong-password>';
-```
+Set the production BETTER_AUTH_URL to the site URL used by that deployment, and verify any deploy-preview origin requirements before testing auth on previews. Configure and verify a Resend sender domain/address before expecting verification and password-reset emails to arrive. Do not put seed/credentials or fixture passwords in Netlify variables.
 
-In the Supabase Dashboard's **Connect** dialog, copy the **shared transaction pooler** connection details and configure `DRIZZLE_DATABASE_URL` with the role username format `evergreen_runtime.<project-ref>`, the password you just set, and the copied host/port. Port 6543 is transaction mode. URL-encode special characters in the password.
+### Database and fixture safety
 
-Keep `DIRECT_URL` restricted to Drizzle Kit migrations. Do not use `postgres` or `service_role` credentials for runtime reads, and never expose `DRIZZLE_DATABASE_URL` through a `NEXT_PUBLIC_` variable. The runtime role has read-only application-table permissions and cannot access the private Drizzle migration schema.
+The latest recorded implementation handoff reports migration 0019 and the forward-only 0021 reconciliation applied to the configured Supabase project, with read-only catalog checks and a full population dry-run passing after 0021. The migration journal orders 0020 before 0021. This documentation update did not make a new live database connection, so confirm the migration ledger, role grants, and RLS policies against the exact project you intend to deploy.
 
-### Configure the Better Auth role
+The population utility is a developer-run script, not part of the Netlify build. It is pinned in source to project ref vcsotaclvwvbpqiljkuk; do not assume it accepts an arbitrary Supabase project. Start with the read-only dry run:
 
-Migration `0008` creates a separate `evergreen_auth` login with access limited to the canonical `users` table and the Better Auth `account`, `session`, and `verification` tables. The migration intentionally creates this role without a password. After `npx drizzle-kit migrate` succeeds, set a strong password separately in the Supabase SQL Editor:
+    npm run populate:dry-run
 
-```sql
-ALTER ROLE evergreen_auth WITH PASSWORD '<your-strong-password>';
-```
+Apply mode makes writes: it provisions synthetic auth accounts and fixture records and uploads missing fixture media. Use it only after reviewing the preflight, preparing the ignored local seed/credentials, and confirming the exact configured project:
 
-Configure `AUTH_DATABASE_URL` with the Supabase shared transaction pooler details (port 6543), username `evergreen_auth.<project-ref>`, and that password. This connection is separate from the read-only `DRIZZLE_DATABASE_URL`. Never use `DIRECT_URL` for application requests or expose either database URL via a `NEXT_PUBLIC_` variable.
+    npm run populate -- --apply --confirm-project vcsotaclvwvbpqiljkuk
 
-Set `BETTER_AUTH_URL=http://localhost:3000` locally and generate a strong `BETTER_AUTH_SECRET` (at least 32 characters). Keep the secret server-only and configure the production URL/secret in the deployment environment before enabling auth there.
+Never run apply mode from a public endpoint, application startup, or the Netlify build. It must preserve unrelated rows and Storage objects. The historical 0011 checksum mismatch is acknowledged but unresolved; do not rewrite migration history to hide it.
 
-### Configure the application-write role
+## Future Improvements
 
-The local schema and migrations define the restricted `evergreen_app` login. After applying migrations, set its password out of band in the Supabase SQL Editor:
-
-```sql
-ALTER ROLE evergreen_app WITH PASSWORD '<your-strong-password>';
-```
-
-Set `APP_DATABASE_URL` to the shared transaction pooler connection using username `evergreen_app.<project-ref>` and the generated password. The app client uses this connection only for owner-scoped writes; do not substitute the migration, read-only, or Better Auth database URL.
-
-Run the development server:
-
-```bash
-npm run dev
-```
-
-Open the development URL reported by Next.js.
-
-Build the application:
-
-```bash
-npm run build
-```
-
-Run the production build locally:
-
-```bash
-npm start
-```
-
-### Automated tests with Vite+
-
-The automated suite uses Vite+'s built-in Vitest runner and the single `vite.config.ts` configuration. Tests run in the Node environment and use verbose reporting, so the terminal shows the test cases and whether they pass or fail. The test files do not log test progress to a browser console.
-
-Run the default suite (unit and mocked Route Handler tests; the database integration tests are skipped unless explicitly enabled):
-
-```bash
-vp test
-```
-
-Run a category directly with the Vite+ test command:
-
-```bash
-vp test run tests/unit
-vp test run tests/api
-```
-
-Run one test file directly:
-
-```bash
-vp test run tests/api/listings/listings-collection.test.ts
-vp test run tests/unit/auth-configuration.test.ts
-```
-
-Use the named suite scripts when you want a descriptive terminal header and the read-only database integration suite to be enabled deliberately:
-
-```bash
-vp run test:fast
-vp run test:unit
-vp run test:api
-vp run test:integration
-vp run test:db-permissions
-vp run test:all
-```
-
-`test:all` includes unit tests, mocked API tests, and read-only PostgreSQL permission checks. The integration suite requires `DRIZZLE_DATABASE_URL` to connect as the restricted `evergreen_runtime` role. It checks permissions and approved reads only; it does not populate or mutate application data. Avoid running the integration suite against an unintended database.
-
-Focused `test:*` aliases also cover seed data, account preferences, authentication configuration, the fixture-only identity allowlist, listing collection/item routes, media filename/size rules, media upload/deletion, reviews, seller profiles, saved listings, account profile settings, and avatar uploads.
-
-The automated suite is not a substitute for the remaining manual browser/responsive, email-delivery, and production-environment verification.
-
-### Review the demo-data population plan
-
-The population tool performs read-only preflight by default and does not write data unless explicitly run in apply mode. It checks the configured Supabase project, database-role grants/RLS policies, fixture records, listing cap, Storage bucket settings, and existing media bytes.
-
-```bash
-npm run populate:dry-run
-```
-
-The first run uses a pinned tsx runner and may need network access to download it. The 0011 checksum discrepancy remains unresolved and is explicitly acknowledged, not repaired: the original bytes could not be recovered, so do not edit migration 0011 or its ledger row. Apply mode requires the explicit `--apply --confirm-project vcsotaclvwvbpqiljkuk` flags, a clean preflight, and valid local `seed/credentials`; it creates synthetic accounts/records and uploads missing fixture media. Do not run apply mode until you are ready for those writes. See agent-files/IMPLEMENTATION_HANDOFF.md for the review evidence and remaining verification tasks.
-
-## Client Components
-
-The application intentionally minimizes Client Components. Components remain Server Components unless browser APIs, React state, event handlers, client-side navigation, animation, or other interactive browser behavior is required.
-
-### `Filters.tsx`
-
-Location: `src/components/Filters.tsx`
-
-`Filters.tsx` manages interactive filtering controls and updates URL search parameters. It does not fetch property data directly.
-
-### `Layout/Menu.tsx`
-
-Location: `src/components/Layout/Menu.tsx`
-
-`Menu.tsx` uses client state, events, and Framer Motion for mobile navigation.
-
-### `ListingMediaCarousel.tsx`
-
-Location: `src/components/ListingMediaCarousel.tsx`
-
-`ListingMediaCarousel.tsx` is a Client Component because Embla Carousel requires browser-side interaction.
-
-## Challenges & Lessons Learned
-
-- Understanding Next.js data-fetching strategies and Server Component boundaries
-- Structuring a full-stack Next.js application with separation between UI, database logic, and utilities
-- Integrating Supabase PostgreSQL and Storage
-- Using URL search parameters as persistent and shareable filter state
-- Building reusable media components for image and video listings
-- Debugging TypeScript, image optimization, environment variables, and deployment differences between local development and Netlify production
-- Handling expiring Supabase signed media URLs safely in server-rendered pages
-
-## Author
-
-Bryan Reyes
+- **Netlify release validation:** verify the actual site settings, preview and production variables, production build, runtime database connectivity, signed media images, and authentication email links. Record outcomes in agents-files/Agents_Context.md.
+- **Authentication and email:** finish the end-to-end signup, verification, signin/signout, reset, and session-revocation checks on the deployed hostname after Resend sender verification.
+- **Functional browser testing:** run manual workflows for listing ownership, seller publish/unpublish privacy, reviews, saved homes, media upload/reorder/delete/captions, account preferences, error/empty/loading states, keyboard use, and mobile widths.
+- **Figma comparison:** compare navigation, listing cards/search controls, listing detail/gallery, account and seller forms, spacing/type, colors, focus and validation states. Do not claim pixel alignment until a comparison is performed.
+- **Safer reusable fixture tooling:** make the population target configurable only through an explicit, reviewed safety mechanism rather than weakening the current project guard; keep dry-run read-only and preserve non-fixture data/objects.
+- **Migration provenance:** keep the 0011 checksum mismatch documented as an exception unless the authentic historical migration bytes can be recovered. Never modify the existing ledger row as a shortcut.
+- **Operations:** decide on an appropriate release/rollback procedure, backup/restore check, error monitoring, and environment separation for production versus previews.
