@@ -11,9 +11,11 @@ This is the authoritative record of finalized Evergreen Estates architecture. Pr
 
 ## 1. Project Identity and Stack
 
+GitHub Actions is intentionally unused. `.github/workflows/quality-checks.yml` was removed on 2026-10-25 at the user's request; do not restore hosted CI without explicit approval. Automated test and static-check setup is deferred until after the planned Vite+ migration.
+
 Evergreen Estates is a real-estate marketplace built with Next.js 16.x App Router, React, TypeScript, Supabase/PostgreSQL and Storage, Drizzle ORM, Better Auth, Tailwind CSS, shadcn/ui, Framer Motion, Hugeicons, and Embla Carousel.
 
-Implemented source includes public property browsing, listing details, URL-driven search/filtering, Better Auth email/password auth, account settings for name/avatar/password and browsing preferences, seller-profile editing and published storefronts, owner-scoped listing CRUD, review CRUD, listing media management, and a guarded population script. Account avatars use initials with stable per-user color fallbacks or uploaded images, and are rendered in navigation, published seller storefronts, and reviews. ESLint, TypeScript, and the production build passed in GitHub Actions run 21 on 2026-10-22. Migration 0020 has not been applied or live-verified, and browser/end-to-end verification at target widths remains outstanding.
+Implemented source includes public property browsing, listing details, URL-driven search/filtering, Better Auth email/password auth, account settings for name/avatar/password and browsing preferences, seller-profile editing and published storefronts, owner-scoped listing CRUD, review CRUD, listing media management, and a guarded population script. Account avatars use initials with stable per-user color fallbacks or uploaded images, and are rendered in navigation, published seller storefronts, and reviews. ESLint, TypeScript, and production build passed in a historical GitHub Actions run on 2026-10-22. The workflow was removed on 2026-10-25 at the user's request; do not re-add GitHub Actions without explicit approval. Current checks and tests are deferred until after the Vite+ migration. Migration 0020 has not been applied or live-verified, and browser/end-to-end verification at target widths remains outstanding.
 
 ## 2. Application Structure and Boundaries
 
@@ -349,7 +351,7 @@ Preferred design to implement/review:
 - Use the normal Better Auth password hashing/session/account model; do not insert plaintext passwords or hand-built password hashes directly into the database.
 - Fixture passwords must be unique random local secrets from ignored `seed/credentials`; do not commit or log them. Make demo credentials available only through the intended private/demo instructions, and rotate them if exposed.
 - Keep a strict allowlist matching the exact fixture emails/keys; abort if a fixture identity is not in that allowlist or already belongs to a non-fixture user. Never mark arbitrary existing users as verified.
-- Add an automated test proving ordinary sign-up cannot bypass verification and that only the script's exact fixture path may mark fixture identities verified. Re-run the population dry-run after implementing this; current `scripts/populate.ts` calls `auth.api.signUpEmail` and must be deliberately updated/tested for the verification-required configuration.
+- After the planned Vite+ migration, add tests proving ordinary sign-up cannot bypass verification and only exact fixture identities can be marked verified. `scripts/populate.ts` provisions accounts through Better Auth and then uses the script-only `markFixtureSellerVerified` allowlist helper; run those tests and `npm run populate:dry-run` after the migration.
 - Forced password reset: if the intent is for mock accounts to require changing their initial password on first use, a verified flag alone is not enough. Add an explicit server-enforced `mustResetPassword`/credential-rotation state for fixture users (or another supported, secure equivalent), gate protected routes until completion, provide a reset/change flow, and clear the flag only after the password has actually changed. Do not confuse password-reset email delivery with forced reset: a reset email requires control of the mailbox, while mock-account first-login rotation can use an authenticated change-password flow. Do not ship a shared mock password for accounts intended for real users.
 
 ### Netlify public-demo release gate
@@ -357,8 +359,8 @@ Preferred design to implement/review:
 A successful build and passing population preflight are not a release sign-off. Before opening the deployed Netlify URL to real visitors:
 - [ ] Set production-only environment variables in Netlify: `BETTER_AUTH_URL`, strong `BETTER_AUTH_SECRET`, the least-privilege `AUTH_DATABASE_URL` and `APP_DATABASE_URL`, Supabase URL and server-only secret key, and transactional email provider credentials. Keep `DIRECT_URL` migration-only; do not make it available to runtime handlers if unnecessary.
 - [ ] Set Better Auth's production URL/trusted origins to the exact HTTPS Netlify domain(s); verify callback URLs and secure cookies on the deployed domain and preview deployments.
-- [x] Source implementation and unit tests cover mandatory verification, forgotten-password email, one-hour reset lifetime, session revocation, auth UI, and fixture-only verification bypass.
-- [ ] Configure Resend credentials/sender in Netlify and end-to-end test real email delivery, invalid/expired tokens, rate limits, and production callback URLs.
+- [x] Source implementation is present for mandatory verification, forgotten-password email, one-hour reset lifetime, session revocation, auth UI, and fixture-only verification bypass. Automated tests are intentionally deferred until after the Vite+ migration.
+- [ ] Configure Resend credentials/sender in Netlify and, after the Vite+ migration, end-to-end test real email delivery, invalid/expired tokens, rate limits, and production callback URLs.
 - [ ] Implement forced first-login password change for seeded demo accounts if that remains a requirement; verify protected routes are blocked until it succeeds.
 - [ ] Keep mock accounts synthetic, visibly documented as demo accounts, and separate from real-user registration. Never reuse real personal email addresses or real passwords in fixtures.
 - [ ] Confirm RLS, role grants, private Storage, signed URL expiry, upload MIME/size/path checks, and authorization for every read/write route. Test cross-account listing/review/profile/saved-home/media access.
