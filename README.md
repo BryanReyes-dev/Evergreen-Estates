@@ -211,7 +211,46 @@ Run the production build locally:
 npm start
 ```
 
-Run the Vitest suite with `npm run test:run`. The database-permissions integration test requires `DRIZZLE_DATABASE_URL` to reach a database configured for the `evergreen_runtime` role; fixture tests do not populate a database. Automated tests and the Vite+ toolchain migration are deliberately deferred to the next work session.
+### Automated tests with Vite+
+
+The automated suite uses Vite+'s built-in Vitest runner and the single `vite.config.ts` configuration. Tests run in the Node environment and use verbose reporting, so the terminal shows the test cases and whether they pass or fail. The test files do not log test progress to a browser console.
+
+Run the default suite (unit and mocked Route Handler tests; the database integration tests are skipped unless explicitly enabled):
+
+```bash
+vp test
+```
+
+Run a category directly with the Vite+ test command:
+
+```bash
+vp test run tests/unit
+vp test run tests/api
+```
+
+Run one test file directly:
+
+```bash
+vp test run tests/api/listings/listings-collection.test.ts
+vp test run tests/unit/auth-configuration.test.ts
+```
+
+Use the named suite scripts when you want a descriptive terminal header and the read-only database integration suite to be enabled deliberately:
+
+```bash
+vp run test:fast
+vp run test:unit
+vp run test:api
+vp run test:integration
+vp run test:db-permissions
+vp run test:all
+```
+
+`test:all` includes unit tests, mocked API tests, and read-only PostgreSQL permission checks. The integration suite requires `DRIZZLE_DATABASE_URL` to connect as the restricted `evergreen_runtime` role. It checks permissions and approved reads only; it does not populate or mutate application data. Avoid running the integration suite against an unintended database.
+
+Focused `test:*` aliases also cover seed data, account preferences, authentication configuration, the fixture-only identity allowlist, listing collection/item routes, media filename/size rules, media upload/deletion, reviews, seller profiles, saved listings, account profile settings, and avatar uploads.
+
+The automated suite is not a substitute for the remaining manual browser/responsive, email-delivery, and production-environment verification.
 
 ### Review the demo-data population plan
 
