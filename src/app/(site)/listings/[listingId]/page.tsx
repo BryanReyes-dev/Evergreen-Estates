@@ -41,6 +41,20 @@ async function canManageListing(listingId: string): Promise<boolean> {
   }
 }
 
+function FeaturedListingVideo({ src, title }: { src: string; title: string }) {
+  return (
+    // eslint-disable-next-line jsx-a11y/media-has-caption -- Listing uploads currently store filenames only and do not support a caption-track asset.
+    <video
+      src={src}
+      controls
+      playsInline
+      preload="metadata"
+      className="max-h-[70vh] w-full bg-black object-contain"
+      aria-label={title + " featured video"}
+    />
+  );
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ListingDetails({
@@ -82,15 +96,7 @@ export default async function ListingDetails({
     <main className="min-h-screen bg-[#141616] pb-8">
       {featuredMedia ? (
         featuredMedia.type === "video" ? (
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption -- Listing uploads currently store filenames only and do not support a caption-track asset. */}
-          <video
-            src={featuredMedia.src}
-            controls
-            playsInline
-            preload="metadata"
-            className="max-h-[70vh] w-full bg-black object-contain"
-            aria-label={listing.title + " featured video"}
-          />
+          <FeaturedListingVideo src={featuredMedia.src} title={listing.title} />
         ) : (
           <div className="relative h-[35vh] min-h-64 w-full bg-black sm:h-[55vh]">
             <Image

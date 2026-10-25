@@ -120,6 +120,20 @@ function mediaEndpoint(listingId: string): string {
   return `/api/v1/listings/${encodeURIComponent(listingId)}/media`;
 }
 
+function ListingVideoPreview({ src, filename }: { src: string; filename: string }) {
+  return (
+    // eslint-disable-next-line jsx-a11y/media-has-caption -- Uploaded listing media has no associated caption-track field in the current media model.
+    <video
+      src={src}
+      controls
+      playsInline
+      preload="metadata"
+      aria-label={`Video preview: ${filename}`}
+      className="h-full w-full object-contain"
+    />
+  );
+}
+
 export function ListingMediaManager({
   listingId,
 }: {
@@ -510,15 +524,7 @@ export function ListingMediaManager({
                   <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-black/40">
                     {item.previewUrl ? (
                       item.mediaKind === "video" ? (
-                        {/* eslint-disable-next-line jsx-a11y/media-has-caption -- Uploaded listing media has no associated caption-track field in the current media model. */}
-                        <video
-                          src={item.previewUrl}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          aria-label={`Video preview: ${item.filename}`}
-                          className="h-full w-full object-contain"
-                        />
+                        <ListingVideoPreview src={item.previewUrl} filename={item.filename} />
                       ) : (
                         <Image
                           src={item.previewUrl}

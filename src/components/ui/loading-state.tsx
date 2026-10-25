@@ -33,10 +33,7 @@ export function LoadingState({
   const imagePixels = logoPixels[size];
 
   return (
-    /* eslint-disable-next-line jsx-a11y/prefer-tag-over-role -- This loading region contains block-level animation content; <output> only accepts phrasing content. */
     <div
-      role="status"
-      aria-live="polite"
       aria-busy="true"
       className={`flex w-full flex-col items-center justify-center gap-3 px-4 py-8 text-center ${
         fullScreen ? "min-h-[60vh]" : "min-h-32"
@@ -61,7 +58,7 @@ export function LoadingState({
           className="h-full w-full object-contain"
         />
       </motion.div>
-      <span className="text-sm text-white/70">{label}</span>
+      <output aria-live="polite" className="text-sm text-white/70">{label}</output>
     </div>
   );
 }
