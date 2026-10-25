@@ -90,6 +90,7 @@ describe("temporary demo account retention", () => {
     const form = readFileSync(new URL("../../src/components/forms/AuthForm.tsx", import.meta.url), "utf8");
     const scheduledFunction = readFileSync(new URL("../../netlify/functions/cleanup-demo-accounts.ts", import.meta.url), "utf8");
     const migration = readFileSync(new URL("../../drizzle/0022_demo_account_retention.sql", import.meta.url), "utf8");
+    const fixtureExclusionMigration = readFileSync(new URL("../../drizzle/0024_exclude_seed_accounts_from_demo_cleanup.sql", import.meta.url), "utf8");
     const auth = readFileSync(new URL("../../src/lib/auth.ts", import.meta.url), "utf8");
 
     expect(auth).toContain("DEMO_ACCOUNT_LIFETIME_MS / 1000");
@@ -100,5 +101,11 @@ describe("temporary demo account retention", () => {
     expect(scheduledFunction).toContain("demo_expires_at <= now()");
     expect(migration).toContain("private.delete_expired_demo_account");
     expect(migration).toContain("demo_expires_at <= pg_catalog.now()");
+    expect(fixtureExclusionMigration).toContain("private.list_expired_demo_accounts");
+    expect(fixtureExclusionMigration).toContain("private.delete_expired_demo_account");
+    expect(fixtureExclusionMigration).toContain("daniel.carter@example.com");
+    expect(fixtureExclusionMigration).toContain("maya.thompson@example.com");
+    expect(fixtureExclusionMigration).toContain("jordan.lee@example.com");
+    expect(fixtureExclusionMigration).toContain("priya.patel@example.com");
   });
 });
