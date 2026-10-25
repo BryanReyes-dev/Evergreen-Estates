@@ -40,8 +40,8 @@ const suites = {
   },
   "auth-config": {
     description:
-      "Authentication configuration tests for email verification, token lifetime, password-reset session revocation, and rate limits.",
-    paths: ["tests/unit/auth-configuration.test.ts"],
+      "Authentication configuration, signup error messages, token lifetime, password-reset session revocation, and rate limits.",
+    paths: ["tests/unit/auth-configuration.test.ts", "tests/unit/auth-error-messages.test.ts"],
   },
   "fixture-auth": {
     description:

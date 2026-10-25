@@ -91,6 +91,7 @@ describe("temporary demo account retention", () => {
     const scheduledFunction = readFileSync(new URL("../../netlify/functions/cleanup-demo-accounts.ts", import.meta.url), "utf8");
     const migration = readFileSync(new URL("../../drizzle/0022_demo_account_retention.sql", import.meta.url), "utf8");
     const fixtureExclusionMigration = readFileSync(new URL("../../drizzle/0024_exclude_seed_accounts_from_demo_cleanup.sql", import.meta.url), "utf8");
+    const expiryPermissionsMigration = readFileSync(new URL("../../drizzle/0025_auth_demo_expiry_column_grants.sql", import.meta.url), "utf8");
     const auth = readFileSync(new URL("../../src/lib/auth.ts", import.meta.url), "utf8");
 
     expect(auth).toContain("DEMO_ACCOUNT_LIFETIME_MS / 1000");
@@ -108,5 +109,8 @@ describe("temporary demo account retention", () => {
     expect(fixtureExclusionMigration).toContain("maya.thompson@example.com");
     expect(fixtureExclusionMigration).toContain("jordan.lee@example.com");
     expect(fixtureExclusionMigration).toContain("priya.patel@example.com");
+    expect(expiryPermissionsMigration).toContain("GRANT SELECT (demo_expires_at) ON TABLE public.users TO evergreen_auth;");
+    expect(expiryPermissionsMigration).toContain("GRANT UPDATE (demo_expires_at) ON TABLE public.users TO evergreen_auth;");
+    expect(expiryPermissionsMigration).not.toContain("GRANT UPDATE ON TABLE public.users TO evergreen_auth;");
   });
 });

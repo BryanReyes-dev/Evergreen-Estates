@@ -7,6 +7,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { getSignUpErrorMessage } from "@/lib/auth-error-messages";
 import { DEMO_ACCOUNT_RETENTION_NOTICE } from "@/lib/demo-mode";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -100,7 +101,7 @@ export function AuthForm({ demoModeEnabled }: { demoModeEnabled: boolean }) {
         callbackURL: absoluteUrl("/profile"),
       });
       if (result.error) {
-        setError("Your account could not be created. Check the details or try signing in.");
+        setError(getSignUpErrorMessage(result.error.code));
         return;
       }
       setPassword("");

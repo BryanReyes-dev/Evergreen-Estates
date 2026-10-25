@@ -162,6 +162,13 @@
       "when": 1792966929106,
       "tag": "0022_demo_account_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792966929107,
+      "tag": "0025_auth_demo_expiry_column_grants",
+      "breakpoints": true
     }
   ]
 }
