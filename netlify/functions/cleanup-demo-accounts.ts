@@ -149,8 +149,13 @@ export default async function cleanupDemoAccounts(): Promise<Response> {
       return Response.json({ error: "DEMO_CLEANUP_INCOMPLETE", ...summary }, { status: 500 });
     }
     return Response.json(summary, { status: 200 });
-  } catch {
-    console.error("[demo cleanup] scheduled cleanup failed");
+  } catch (error) {
+    // Log the underlying exception for diagnosis, but keep internal details out
+    // of the HTTP response returned by the scheduled function.
+    console.error("[demo cleanup] scheduled cleanup failed", {
+      name: error instanceof Error ? error.name : "UnknownError",
+      message: error instanceof Error ? error.message : String(error),
+    });
     return Response.json({ error: "DEMO_CLEANUP_FAILED" }, { status: 500 });
   } finally {
     await Promise.all([
