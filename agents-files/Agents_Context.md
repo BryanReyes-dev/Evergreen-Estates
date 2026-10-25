@@ -39,7 +39,7 @@ The migration journal orders `0019_saved_listings_on_users.sql`, `0020_user_acco
 **Latest recorded live-check evidence, not freshly re-queried during this documentation change:**
 
 - Migration 0019 was recorded as applied to the configured Supabase project; its column, 100-item constraint, owner policies, grants, and listing-delete cleanup trigger were checked through read-only catalog checks.
-- The previous handoff records migration 0021 as applied by Drizzle Kit. It also records a successful full read-only population preflight after the migration, including role, grant, membership, RLS/policy, fixture, and Storage checks.
+- Recorded verification from 2026-10-23 reports migration 0021 applied by Drizzle Kit. It also reports a successful full read-only population preflight after the migration, including role, grant, membership, RLS/policy, fixture, and Storage checks.
 - Since migration 0021 revokes access to `users.preferences`, a column introduced by migration 0020, that recorded successful migration chain is consistent with 0020 also having run. Verify the migration ledger and effective privileges against the exact Supabase project intended for Netlify before relying on this historical evidence.
 - No synthetic user/database/Storage population writes were run in the recorded dry-run.
 - The historical checksum/provenance mismatch for migration 0011 remains unresolved. The forward-only migration 0021 reasserts the expected shared-read contract; it does not resolve the old checksum. Never edit migration 0011 or rewrite its existing Drizzle ledger row to force the hashes to match.
