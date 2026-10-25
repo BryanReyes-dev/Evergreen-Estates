@@ -222,11 +222,13 @@ agent-files/ARCHITECTURE.md remains the finalized architecture authority; this c
 - Use the installed Next.js 16 documentation before framework-sensitive changes.
 
 
-## Netlify demo readiness and mock account policy (2026-10-23)
+## Netlify demo readiness and mock account policy (updated 2026-10-25)
 
-### Authentication gap to close before inviting real users
+### Authentication email implementation status (2026-10-25)
 
-Current `src/lib/auth.ts` only enables Better Auth email/password; it does not explicitly configure mandatory email verification, verification-email delivery, or password-reset delivery. Do not describe auth as production-ready until these are implemented and tested.
+Source now requires email verification before email/password sign-in, sends verification links on sign-up and unverified sign-in, and uses one-hour verification tokens. Forgotten-password email uses Better Auth's reset flow with one-hour tokens and session revocation after reset. The `/auth` form includes a verification confirmation/resend state and forgot-password link; `/auth/forgot-password` and `/auth/reset-password` implement the reset-request and token-consumption screens.
+
+`src/lib/auth-email.ts` sends branded HTML/text messages through Resend using server-only `RESEND_API_KEY` and `AUTH_EMAIL_FROM`. Configure real values in local `.env` and Netlify, and verify the sender domain. Source code and unit tests do not prove real inbox delivery or production callback URLs. Auth endpoint rate limits are configured; the built-in memory limiter is per runtime instance, so distributed/serverless rate limiting remains a release review item.
 
 For non-fixture users, configure mandatory Better Auth email verification with the installed version's supported API, a real transactional email provider, production callback URLs, rate limiting for sign-in/sign-up/resend/reset, secure session/cookie settings, trusted origins, and generic responses that limit account enumeration. Verify that unverified accounts cannot establish usable authenticated sessions or access protected features. Configure password reset delivery and test token expiry/single-use behavior.
 
@@ -234,16 +236,17 @@ For non-fixture users, configure mandatory Better Auth email verification with t
 
 The intended mock seller accounts must be usable for a demo without requiring a developer to click verification links for each one. This must be a narrow, script-only exception, not a global bypass:
 - Keep verification mandatory for normal public registration.
-- Change `scripts/populate.ts` from its current `auth.api.signUpEmail` provisioning path to a supported Better Auth script/admin provisioning path that marks only exact fixture identities from `src/db/seed/data.ts` verified. Follow the installed Better Auth version's documentation and preserve its normal password hashing/account model.
-- Require an exact allowlist of synthetic fixture emails/keys; fail closed for any other identity. Never mark an existing non-fixture account verified or expose a public verification-bypass endpoint/flag.
+- `scripts/populate.ts` provisions credentials through Better Auth, then updates `email_verified` only for identities passing the script-only `src/db/seed/auth-fixtures.ts` exact email + name allowlist and a matching user UUID.
+- Public registration and request handlers do not import the fixture allowlist. Do not add a public verification-bypass endpoint or flag; focused tests cover the allowlist.
 - Continue to use ignored local `seed/credentials`, random unique passwords, explicit target project confirmation, dry-run, and no credential logging.
 - If demo accounts should be forced to rotate their initial password, add an explicit server-enforced first-login password-change state and block protected app routes until the password changes. Email reset and forced first-login change are different features; reset-email delivery requires mailbox access.
-- Add tests showing normal registration requires verification and the seed-only exception works only for enumerated fixture accounts. Current population script has not yet been updated for mandatory verification.
+- Add tests showing normal registration requires verification and the seed-only exception works only for enumerated fixture accounts. The populate script now marks only exact allowlisted fixture identities as verified. Public sign-up remains verification-gated.
 
 ### Required release gates before opening the Netlify demo to real users
 
 - [ ] Netlify production env is configured with the exact HTTPS `BETTER_AUTH_URL`/trusted origin, strong `BETTER_AUTH_SECRET`, least-privilege `AUTH_DATABASE_URL` and `APP_DATABASE_URL`, Supabase URL/server-only key, and email provider credentials. Keep `DIRECT_URL` migration-only.
-- [ ] Mandatory email verification and email password reset are implemented and tested end-to-end in the deployed environment, including invalid/expired tokens, resend throttling and abuse/rate limits.
+- [x] Source implementation and unit tests exist for required verification, reset email callbacks, one-hour token lifetime, session revocation after reset, auth screens, and fixture-only verification bypass.
+- [ ] Configure Resend in local `.env` and Netlify; verify inbox delivery, sender-domain authentication, callback URLs, expired/single-use tokens, and abuse controls end-to-end.
 - [ ] Decide and implement forced password rotation for seeded demo accounts if required.
 - [ ] Test cross-account authorization for listings, reviews, seller profiles, saved homes, avatars and listing media; verify role grants/RLS and private bucket behavior.
 - [ ] Run automated auth/route/RLS/IDOR/media/population tests and full type/lint/build checks; do not rely on CI's build alone.
