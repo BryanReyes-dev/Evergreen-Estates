@@ -41,7 +41,7 @@ const Listing = ({ listing }: ListingProps) => {
             className="w-full object-cover"
           />
         ) : (
-          <div role="img" aria-label="No listing media available" className="h-full w-full bg-[#3A3F42]" />
+          <div aria-hidden="true" className="h-full w-full bg-[#3A3F42]" />
         )}
       </div>
 

@@ -75,6 +75,7 @@ function Field({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof fieldVariants>) {
   return (
+    /* eslint-disable-next-line jsx-a11y/prefer-tag-over-role -- Field is a layout wrapper that groups related controls and descriptions, not one native HTML fieldset. */
     <div
       role="group"
       data-slot="field"

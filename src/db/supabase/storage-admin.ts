@@ -48,6 +48,7 @@ export function isAllowedListingMediaFilename(
     filename !== ".." &&
     !filename.includes("/") &&
     !filename.includes("\\") &&
+    // eslint-disable-next-line no-control-regex -- Intentionally reject ASCII control characters in user-supplied storage filenames.
     !/[\u0000-\u001f\u007f]/.test(filename) &&
     /^[a-zA-Z0-9][a-zA-Z0-9 ._()-]*\.(jpg|png|webp|avif|gif|mp4|webm|mov)$/i.test(
       filename,
@@ -267,6 +268,7 @@ export async function getListingMediaUrls(input: {
       filename !== ".." &&
       !filename.includes("/") &&
       !filename.includes("\\") &&
+      // eslint-disable-next-line no-control-regex -- Intentionally reject ASCII control characters in user-supplied storage filenames.
       !/[\u0000-\u001f\u007f]/.test(filename),
   );
 

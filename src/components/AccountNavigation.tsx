@@ -140,15 +140,7 @@ export function AccountNavigation({
   }
 
   return (
-    <details
-      className="group relative"
-      onClick={(event) => {
-        const target = event.target;
-        if (target instanceof HTMLElement && target.closest("a")) {
-          event.currentTarget.open = false;
-        }
-      }}
-    >
+    <details className="group relative">
       <summary className="inline-flex min-h-11 max-w-48 cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1 text-sm text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#78b75c] [&::-webkit-details-marker]:hidden">
         <UserAvatar name={userName} imageUrl={imageUrl} identity={userId} className="h-8 w-8 text-xs" />
         <span className="max-w-24 truncate">{userName}</span>
@@ -158,10 +150,10 @@ export function AccountNavigation({
       </summary>
       <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-white/10 bg-[#202324] p-2 shadow-2xl">
         <p className="truncate px-3 py-2 text-xs text-white/50">{session.user.email}</p>
-        <Link href="/account" className={linkClass}>Account settings</Link>
-        <Link href="/profile" className={linkClass}>Seller profile</Link>
-        <Link href="/Saved" className={linkClass}>Saved homes</Link>
-        <Link href="/listings/new" className={linkClass}>Create listing</Link>
+        <Link href="/account" className={linkClass} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}>Account settings</Link>
+        <Link href="/profile" className={linkClass} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}>Seller profile</Link>
+        <Link href="/Saved" className={linkClass} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}>Saved homes</Link>
+        <Link href="/listings/new" className={linkClass} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}>Create listing</Link>
         <div className="my-1 border-t border-white/10" />
         <Button type="button" disabled={signingOut} onClick={handleSignOut} className="min-h-11 w-full">
           {signingOut ? "Signing out…" : "Sign out"}

@@ -13,7 +13,7 @@ export default function Menu() {
   const [open, setOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLElement>(null);
+  const panelRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     const desktopViewport = window.matchMedia("(min-width: 768px)");
@@ -92,10 +92,10 @@ export default function Menu() {
               className="absolute inset-0 z-0 h-full w-full cursor-default border-0 bg-transparent"
             />
 
-            <motion.section
+            <motion.dialog
+              open
               ref={panelRef}
               id="mobile-navigation"
-              role="dialog"
               aria-modal="true"
               aria-labelledby="mobile-navigation-title"
               initial={prefersReducedMotion ? { opacity: 0 } : { x: "-100%" }}
@@ -106,7 +106,7 @@ export default function Menu() {
                   ? { duration: 0.12 }
                   : { type: "spring", stiffness: 360, damping: 24, bounce: 0.28 }
               }
-              className="relative z-10 flex h-[100dvh] max-h-[100dvh] w-[88vw] max-w-sm flex-col overflow-y-auto overscroll-contain rounded-r-2xl border-r border-white/10 bg-[#202324] p-4 shadow-2xl sm:w-[80vw] sm:max-w-md sm:p-6"
+              className="m-0 relative z-10 flex h-[100dvh] max-h-[100dvh] w-[88vw] max-w-sm flex-col overflow-y-auto overscroll-contain rounded-r-2xl border-r border-white/10 bg-[#202324] p-4 text-inherit shadow-2xl sm:w-[80vw] sm:max-w-md sm:p-6"
               onKeyDown={(event) => {
                 if (!open || event.key !== "Tab") return;
 
@@ -155,7 +155,7 @@ export default function Menu() {
               <div className="mt-auto border-t border-white/10 pt-4">
                 <AccountNavigation mobile onNavigate={() => setOpen(false)} />
               </div>
-            </motion.section>
+            </motion.dialog>
           </motion.div>
         )}
       </AnimatePresence>

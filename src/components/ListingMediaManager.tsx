@@ -429,6 +429,7 @@ export function ListingMediaManager({
         </form>
 
         {uploading && (
+          /* eslint-disable-next-line jsx-a11y/prefer-tag-over-role -- This live status region contains layout and progress elements, not phrasing-only content. */
           <div className="mt-5 space-y-2" role="status" aria-live="polite">
             <div className="flex justify-between gap-3 text-sm">
               <span className="break-all">Uploading {selectedFile?.name}</span>
@@ -457,15 +458,15 @@ export function ListingMediaManager({
       )}
 
       {successMessage && (
-        <p role="status" aria-live="polite" className="mt-6 rounded-xl border border-green-400/40 bg-green-950/30 p-4 text-sm text-green-100">
+        <output aria-live="polite" className="mt-6 block rounded-xl border border-green-400/40 bg-green-950/30 p-4 text-sm text-green-100">
           {successMessage}
-        </p>
+        </output>
       )}
 
       {loading ? (
-        <p role="status" className="mt-8 text-white/75">
+        <output className="mt-8 block text-white/75">
           Loading your gallery...
-        </p>
+        </output>
       ) : canManage ? (
         <section className="mt-8" aria-labelledby="gallery-order-heading">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -487,9 +488,9 @@ export function ListingMediaManager({
           </div>
 
           {hasUnsavedOrder && (
-            <p className="mb-4 text-sm text-[#bfe3ae]" role="status">
+            <output className="mb-4 block text-sm text-[#bfe3ae]">
               Order changes are not saved yet.
-            </p>
+            </output>
           )}
 
           {media.length === 0 ? (
@@ -509,6 +510,7 @@ export function ListingMediaManager({
                   <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-black/40">
                     {item.previewUrl ? (
                       item.mediaKind === "video" ? (
+                        {/* eslint-disable-next-line jsx-a11y/media-has-caption -- Uploaded listing media has no associated caption-track field in the current media model. */}
                         <video
                           src={item.previewUrl}
                           controls

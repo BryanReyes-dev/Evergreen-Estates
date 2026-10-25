@@ -53,6 +53,7 @@ export function UserAvatar({
   const background = AVATAR_COLORS[hashIdentity(colorSeed) % AVATAR_COLORS.length];
 
   return (
+    /* eslint-disable-next-line jsx-a11y/prefer-tag-over-role -- The avatar is a composite: it renders either a decorative image or an initial, not one standalone <img>. */
     <span
       role="img"
       aria-label={label + " avatar"}

@@ -33,6 +33,7 @@ export function LoadingState({
   const imagePixels = logoPixels[size];
 
   return (
+    /* eslint-disable-next-line jsx-a11y/prefer-tag-over-role -- This loading region contains block-level animation content; <output> only accepts phrasing content. */
     <div
       role="status"
       aria-live="polite"

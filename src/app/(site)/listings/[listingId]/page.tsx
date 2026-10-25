@@ -82,6 +82,7 @@ export default async function ListingDetails({
     <main className="min-h-screen bg-[#141616] pb-8">
       {featuredMedia ? (
         featuredMedia.type === "video" ? (
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption -- Listing uploads currently store filenames only and do not support a caption-track asset. */}
           <video
             src={featuredMedia.src}
             controls
