@@ -10,9 +10,16 @@ export interface ListingProps {
     Houselisting,
     "id" | "sellerUserId" | "media" | "title" | "price" | "description"
   >;
+  imageSizes?: string;
 }
 
-const Listing = ({ listing }: ListingProps) => {
+const DEFAULT_LISTING_IMAGE_SIZES =
+  "(max-width: 519px) calc(100vw - 2rem), (max-width: 1023px) calc((100vw - 3rem) / 2), (max-width: 1279px) calc((100vw - 4rem) / 3), (max-width: 1535px) calc((100vw - 5rem) / 4), 25rem";
+
+const Listing = ({
+  listing,
+  imageSizes = DEFAULT_LISTING_IMAGE_SIZES,
+}: ListingProps) => {
   const featuredMedia = listing.media[0];
   const featuredMediaType = featuredMedia
     ? getMediaType(featuredMedia)
@@ -40,7 +47,7 @@ const Listing = ({ listing }: ListingProps) => {
             src={featuredMedia}
             alt={`${listing.title} Image`}
             fill
-            sizes="(max-width: 519px) calc(100vw - 2rem), (max-width: 1023px) calc((100vw - 3rem) / 2), (max-width: 1279px) calc((100vw - 4rem) / 3), (max-width: 1535px) calc((100vw - 5rem) / 4), 25rem"
+            sizes={imageSizes}
             unoptimized={isGifMediaSource(featuredMedia)}
             className="w-full object-cover"
           />

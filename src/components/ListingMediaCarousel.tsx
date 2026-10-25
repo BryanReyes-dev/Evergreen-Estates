@@ -89,7 +89,7 @@ export const ListingMediaCarousel = ({
                     alt={item.alt ?? `Listing Image ${index + 1}`}
                     fill
                     className="object-cover"
-                    sizes="(max-width: 639px) calc(100vw - 2rem), (max-width: 1072px) calc(100vw - 3rem), 976px"
+                    sizes="(max-width: 639px) calc(100vw - 2rem), (max-width: 1023px) calc(100vw - 3rem), 976px"
                     loading="lazy"
                     decoding="async"
                     unoptimized={isGifMediaSource(item.src)}
