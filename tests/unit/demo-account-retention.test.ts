@@ -98,10 +98,11 @@ describe("temporary demo account retention", () => {
     expect(form).toContain("Skip email verification and continue");
     expect(form).toContain("DEMO_ACCOUNT_RETENTION_NOTICE");
     expect(scheduledFunction).toContain('schedule: "*/15 * * * *"');
-    expect(scheduledFunction).toContain("demo_expires_at <= now()");
+    expect(scheduledFunction).toContain("private.list_expired_demo_accounts($1)");
     expect(migration).toContain("private.delete_expired_demo_account");
     expect(migration).toContain("demo_expires_at <= pg_catalog.now()");
     expect(fixtureExclusionMigration).toContain("private.list_expired_demo_accounts");
+    expect(fixtureExclusionMigration).toContain("demo_expires_at <= pg_catalog.now()");
     expect(fixtureExclusionMigration).toContain("private.delete_expired_demo_account");
     expect(fixtureExclusionMigration).toContain("daniel.carter@example.com");
     expect(fixtureExclusionMigration).toContain("maya.thompson@example.com");
