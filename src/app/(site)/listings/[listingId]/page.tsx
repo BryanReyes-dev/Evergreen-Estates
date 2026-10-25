@@ -12,6 +12,7 @@ import { getMediaType } from "@/db/supabase/util/MediaType";
 import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { listings } from "@/db/schema";
 import { getAuth } from "@/lib/auth";
+import { isGifMediaSource } from "@/lib/media/media-source";
 
 async function canManageListing(listingId: string): Promise<boolean> {
   try {
@@ -50,16 +51,16 @@ function FeaturedListingVideo({
   title: string;
   captionSrc?: string;
 }) {
-  if (captionSrc) {
-    return (
-      <video
-        src={src}
-        controls
-        playsInline
-        preload="metadata"
-        className="max-h-[70vh] w-full bg-black object-contain"
-        aria-label={title + " featured video"}
-      >
+  return (
+    <video
+      src={src}
+      controls
+      playsInline
+      preload="metadata"
+      className="max-h-[70vh] w-full bg-black object-contain"
+      aria-label={title + " featured video"}
+    >
+      {captionSrc ? (
         <track
           kind="captions"
           src={captionSrc}
@@ -67,16 +68,8 @@ function FeaturedListingVideo({
           label="English captions"
           default
         />
-      </video>
-    );
-  }
-
-  return (
-    <div className="flex min-h-64 w-full items-center justify-center bg-black px-5 text-center text-white">
-      <p className="max-w-xl text-sm text-white/80">
-        Video playback is unavailable until the listing owner uploads English captions.
-      </p>
-    </div>
+      ) : null}
+    </video>
   );
 }
 
@@ -133,6 +126,7 @@ export default async function ListingDetails({
               alt={listing.title + " featured property media"}
               className="object-cover"
               priority
+              unoptimized={isGifMediaSource(featuredMedia.src)}
             />
           </div>
         )
