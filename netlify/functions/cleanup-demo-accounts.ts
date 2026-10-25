@@ -154,8 +154,8 @@ export default async function cleanupDemoAccounts(): Promise<Response> {
     return Response.json({ error: "DEMO_CLEANUP_FAILED" }, { status: 500 });
   } finally {
     await Promise.all([
-      authDb?.end({ timeout: 5 }),
-      appDb?.end({ timeout: 5 }),
-    ].filter(Boolean));
+      Promise.resolve(authDb?.end({ timeout: 5 })),
+      Promise.resolve(appDb?.end({ timeout: 5 })),
+    ]);
   }
 }
