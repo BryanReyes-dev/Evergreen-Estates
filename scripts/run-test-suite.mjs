@@ -110,7 +110,7 @@ const suites = {
   },
   "media-display": {
     description:
-      "GIF source URL detection used to bypass redundant Netlify Image CDN requests for animated media.",
+      "GIF source URL detection and optional-caption video-player rendering.",
     paths: ["tests/unit/media-display.test.ts"],
   },
   avatar: {
