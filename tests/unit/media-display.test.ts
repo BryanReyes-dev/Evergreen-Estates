@@ -51,7 +51,7 @@ describe("listing video playback", () => {
       }),
     );
 
-    expect(markup).toContain("autoplay");
+    expect(markup).toMatch(/\sautoplay(?=\s|=|>)/i);
     expect(markup).toContain("muted");
     expect(markup).toContain("loop");
   });
@@ -61,7 +61,7 @@ describe("listing video playback", () => {
       createElement(ListingVideoPlayer, baseProps),
     );
 
-    expect(markup).not.toContain("autoplay");
+    expect(markup).not.toMatch(/\sautoplay(?=\s|=|>)/i);
   });
 
   it("adds an English caption track when a VTT URL is available", () => {
