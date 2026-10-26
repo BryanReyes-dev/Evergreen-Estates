@@ -78,8 +78,11 @@ export async function PATCH(request: Request) {
           searchPath: string;
           resolvedListingsTable: string | null;
           publicListingsTable: string | null;
+          isExpectedAppRole: boolean;
           canSelectPublicListings: boolean;
           canUseReadRole: boolean;
+          publicListingIdVisible: boolean;
+          resolvedListingIdVisible: boolean;
           visiblePublicListingCount: number;
           visibleResolvedListingCount: number;
         };
@@ -94,8 +97,11 @@ export async function PATCH(request: Request) {
             searchPath: sql<string>`current_setting('search_path')`,
             resolvedListingsTable: sql<string | null>`to_regclass('listings')::text`,
             publicListingsTable: sql<string | null>`to_regclass('public.listings')::text`,
+            isExpectedAppRole: sql<boolean>`current_user = 'evergreen_app'`,
             canSelectPublicListings: sql<boolean>`has_table_privilege(current_user, 'public.listings', 'SELECT')`,
             canUseReadRole: sql<boolean>`pg_has_role(current_user, 'evergreen_read', 'USAGE')`,
+            publicListingIdVisible: sql<boolean>`exists (select 1 from public.listings where id = ${listingId}::uuid)`,
+            resolvedListingIdVisible: sql<boolean>`exists (select 1 from listings where id = ${listingId}::uuid)`,
             visiblePublicListingCount: sql<number>`(select count(*)::int from public.listings)`,
             visibleResolvedListingCount: sql<number>`(select count(*)::int from listings)`,
           }).limit(1);
