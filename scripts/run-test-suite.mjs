@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 const suites = {
   all: {
     description:
-      "Full suite: pure unit tests, mocked HTTP Route Handler tests, and read-only PostgreSQL permission integration tests.",
+      "All discovered tests under tests/**: unit tests, mocked HTTP Route Handler tests, and opt-in read-only PostgreSQL permission integration tests.",
     paths: ["tests"],
     integration: true,
   },
@@ -110,7 +110,7 @@ const suites = {
   },
   "media-display": {
     description:
-      "GIF source URL detection and optional-caption video-player rendering.",
+      "GIF source URL detection and video-player markup with optional captions, muted autoplay, and looping.",
     paths: ["tests/unit/media-display.test.ts"],
   },
   "demo-retention": {

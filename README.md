@@ -97,79 +97,62 @@ Never use the runtime read-only role or auth role for migrations. Do not edit th
 
 ## Testing
 
-Run checks and tests from the repository root with Vite+.
+Run test commands from the repository root with Vite+.
 
-### Main commands
+### One command for the complete test suite
 
-    # Formatting, lint, and static/type checks
-    vp check
+Before opening a PR or reviewing a substantial change, run:
 
-    # Run the checks without the formatting stage
-    vp check --no-fmt
+```sh
+vp run test:all
+```
 
-    # Default test suite (database integration remains opt-in)
-    vp test
+This is the canonical all-tests command. It runs every discovered test file under `tests/**/*.test.ts`, covering deterministic unit tests, mocked API Route Handler tests, and read-only PostgreSQL permission integration tests. The suite runner explicitly enables the opt-in database tests for this command.
 
-    # Fast isolated unit + mocked API tests; no database connection
-    vp run test:fast
+**Database requirement:** set `DRIZZLE_DATABASE_URL` in your local `.env` to the intended database using the restricted `evergreen_runtime` role. The integration tests are read-only, but still verify that the connection points to the intended environment before running. Do not aim test commands at an unintended project.
 
-    # Run suites separately
-    vp run test:unit
-    vp run test:api
+The plain `vp test` command runs Vite+'s test runner directly and does not enable the opt-in database integration suite. Use `vp run test:all` when you need the complete current test suite in one command.
 
-    # GIF/media-display and optional-caption/autoplay regression tests
-    npm run test:media-display
+### Suite categories
 
-    # Demo-mode auth bypass and 24-hour retention/cleanup tests
-    npm run test:demo-retention
-
-    # Read-only PostgreSQL permission tests
-    vp run test:integration
-    vp run test:db-permissions
-
-    # Full unit + mocked API + read-only database permission suite
-    vp run test:all
-
-    # Production build
-    npm run build
-
-The database integration suites require DRIZZLE_DATABASE_URL to use the restricted evergreen_runtime role. They are intended for read-only permission checks, not fixture population. Avoid running them against an unintended project. A passing unit/API suite does not replace browser, email-delivery, and deployment verification.
-
-### Focused test aliases
-
-Use a specific alias while iterating; all aliases below are defined in package.json.
-
-| Alias | Primary coverage |
+| Command | What it runs |
 |---|---|
-| test:seed-data | Fixture counts, relationships, timestamps, contact values, and media manifest integrity |
-| test:account-preferences | Preference defaults and accepted sort/layout values |
-| test:auth-config | Email verification, token lifetime, reset-session revocation, and rate limits |
-| test:fixture-auth | Allowlist for exact synthetic fixture identities |
-| test:listing-collection | Listing search parsing and create validation/ownership rules |
-| test:listing-item | Listing detail behavior and owner-scoped update/delete |
-| test:listing-media | Media ordering, reorder validation, and stale-write conflicts |
-| test:reviews | Review authentication, validation, author-scoped operations |
-| test:seller-profiles | Seller enrollment/update validation and contact preferences |
-| test:saved-listings | Saved-home authentication, user-ID protection, and UUID/state validation |
-| test:account-profile | Account preferences and avatar URL handling |
-| test:media-upload | Upload URL/completion input and authorization checks |
-| test:media-delete | Media ownership, registration, and cleanup ordering |
-| test:media-captions | WebVTT validation and authenticated video-caption upload rules |
-| test:media-display | GIF URL detection and video-player rendering with/without captions; checks muted autoplay/loop markup |
-| test:demo-retention | Demo auth opt-in, account expiry, cleanup ordering/failure isolation, and demo skip-button notice |
-| test:media-filenames | Allowed extensions, path traversal, and filename length |
-| test:media-limits | Decimal 50,000,000-byte media ceiling |
-| test:avatar | Avatar upload authentication and image-signature validation |
-| test:db-permissions | Read-only allowed/denied PostgreSQL permission checks |
+| `vp run test:all` | All unit, API, and opt-in read-only database integration tests. |
+| `vp run test:fast` | Unit tests and mocked API tests; no database connection. Use for a quick local feedback loop. |
+| `vp run test:unit` | The deterministic tests under `tests/unit/`. |
+| `vp run test:api` | Mocked HTTP Route Handler tests under `tests/api/`; authentication, database, and Storage dependencies are isolated. |
+| `vp run test:integration` | Read-only PostgreSQL permission integration tests under `tests/integration/`; requires the restricted runtime connection. |
 
-For the lower-level runner, individual categories/files can also be called directly:
+### Quality checks outside the test suite
 
-    vp test run tests/unit
-    vp test run tests/api
-    vp test run tests/api/listings/listings-collection.test.ts
-    vp test run tests/unit/auth-configuration.test.ts
+The all-tests command runs tests; it does not replace formatting, linting, static/type checks, a production build, or real-browser checks. Run these separately when preparing a release:
 
-The suite runner prints each selected suite's purpose and paths to the terminal. `test:media-display` is a focused unit suite for the shared video player and GIF URL handling; it does not verify that a browser or production host actually starts media playback. The repository does not configure a GitHub Actions quality workflow on this branch; do not assume a hosted CI job has run.
+```sh
+# Formatting, lint, and static/type checks
+vp check
+
+# Same checks without the formatting stage
+vp check --no-fmt
+
+# Production Next.js build
+npm run build
+```
+
+Automated tests currently run in Node. They do not by themselves verify browser playback, complete user journeys against the live site, verification/reset email delivery, or Netlify deployment health. Follow the relevant manual/browser and deployment checks as well.
+
+### Focused test suites
+
+Use a focused alias while developing to run only the relevant coverage. The detailed inventory—including each alias, the exact test file(s), and what each suite verifies—is maintained in [tests/README.md](./tests/README.md).
+
+Examples:
+
+```sh
+vp run test:media-display
+vp run test:saved-listings
+vp run test:db-permissions
+```
+
+For a single isolated unit/API file, run `vp test run tests/path/to/file.test.ts`. To watch one file, use `vp test watch tests/path/to/file.test.ts`. Prefer the suite aliases documented in `tests/README.md` for the database integration tests so the runner configures the required opt-in flag.
 
 ## Production
 
