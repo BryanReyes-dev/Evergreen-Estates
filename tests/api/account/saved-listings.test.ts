@@ -126,8 +126,7 @@ describe("GET /api/v1/users/me/saved-listings — current user's saved home IDs"
 
 describe("PATCH /api/v1/users/me/saved-listings — successful save transition", () => {
   it("checks listing existence and writes the change through the authenticated user's transaction", async () => {
-    const listingForShare = vi.fn().mockResolvedValue([{ id: LISTING_ID }]);
-    const selectLimit = vi.fn(() => ({ for: listingForShare }));
+    const selectLimit = vi.fn().mockResolvedValue([{ id: LISTING_ID }]);
     const selectWhere = vi.fn(() => ({ limit: selectLimit }));
     const selectFrom = vi.fn(() => ({ where: selectWhere }));
     const select = vi.fn(() => ({ from: selectFrom }));
@@ -155,8 +154,7 @@ describe("PATCH /api/v1/users/me/saved-listings — successful save transition",
   });
 
   it("distinguishes a listing visible to the read connection but missing to the save transaction", async () => {
-    const appListingForShare = vi.fn().mockResolvedValue([]);
-    const appSelectLimit = vi.fn(() => ({ for: appListingForShare }));
+    const appSelectLimit = vi.fn().mockResolvedValue([]);
     const appSelectWhere = vi.fn(() => ({ limit: appSelectLimit }));
     const appSelectFrom = vi.fn(() => ({ where: appSelectWhere }));
     const databaseContext = {
@@ -204,8 +202,7 @@ describe("PATCH /api/v1/users/me/saved-listings — successful save transition",
   });
 
   it("does not write a saved state for a listing that no longer exists", async () => {
-    const listingForShare = vi.fn().mockResolvedValue([]);
-    const selectLimit = vi.fn(() => ({ for: listingForShare }));
+    const selectLimit = vi.fn().mockResolvedValue([]);
     const selectWhere = vi.fn(() => ({ limit: selectLimit }));
     const selectFrom = vi.fn(() => ({ where: selectWhere }));
     const select = vi.fn(() => ({ from: selectFrom }));
