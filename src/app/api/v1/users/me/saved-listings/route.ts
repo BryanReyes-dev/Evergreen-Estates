@@ -66,7 +66,9 @@ export async function PATCH(request: Request) {
   try {
     const result = await withAppUserTransaction(userId, async (tx) => {
       const [listing] = await tx.select({ id: listings.id }).from(listings)
-        .where(eq(listings.id, listingId)).limit(1).for("key share");
+        // A plain SELECT is intentional here: locking reads also invoke UPDATE RLS policies,
+        // which only expose listings owned by the current user.
+        .where(eq(listings.id, listingId)).limit(1);
       if (!listing) {
         // Capture the effective context of the *same* transaction/connection.
         // This distinguishes RLS/role issues from different DB/schema resolution.
