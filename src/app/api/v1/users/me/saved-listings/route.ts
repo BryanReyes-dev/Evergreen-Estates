@@ -104,7 +104,7 @@ export async function PATCH(request: Request) {
             resolvedListingIdVisible: sql<boolean>`exists (select 1 from listings where id = ${listingId}::uuid)`.as("resolvedListingIdVisible"),
             visiblePublicListingCount: sql<number>`(select count(*)::int from public.listings)`.as("visiblePublicListingCount"),
             visibleResolvedListingCount: sql<number>`(select count(*)::int from listings)`.as("visibleResolvedListingCount"),
-          }).limit(1);
+          });
           databaseContext = context ?? null;
         } catch (diagnosticError) {
           console.error("Could not capture saved-home database context.", diagnosticError);
