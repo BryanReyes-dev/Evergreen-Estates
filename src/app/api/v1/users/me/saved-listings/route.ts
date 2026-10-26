@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { withAppUserTransaction } from "@/db/drizzle/app-client";
+import { getDrizzleDb } from "@/db/drizzle/client";
 import { listings, users } from "@/db/schema";
 import { getAuthenticatedUserId } from "@/lib/api/get-authenticated-user-id";
 
@@ -79,7 +80,33 @@ export async function PATCH(request: Request) {
       return { kind: "updated" as const, savedListingIds: updatedUser.savedListingIds };
     });
 
-    if (result.kind === "listing-not-found") return errorResponse("LISTING_NOT_FOUND", "That listing is no longer available.", 404);
+    if (result.kind === "listing-not-found") {
+      // Cross-check with the public read connection so a database/role mismatch
+      // is not reported as if the property's record had been deleted.
+      try {
+        const [visibleListing] = await getDrizzleDb()
+          .select({ id: listings.id })
+          .from(listings)
+          .where(eq(listings.id, listingId))
+          .limit(1);
+
+        if (visibleListing) {
+          console.error("Saved-home listing lookup mismatch between app and read connections.", {
+            listingId,
+          });
+          return errorResponse(
+            "LISTING_LOOKUP_MISMATCH",
+            "This property is visible in the listing catalog, but the save service cannot find it. The app's database connections or permissions are inconsistent. Refresh and try again; if it continues, report this error.",
+            503,
+          );
+        }
+      } catch (diagnosticError) {
+        // Preserve the original not-found response if the diagnostic read fails.
+        console.error("Could not cross-check the missing saved-home listing.", diagnosticError);
+      }
+
+      return errorResponse("LISTING_NOT_FOUND", "That listing is no longer available.", 404);
+    }
     if (result.kind === "user-not-found") return errorResponse("USER_NOT_FOUND", "Your account could not be found.", 404);
     if (result.kind === "limit-reached") return errorResponse("SAVED_LISTINGS_LIMIT_REACHED", "You can save up to 100 homes. Remove a saved home before adding another.", 409);
     return NextResponse.json({ data: { savedListingIds: result.savedListingIds } satisfies SavedListingIdsResult }, { status: 200 });

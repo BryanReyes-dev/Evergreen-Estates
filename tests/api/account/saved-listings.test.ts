@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 const mocks = vi.hoisted(() => ({
   getAuthenticatedUserId: vi.fn(),
   withAppUserTransaction: vi.fn(),
+  getDrizzleDb: vi.fn(),
 }));
 
 vi.mock("@/lib/api/get-authenticated-user-id", () => ({ getAuthenticatedUserId: mocks.getAuthenticatedUserId }));
 vi.mock("@/db/drizzle/app-client", () => ({ withAppUserTransaction: mocks.withAppUserTransaction }));
+vi.mock("@/db/drizzle/client", () => ({ getDrizzleDb: mocks.getDrizzleDb }));
 vi.mock("server-only", () => ({}));
 
 import { GET, PATCH } from "@/app/api/v1/users/me/saved-listings/route";
@@ -34,6 +36,12 @@ function request(body: unknown, method = "PATCH") {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getAuthenticatedUserId.mockResolvedValue(USER_ID);
+  const readLimit = vi.fn().mockResolvedValue([]);
+  const readWhere = vi.fn(() => ({ limit: readLimit }));
+  const readFrom = vi.fn(() => ({ where: readWhere }));
+  mocks.getDrizzleDb.mockReturnValue({
+    select: vi.fn(() => ({ from: readFrom })),
+  });
 });
 
 describe("GET /api/v1/users/me/saved-listings — private saved-home reads", () => {
@@ -144,6 +152,32 @@ describe("PATCH /api/v1/users/me/saved-listings — successful save transition",
       expect.any(Function),
     );
     expect(update).toHaveBeenCalledOnce();
+  });
+
+  it("distinguishes a listing visible to the read connection but missing to the save transaction", async () => {
+    const appListingForShare = vi.fn().mockResolvedValue([]);
+    const appSelectLimit = vi.fn(() => ({ for: appListingForShare }));
+    const appSelectWhere = vi.fn(() => ({ limit: appSelectLimit }));
+    const appSelectFrom = vi.fn(() => ({ where: appSelectWhere }));
+    const appSelect = vi.fn(() => ({ from: appSelectFrom }));
+    const update = vi.fn();
+
+    mocks.withAppUserTransaction.mockImplementation(
+      async (_userId, operation) => operation({ select: appSelect, update }),
+    );
+
+    const readLimit = vi.fn().mockResolvedValue([{ id: LISTING_ID }]);
+    const readWhere = vi.fn(() => ({ limit: readLimit }));
+    const readFrom = vi.fn(() => ({ where: readWhere }));
+    const readSelect = vi.fn(() => ({ from: readFrom }));
+    mocks.getDrizzleDb.mockReturnValue({ select: readSelect });
+
+    const response = await PATCH(request({ listingId: LISTING_ID, saved: true }));
+
+    expect(response.status).toBe(503);
+    expect(errorCode(await bodyOf(response))).toBe("LISTING_LOOKUP_MISMATCH");
+    expect(readSelect).toHaveBeenCalledOnce();
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("does not write a saved state for a listing that no longer exists", async () => {
