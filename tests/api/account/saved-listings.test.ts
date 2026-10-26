@@ -175,9 +175,12 @@ describe("PATCH /api/v1/users/me/saved-listings — successful save transition",
       visiblePublicListingCount: 13,
       visibleResolvedListingCount: 13,
     };
+    const diagnosticLimit = vi.fn().mockResolvedValue([databaseContext]);
+    const diagnosticWhere = vi.fn(() => ({ limit: diagnosticLimit }));
+    const diagnosticFrom = vi.fn(() => ({ where: diagnosticWhere }));
     const appSelect = vi.fn()
       .mockImplementationOnce(() => ({ from: appSelectFrom }))
-      .mockResolvedValueOnce([databaseContext]);
+      .mockImplementationOnce(() => ({ from: diagnosticFrom }));
     const update = vi.fn();
 
     mocks.withAppUserTransaction.mockImplementation(
