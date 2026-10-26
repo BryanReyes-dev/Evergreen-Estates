@@ -209,10 +209,55 @@ Never run apply mode from a public endpoint, application startup, or the Netlify
 
 ## Future Improvements
 
-- **Netlify release validation:** verify the actual site settings, preview and production variables, production build, runtime database connectivity, signed media images, and authentication email links. Record outcomes in agents-files/Agents_Context.md.
-- **Authentication and email:** finish the end-to-end signup, verification, signin/signout, reset, and session-revocation checks on the deployed hostname after Resend sender verification.
-- **Functional browser testing:** run manual workflows for listing ownership, seller publish/unpublish privacy, reviews, saved homes, media upload/reorder/delete/captions, account preferences, error/empty/loading states, keyboard use, and mobile widths.
-- **Figma comparison:** compare navigation, listing cards/search controls, listing detail/gallery, account and seller forms, spacing/type, colors, focus and validation states. Do not claim pixel alignment until a comparison is performed.
-- **Safer reusable fixture tooling:** make the population target configurable only through an explicit, reviewed safety mechanism rather than weakening the current project guard; keep dry-run read-only and preserve non-fixture data/objects.
-- **Migration provenance:** keep the 0011 checksum mismatch documented as an exception unless the authentic historical migration bytes can be recovered. Never modify the existing ledger row as a shortcut.
-- **Operations:** decide on an appropriate release/rollback procedure, backup/restore check, error monitoring, and environment separation for production versus previews.
+The items below are proposals, not implemented features or release guarantees. Prioritize the audit follow-ups before expanding the product, then select further work based on user needs, risk, and available time.
+
+### Priority 0 — audit follow-ups before a broader launch
+
+- **Reconcile migration files with Drizzle's migration journal.** The repository contains drizzle/0023_restricted_demo_account_lookup.sql, drizzle/0024_exclude_seed_accounts_from_demo_cleanup.sql and drizzle/0026_app_select_listings_for_saved_homes.sql, but these tags are absent from drizzle/meta/_journal.json. The journal currently lists 0022 followed by 0025. The standard Drizzle migration runner discovers migrations from the journal, so these unjournaled files will not automatically run through that path. Reconcile the migration chain and live database state using a reviewed, forward-only approach; verify effective grants, policies and cleanup functions against the intended database. Do not rewrite historical migration ledger rows to conceal drift. Keep ENABLE_DEMO_AUTH_BYPASS=false until the seed-account deletion guard is verified in the intended database.
+- **Align the source schema and migrations.** Migration 0026 creates an RLS policy that is not declared in src/db/schema.ts. Bring the canonical Drizzle schema, forward migrations and live-policy expectations back into agreement, then add a check that catches future drift.
+- **Remove internal database diagnostics from client responses.** The saved-homes mismatch path in src/app/api/v1/users/me/saved-listings/route.ts can return database name, roles, search path, relation resolution and row counts to the caller. Return only a safe error code/message to clients; retain detailed diagnostics in appropriately protected server-side logs.
+- **Validate listing-media bytes, not only metadata.** Upload completion currently compares Storage content-type metadata with the filename extension. Add server-side file-signature/format validation appropriate to each supported format, and consider safe image/video processing or malware scanning. Client MIME types and Storage metadata alone do not prove that a file's contents match its claimed type.
+- **Add a pull-request quality gate.** No GitHub Actions quality workflow was found in the current repository tree. Add a controlled workflow for vp check, vp run test:all, npm run build, dependency/secret scanning and migration/schema checks. Keep database credentials out of untrusted fork jobs; use least-privilege staging credentials only where a live integration run is necessary.
+
+### Security hardening and penetration testing
+
+- **Evaluate [Aikido Security](https://www.aikido.dev/) for code and dependency scanning.** Assess relevant offerings for dependency/SCA, SAST, secrets detection, DAST and API scanning. See [Aikido pricing and product modules](https://www.aikido.dev/pricing) and the [Aikido Pentest overview](https://help.aikido.dev/pentests/aikido-pentest). Verify the exact features, scope, pricing and data-handling terms before adoption.
+- **Run an authorized penetration test against a staging or Deploy Preview first.** Use test accounts and disposable fixtures, scope only domains and APIs you control, and exclude unrelated systems and real customer data. Review findings manually, prioritize validated authorization/IDOR, session, upload, rate-limit and business-logic issues, fix them, then retest. An automated scan is useful evidence, not a security certification or substitute for expert review.
+- **Add API abuse controls.** Assess rate limits and quotas for listing/media uploads, completion retries, caption uploads, reviews and other authenticated mutations. Ensure controls work across serverless instances, return consistent 429 responses, and do not depend solely on client-side checks.
+- **Strengthen file and request boundaries.** Apply upload/body limits as early as the hosting runtime permits; define per-account storage/upload quotas; decide whether external avatar URLs should be restricted or proxied; and add security headers/CSP after testing compatibility with Next.js, Netlify image delivery and auth callbacks.
+- **Expand negative security tests.** Add regression tests for cross-user IDOR attempts, unpublished listing/review visibility, oversized and mislabeled uploads, CSRF/origin boundaries where applicable, rate limits, session expiry/revocation and cleanup failure cases. Review public errors and logs for secrets, tokens, personal data and infrastructure details.
+
+### Administration and privileged support access
+
+There is no first-class admin console or admin-role workflow identified in the current application source. **Do not implement a hidden backdoor**—such as a secret URL, magic header, shared master password or environment flag that bypasses sessions/RLS. If operational administration becomes necessary, build explicit, auditable privileged access instead:
+
+- Define narrow roles such as read-only support, moderator and administrator. Authorize every server action through centralized server-side permission checks. Keep normal user/app-write roles restricted; do not reuse DIRECT_URL, a database-owner credential or the Supabase secret key as a general-purpose admin identity.
+- Require MFA/passkeys for privileged accounts, use least privilege and separate privileged credentials, and log actor, action, target, time, outcome and reason for sensitive changes.
+- Make emergency break-glass access time-limited, approved where practical, monitored and audited. Default support tools to read-only; require stronger authorization and confirmation for destructive actions.
+- Add tests for privilege escalation, cross-user access, admin-session expiry and audit-log completeness before exposing an administrative surface.
+
+### AI integration ideas
+
+- **Listing-writing assistant:** suggest clearer descriptions, title drafts, structured highlights and accessibility alt text. Sellers should review and approve generated content before publication.
+- **Natural-language home search:** let users describe needs conversationally, translate requests into existing structured filters and explain which listing fields matched. Ground answers in current listing data and show the source listings rather than inventing facts.
+- **Summarization and moderation support:** produce concise listing summaries, detect likely duplicates or incomplete fields, and flag suspicious listings/uploads for human review. Do not automate enforcement solely from model output.
+- **AI security and cost controls:** keep provider credentials server-side; never log them or send auth secrets/private account data to a model; add prompt-injection defenses for user/listing text, rate limits, token budgets, timeout/retry handling and evaluation tests. If adding bring-your-own-key support, store keys securely and isolate each user's credentials and quotas; never put provider keys in browser code.
+- **Real-estate fairness:** do not infer protected characteristics or generate discriminatory eligibility/ranking recommendations. Review recommendations for fairness, privacy, explainability and applicable housing rules before release.
+
+### Product, performance and UX improvements
+
+- **Paginate search and seller listings.** getFilteredListings currently fetches all matching listings and the UI sorts results in memory. Add server-side pagination/cursor-based navigation, stable allowed sort orders, query limits and relevant indexes.
+- **Reduce Storage request fan-out.** Listing results resolve signed media URLs per listing, including a Storage folder lookup per listing. Batch/cache where safe, avoid repeated scans/signing, define signed-URL expiry behavior, and measure performance under realistic data sizes.
+- **Improve media delivery.** Consider image resizing/compression, thumbnail generation, video poster frames/transcoding and clear storage-retention/quota policies. Keep the bucket private and preserve authenticated upload capabilities and signed-URL delivery.
+- **Add discovery features as user needs justify them.** Possible follow-ups include map/geocoding search, listing comparison, saved-search alerts, inquiry/contact tracking, notifications, price-history integrations and richer seller lead management. Integrate external property data only with appropriate licensing, freshness labels and source attribution.
+- **Complete account and trust workflows.** Consider verified sign-in email changes, account export/deletion, privacy/retention documentation, report-listing flows and user-facing moderation/appeal processes.
+- **Improve SEO and accessibility.** Add route-specific metadata for listing/seller pages, canonical and social/Open Graph tags, sitemap/robots where appropriate, and structured data only where accurate. Add automated accessibility checks and manual keyboard/screen-reader reviews.
+
+### Reliability, observability and release practice
+
+- **Add browser end-to-end coverage.** Use a browser runner such as Playwright for signup/email verification, login/reset, listing CRUD, owner isolation, saved homes, reviews, avatar updates, media upload/reorder/delete/captions, responsive states and important error paths. Use disposable test accounts and an isolated environment.
+- **Verify external systems separately.** Keep live email-delivery checks, private Storage signed URL/upload/delete tests, scheduled cleanup verification and Netlify Deploy Preview/production smoke tests distinct from mocked unit/API tests.
+- **Add monitoring and recovery practice.** Evaluate structured error tracking, uptime checks, alerts for database/Storage/email failures and demo-cleanup backlog, database backup/restore drills, and a documented rollback/deploy procedure.
+- **Track performance and dependency risk.** Establish representative data-volume/load tests, dependency and license/SBOM reporting, and a routine for evaluating framework/security updates. Tune indexes and RLS expressions from measured query plans rather than removing indexes solely because the current dataset is small.
+- **Keep documentation synchronized.** Update README.md, agents-files/ARCHITECTURE.md and agents-files/Agents_Context.md after migration, permission, deployment or test-workflow changes. Mark historical live checks with dates and do not treat source presence or a passing unit suite as proof of production behavior.
+
