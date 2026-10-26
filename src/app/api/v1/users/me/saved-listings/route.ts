@@ -90,20 +90,20 @@ export async function PATCH(request: Request) {
         let databaseContext: DatabaseContext | null = null;
         try {
           const [context] = await tx.select({
-            databaseName: sql<string>`current_database()`,
-            currentRole: sql<string>`current_user`,
-            sessionRole: sql<string>`session_user`,
-            currentSchema: sql<string | null>`current_schema()`,
-            searchPath: sql<string>`current_setting('search_path')`,
-            resolvedListingsTable: sql<string | null>`to_regclass('listings')::text`,
-            publicListingsTable: sql<string | null>`to_regclass('public.listings')::text`,
-            isExpectedAppRole: sql<boolean>`current_user = 'evergreen_app'`,
-            canSelectPublicListings: sql<boolean>`has_table_privilege(current_user, 'public.listings', 'SELECT')`,
-            canUseReadRole: sql<boolean>`pg_has_role(current_user, 'evergreen_read', 'USAGE')`,
-            publicListingIdVisible: sql<boolean>`exists (select 1 from public.listings where id = ${listingId}::uuid)`,
-            resolvedListingIdVisible: sql<boolean>`exists (select 1 from listings where id = ${listingId}::uuid)`,
-            visiblePublicListingCount: sql<number>`(select count(*)::int from public.listings)`,
-            visibleResolvedListingCount: sql<number>`(select count(*)::int from listings)`,
+            databaseName: sql<string>`current_database()`.as("databaseName"),
+            currentRole: sql<string>`current_user`.as("currentRole"),
+            sessionRole: sql<string>`session_user`.as("sessionRole"),
+            currentSchema: sql<string | null>`current_schema()`.as("currentSchema"),
+            searchPath: sql<string>`current_setting('search_path')`.as("searchPath"),
+            resolvedListingsTable: sql<string | null>`to_regclass('listings')::text`.as("resolvedListingsTable"),
+            publicListingsTable: sql<string | null>`to_regclass('public.listings')::text`.as("publicListingsTable"),
+            isExpectedAppRole: sql<boolean>`current_user = 'evergreen_app'`.as("isExpectedAppRole"),
+            canSelectPublicListings: sql<boolean>`has_table_privilege(current_user, 'public.listings', 'SELECT')`.as("canSelectPublicListings"),
+            canUseReadRole: sql<boolean>`pg_has_role(current_user, 'evergreen_read', 'USAGE')`.as("canUseReadRole"),
+            publicListingIdVisible: sql<boolean>`exists (select 1 from public.listings where id = ${listingId}::uuid)`.as("publicListingIdVisible"),
+            resolvedListingIdVisible: sql<boolean>`exists (select 1 from listings where id = ${listingId}::uuid)`.as("resolvedListingIdVisible"),
+            visiblePublicListingCount: sql<number>`(select count(*)::int from public.listings)`.as("visiblePublicListingCount"),
+            visibleResolvedListingCount: sql<number>`(select count(*)::int from listings)`.as("visibleResolvedListingCount"),
           }).limit(1);
           databaseContext = context ?? null;
         } catch (diagnosticError) {
