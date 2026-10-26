@@ -17,7 +17,7 @@ const USER_ID = "22222222-2222-4222-8222-222222222222";
 const LISTING_ID = "11111111-1111-4111-8111-111111111111";
 const URL = "http://localhost/api/v1/users/me/saved-listings";
 
-type ApiBody = { error?: string | { code?: string; message?: string }; data?: unknown };
+type ApiBody = { error?: string | { code?: string; message?: string }; data?: unknown; diagnostics?: Record<string, unknown> };
 async function bodyOf(response: Response): Promise<ApiBody> {
   return response.json() as Promise<ApiBody>;
 }
@@ -159,7 +159,27 @@ describe("PATCH /api/v1/users/me/saved-listings — successful save transition",
     const appSelectLimit = vi.fn(() => ({ for: appListingForShare }));
     const appSelectWhere = vi.fn(() => ({ limit: appSelectLimit }));
     const appSelectFrom = vi.fn(() => ({ where: appSelectWhere }));
-    const appSelect = vi.fn(() => ({ from: appSelectFrom }));
+    const databaseContext = {
+      databaseName: "postgres",
+      currentRole: "evergreen_app",
+      sessionRole: "evergreen_app",
+      currentSchema: "public",
+      searchPath: '"$user", public',
+      resolvedListingsTable: "public.listings",
+      publicListingsTable: "public.listings",
+      isExpectedAppRole: true,
+      canSelectPublicListings: true,
+      canUseReadRole: true,
+      publicListingIdVisible: false,
+      resolvedListingIdVisible: false,
+      visiblePublicListingCount: 13,
+      visibleResolvedListingCount: 13,
+    };
+    const appSelect = vi.fn()
+      .mockImplementationOnce(() => ({ from: appSelectFrom }))
+      .mockImplementationOnce(() => ({
+        limit: vi.fn().mockResolvedValue([databaseContext]),
+      }));
     const update = vi.fn();
 
     mocks.withAppUserTransaction.mockImplementation(
@@ -175,7 +195,9 @@ describe("PATCH /api/v1/users/me/saved-listings — successful save transition",
     const response = await PATCH(request({ listingId: LISTING_ID, saved: true }));
 
     expect(response.status).toBe(503);
-    expect(errorCode(await bodyOf(response))).toBe("LISTING_LOOKUP_MISMATCH");
+    const responseBody = await bodyOf(response);
+    expect(errorCode(responseBody)).toBe("LISTING_LOOKUP_MISMATCH");
+    expect(responseBody.diagnostics).toEqual(databaseContext);
     expect(readSelect).toHaveBeenCalledOnce();
     expect(update).not.toHaveBeenCalled();
   });
