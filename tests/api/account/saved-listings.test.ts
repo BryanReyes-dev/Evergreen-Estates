@@ -177,9 +177,7 @@ describe("PATCH /api/v1/users/me/saved-listings — successful save transition",
     };
     const appSelect = vi.fn()
       .mockImplementationOnce(() => ({ from: appSelectFrom }))
-      .mockImplementationOnce(() => ({
-        limit: vi.fn().mockResolvedValue([databaseContext]),
-      }));
+      .mockResolvedValueOnce([databaseContext]);
     const update = vi.fn();
 
     mocks.withAppUserTransaction.mockImplementation(
