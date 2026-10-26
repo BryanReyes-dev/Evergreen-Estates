@@ -12,8 +12,14 @@ type SavedListingIdsResult = { savedListingIds: string[] };
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function errorResponse(code: string, message: string, status: number) {
-  return NextResponse.json({ error: { code, message } }, { status });
+function errorResponse(code: string, message: string, status: number, diagnostics?: object) {
+  return NextResponse.json(
+    {
+      error: { code, message },
+      ...(diagnostics ? { diagnostics } : {}),
+    },
+    { status },
+  );
 }
 
 export async function GET(request: Request) {
@@ -61,7 +67,45 @@ export async function PATCH(request: Request) {
     const result = await withAppUserTransaction(userId, async (tx) => {
       const [listing] = await tx.select({ id: listings.id }).from(listings)
         .where(eq(listings.id, listingId)).limit(1).for("key share");
-      if (!listing) return { kind: "listing-not-found" as const };
+      if (!listing) {
+        // Capture the effective context of the *same* transaction/connection.
+        // This distinguishes RLS/role issues from different DB/schema resolution.
+        type DatabaseContext = {
+          databaseName: string;
+          currentRole: string;
+          sessionRole: string;
+          currentSchema: string | null;
+          searchPath: string;
+          resolvedListingsTable: string | null;
+          publicListingsTable: string | null;
+          canSelectPublicListings: boolean;
+          canUseReadRole: boolean;
+          visiblePublicListingCount: number;
+          visibleResolvedListingCount: number;
+        };
+
+        let databaseContext: DatabaseContext | null = null;
+        try {
+          const [context] = await tx.select({
+            databaseName: sql<string>`current_database()`,
+            currentRole: sql<string>`current_user`,
+            sessionRole: sql<string>`session_user`,
+            currentSchema: sql<string | null>`current_schema()`,
+            searchPath: sql<string>`current_setting('search_path')`,
+            resolvedListingsTable: sql<string | null>`to_regclass('listings')::text`,
+            publicListingsTable: sql<string | null>`to_regclass('public.listings')::text`,
+            canSelectPublicListings: sql<boolean>`has_table_privilege(current_user, 'public.listings', 'SELECT')`,
+            canUseReadRole: sql<boolean>`pg_has_role(current_user, 'evergreen_read', 'USAGE')`,
+            visiblePublicListingCount: sql<number>`(select count(*)::int from public.listings)`,
+            visibleResolvedListingCount: sql<number>`(select count(*)::int from listings)`,
+          }).limit(1);
+          databaseContext = context ?? null;
+        } catch (diagnosticError) {
+          console.error("Could not capture saved-home database context.", diagnosticError);
+        }
+
+        return { kind: "listing-not-found" as const, databaseContext };
+      }
 
       const nextSavedListings = shouldSave
         ? sql`CASE
@@ -93,11 +137,13 @@ export async function PATCH(request: Request) {
         if (visibleListing) {
           console.error("Saved-home listing lookup mismatch between app and read connections.", {
             listingId,
+            databaseContext: result.databaseContext,
           });
           return errorResponse(
             "LISTING_LOOKUP_MISMATCH",
-            "This property is visible in the listing catalog, but the save service cannot find it. The app's database connections or permissions are inconsistent. Refresh and try again; if it continues, report this error.",
+            "This property is visible in the listing catalog, but the save service cannot find it. Check the diagnostics returned with this error.",
             503,
+            result.databaseContext ?? undefined,
           );
         }
       } catch (diagnosticError) {
