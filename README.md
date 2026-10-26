@@ -109,7 +109,7 @@ vp run test:all
 
 This is the canonical all-tests command. It runs every discovered test file under `tests/**/*.test.ts`, covering deterministic unit tests, mocked API Route Handler tests, and read-only PostgreSQL permission integration tests. The suite runner explicitly enables the opt-in database tests for this command.
 
-**Database requirement:** set `DRIZZLE_DATABASE_URL` in your local `.env` to the intended database using the restricted `evergreen_runtime` role. The integration tests are read-only, but still verify that the connection points to the intended environment before running. Do not aim test commands at an unintended project.
+**Database requirement:** set `DRIZZLE_DATABASE_URL` in your local `.env` to the intended database using the restricted `evergreen_runtime` role. Before running, double-check that the URL points to the intended environment; the integration suite verifies the connected role's allowed and denied database permissions and performs no writes. Do not aim test commands at an unintended project.
 
 The plain `vp test` command runs Vite+'s test runner directly and does not enable the opt-in database integration suite. Use `vp run test:all` when you need the complete current test suite in one command.
 
