@@ -71,9 +71,9 @@ Copy the environment template into a local ignored environment file and fill in 
 
 Next.js loads .env.local; Drizzle Kit imports dotenv/config, which reads .env by default. For local migration commands, make sure DIRECT_URL is actually available to the process (for example, through an ignored local .env file or the shell). Never commit .env, .env.local, credentials, or generated fixture passwords.
 
-Start the Next.js dev server:
+Start the Next.js dev server through Vite+:
 
-    npm run dev
+    vp run dev
 
 ### Architecture and security boundaries
 
@@ -121,6 +121,7 @@ The plain `vp test` command runs Vite+'s test runner directly and does not enabl
 | `vp run test:fast` | Unit tests and mocked API tests; no database connection. Use for a quick local feedback loop. |
 | `vp run test:unit` | The deterministic tests under `tests/unit/`. |
 | `vp run test:api` | Mocked HTTP Route Handler tests under `tests/api/`; authentication, database, and Storage dependencies are isolated. |
+| `vp run test:filters` | Listing filter URL-composition regression tests plus repeated-tag parsing in the listing API. |
 | `vp run test:integration` | Read-only PostgreSQL permission integration tests under `tests/integration/`; requires the restricted runtime connection. |
 
 ### Quality checks outside the test suite
@@ -134,8 +135,8 @@ vp check
 # Same checks without the formatting stage
 vp check --no-fmt
 
-# Production Next.js build
-npm run build
+# Production Next.js build through Vite+
+vp run build
 ```
 
 Automated tests currently run in Node. They do not by themselves verify browser playback, complete user journeys against the live site, verification/reset email delivery, or Netlify deployment health. Follow the relevant manual/browser and deployment checks as well.
@@ -158,7 +159,7 @@ For a single isolated unit/API file, run `vp test run tests/path/to/file.test.ts
 
 ### Netlify build configuration
 
-The repository includes netlify.toml with the build command npm run build, publish directory .next, and an allowlist for the configured Supabase image host used by Netlify Image CDN. Netlify's current Next.js adapter supports App Router, server rendering, Route Handlers, and image optimization; the typical build settings are next build and .next, and the committed npm run build command invokes next build. See [Netlify's Next.js setup guide](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/) and [Next.js build configuration values](https://docs.netlify.com/snippets/frameworks/nextjs-config-values/).
+The repository includes netlify.toml with the build command vp run build, publish directory .next, and an allowlist for the configured Supabase image host used by Netlify Image CDN. Vite+ runs the package script, and the package's build script invokes next build; Next.js remains the application framework and runtime. Netlify's current Next.js adapter supports App Router, server rendering, Route Handlers, and image optimization. See [Netlify's Next.js setup guide](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/) and [Next.js build configuration values](https://docs.netlify.com/snippets/frameworks/nextjs-config-values/).
 
 That is repository configuration, not proof of a successful Netlify build. Before promoting a deploy, verify the Netlify site is connected to the intended repository/branch, the preview build completes, environment variables are set for the right deploy contexts, and the production runtime works. Use a Deploy Preview before changing the public site.
 
@@ -217,7 +218,7 @@ The items below are proposals, not implemented features or release guarantees. P
 - **Align the source schema and migrations.** Migration 0026 creates an RLS policy that is not declared in src/db/schema.ts. Bring the canonical Drizzle schema, forward migrations and live-policy expectations back into agreement, then add a check that catches future drift.
 - **Remove internal database diagnostics from client responses.** The saved-homes mismatch path in src/app/api/v1/users/me/saved-listings/route.ts can return database name, roles, search path, relation resolution and row counts to the caller. Return only a safe error code/message to clients; retain detailed diagnostics in appropriately protected server-side logs.
 - **Validate listing-media bytes, not only metadata.** Upload completion currently compares Storage content-type metadata with the filename extension. Add server-side file-signature/format validation appropriate to each supported format, and consider safe image/video processing or malware scanning. Client MIME types and Storage metadata alone do not prove that a file's contents match its claimed type.
-- **Add a pull-request quality gate.** No GitHub Actions quality workflow was found in the current repository tree. Add a controlled workflow for vp check, vp run test:all, npm run build, dependency/secret scanning and migration/schema checks. Keep database credentials out of untrusted fork jobs; use least-privilege staging credentials only where a live integration run is necessary.
+- **Add a pull-request quality gate.** No GitHub Actions quality workflow was found in the current repository tree. Add a controlled workflow for vp check, vp run test:all, vp run build, dependency/secret scanning and migration/schema checks. Keep database credentials out of untrusted fork jobs; use least-privilege staging credentials only where a live integration run is necessary.
 
 ### Security hardening and penetration testing
 
