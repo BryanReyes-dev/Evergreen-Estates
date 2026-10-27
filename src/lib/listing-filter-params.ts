@@ -1,8 +1,41 @@
+import { SUPPORTED_LISTING_TAG_VALUES } from "@/lib/listing-constants";
+
 export type ListingFilterParamUpdate =
   | { type: "tags"; tags: readonly string[] }
   | { type: "query"; query: string }
   | { type: "price"; price: string | null }
   | { type: "clear" };
+
+const supportedTags = new Set<string>(SUPPORTED_LISTING_TAG_VALUES);
+
+export function normalizeListingTags(tags: readonly string[]): string[] {
+  return [
+    ...new Set(
+      tags
+        .map((tag) => tag.trim().toLowerCase())
+        .filter((tag) => supportedTags.has(tag)),
+    ),
+  ];
+}
+
+export function toggleListingTag(
+  currentTags: readonly string[],
+  tag: string,
+  isChecked: boolean,
+): string[] {
+  const normalizedTags = normalizeListingTags(currentTags);
+  const normalizedTag = tag.trim().toLowerCase();
+
+  if (!supportedTags.has(normalizedTag)) return normalizedTags;
+
+  if (isChecked) {
+    return normalizedTags.includes(normalizedTag)
+      ? normalizedTags
+      : [...normalizedTags, normalizedTag];
+  }
+
+  return normalizedTags.filter((selectedTag) => selectedTag !== normalizedTag);
+}
 
 /**
  * Apply one filter change to the latest known URL parameters.
@@ -20,13 +53,7 @@ export function updateListingFilterParams(
   switch (update.type) {
     case "tags": {
       next.delete("tag");
-      const uniqueTags = new Set(
-        update.tags
-          .map((tag) => tag.trim().toLowerCase())
-          .filter(Boolean),
-      );
-
-      for (const tag of uniqueTags) {
+      for (const tag of normalizeListingTags(update.tags)) {
         next.append("tag", tag);
       }
       break;
