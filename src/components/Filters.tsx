@@ -167,8 +167,8 @@ export const Filters =() => {
         params.delete('price');
         params.delete('query');
 
+        pendingTagNavigationRef.current = selectedTagsRef.current.length > 0;
         selectedTagsRef.current = [];
-        pendingTagNavigationRef.current = true;
         setSelectedTags([]);
 
         router.replace(`${pathname}?${params.toString()}`);
