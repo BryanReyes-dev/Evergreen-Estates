@@ -18,6 +18,7 @@
     "test:media-filenames": "vpx scripts/run-test-suite.mjs media-filenames",
     "test:media-limits": "vpx scripts/run-test-suite.mjs media-limits",
     "test:api": "vpx scripts/run-test-suite.mjs api",
+    "test:filters": "vpx scripts/run-test-suite.mjs filters",
     "test:integration": "vpx scripts/run-test-suite.mjs integration",
     "test:seed-data": "vpx scripts/run-test-suite.mjs seed-data",
     "test:listing-collection": "vpx scripts/run-test-suite.mjs listing-collection",
