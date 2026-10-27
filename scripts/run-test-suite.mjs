@@ -63,6 +63,14 @@ const suites = {
       "Public listing-search parsing plus listing-creation authentication, validation, seller eligibility, and owner binding.",
     paths: ["tests/api/listings/listings-collection.test.ts"],
   },
+  filters: {
+    description:
+      "Listing filter URL composition and repeated supported tag handling in the listing-search API.",
+    paths: [
+      "tests/unit/listing-filter-params.test.ts",
+      "tests/api/listings/listings-collection.test.ts",
+    ],
+  },
   "listing-item": {
     description:
       "Public listing detail behavior and owner-scoped update/delete validation.",

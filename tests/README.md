@@ -22,6 +22,7 @@ The full suite requires `DRIZZLE_DATABASE_URL` in the local `.env` file, using t
 | `vp run test:fast` | `tests/unit/`, `tests/api/` | Fast isolated unit and mocked API tests. Does not enable or connect to the database integration suite. |
 | `vp run test:unit` | `tests/unit/` | Deterministic unit tests for pure helpers, auth configuration/messages, fixture checks, preferences, media rules/display, and demo-retention logic. |
 | `vp run test:api` | `tests/api/` | HTTP Route Handler tests with authentication, database, and Storage dependencies mocked. Exercises validation, ownership and authorization rules without a live database. |
+| `vp run test:filters` | Filter URL helper tests and listing-search API tests | Verifies tag accumulation/removal, preserving query/price/sort state, clearing filters, and repeated supported tags in API parsing. |
 | `vp run test:integration` | `tests/integration/` | Read-only PostgreSQL role-permission checks. Enables opt-in integration tests; requires the restricted runtime database connection. |
 
 ### Direct Vite+ commands
@@ -44,6 +45,7 @@ Every focused alias below is defined in `package.json` and mapped in `scripts/ru
 | `vp run test:fixture-auth` | `tests/unit/fixture-auth-allowlist.test.ts` | Ensures only exact synthetic fixture email/name pairs pass the seed-only identity allowlist. |
 | `vp run test:media-limits` | `tests/unit/media-file-limits.test.ts` | The documented decimal 50,000,000-byte per-file listing-media limit. |
 | `vp run test:media-filenames` | `tests/unit/media-filename-allowlist.test.ts` | Supported image/video extensions, filename length limits, and path-traversal protection. |
+| `vp run test:filters` | `tests/unit/listing-filter-params.test.ts`; `tests/api/listings/listings-collection.test.ts` | Multi-tag URL composition and repeated supported tag handling at the listing-search API boundary. |
 | `vp run test:listing-collection` | `tests/api/listings/listings-collection.test.ts` | Public listing-search parsing and listing-creation authentication, validation, seller eligibility, and owner binding. |
 | `vp run test:listing-item` | `tests/api/listings/listing-item.test.ts` | Listing detail Route Handler behavior and owner-scoped update/delete validation. |
 | `vp run test:listing-media` | `tests/api/listings/media-order.test.ts` | Listing media ordering, reorder/permutation validation, and stale-write conflict behavior. |
@@ -67,6 +69,6 @@ The focused aliases are convenient subsets. A focused alias may overlap a broade
 - `tests/api/` uses mocked dependencies for HTTP Route Handler input, authentication, ownership, and authorization behavior.
 - `tests/integration/database/` contains an opt-in, read-only PostgreSQL privilege contract.
 - The tests are Node-based; this suite does not currently constitute a browser end-to-end suite. It does not confirm real browser media playback, a complete production user journey, email deliverability, or deployment health.
-- `vp run test:all` does not replace `vp check` (formatting/lint/static checks) or `npm run build`. Run those separately when preparing a release.
+- `vp run test:all` does not replace `vp check` (formatting/lint/static checks) or `vp run build`. Run those separately when preparing a release.
 
 The suite runner prints each selected suite's description and test paths to the terminal. Its `all` selection targets the complete `tests/` directory and enables the opt-in database suite; when a new test file is added under `tests/**/*.test.ts`, it is automatically included by the all-tests command.
