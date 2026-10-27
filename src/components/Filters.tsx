@@ -174,9 +174,14 @@ export const Filters = () => {
       maximumFractionDigits: 0,
     }).format(price);
 
-  const handlePriceChange = (newValue: number[]) => {
-    const nextPriceRange = `${newValue[0]}-${newValue[1]}`;
-    setPriceState({ range: nextPriceRange, value: newValue });
+  const handlePriceChange = (newValue: number | readonly number[]) => {
+    // This is a range slider (two thumbs), so its value must contain both ends.
+    // Base UI's shared callback type also permits a scalar for single-value sliders.
+    if (typeof newValue === "number" || newValue.length !== 2) return;
+
+    const range = [newValue[0], newValue[1]];
+    const nextPriceRange = `${range[0]}-${range[1]}`;
+    setPriceState({ range: nextPriceRange, value: range });
     applyFilterUpdate({
       type: "price",
       price: nextPriceRange,
