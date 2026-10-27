@@ -2,7 +2,7 @@
 import { useDebouncedCallback } from 'use-debounce';
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox"
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import { Button } from './ui/button';
@@ -60,7 +60,28 @@ export const Filters =() => {
     
     const currentSearchQuery = searchParams.get('query');
     const currentPriceRange = searchParams.get("price");
-    const selectedTags = searchParams.getAll("tag");
+    const [selectedTags, setSelectedTags] = useState<string[]>(() => searchParams.getAll("tag"));
+    const selectedTagsRef = useRef(selectedTags);
+    const pendingTagNavigationRef = useRef(false);
+
+    // Keep optimistic checkbox state during rapid URL navigations. Ignore intermediate
+    // URL states until the latest requested tag selection has arrived.
+    useEffect(() => {
+        const urlTags = searchParams.getAll("tag");
+
+        if (pendingTagNavigationRef.current) {
+            if (
+                urlTags.length === selectedTagsRef.current.length &&
+                urlTags.every((tag, index) => tag === selectedTagsRef.current[index])
+            ) {
+                pendingTagNavigationRef.current = false;
+            }
+            return;
+        }
+
+        selectedTagsRef.current = urlTags;
+        setSelectedTags(urlTags);
+    }, [searchParams]);
     const router = useRouter();
 
 
@@ -119,22 +140,25 @@ export const Filters =() => {
     );
 
     const handleTagToggle = (tagText: string, isChecked: boolean) => {
-            const params = new URLSearchParams(searchParams.toString());
-            const normalizedTag = tagText.toLowerCase();
-            const currentUrlTags = params.getAll('tag');
+        const normalizedTag = tagText.toLowerCase();
+        const currentTags = selectedTagsRef.current;
+        const nextTags = isChecked
+            ? currentTags.includes(normalizedTag)
+                ? currentTags
+                : [...currentTags, normalizedTag]
+            : currentTags.filter((tag) => tag !== normalizedTag);
 
-            if (isChecked) {
-                if (!currentUrlTags.includes(normalizedTag)) {
-                    params.append('tag', normalizedTag);
-                }
-            } else {
-                params.delete('tag');
-                currentUrlTags
-                .filter((t) => t !== normalizedTag)
-                .forEach((t) => params.append('tag', t));
-            }
+        // Update the source of truth synchronously so consecutive clicks build on
+        // each other instead of the last URL that Next.js has finished rendering.
+        selectedTagsRef.current = nextTags;
+        pendingTagNavigationRef.current = true;
+        setSelectedTags(nextTags);
 
-            router.replace(`${pathname}?${params.toString()}`);
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("tag");
+        nextTags.forEach((tag) => params.append("tag", tag));
+
+        router.replace(`${pathname}?${params.toString()}`);
     };
 
     const handleClearFilters = () => {
@@ -142,6 +166,11 @@ export const Filters =() => {
         params.delete('tag');
         params.delete('price');
         params.delete('query');
+
+        selectedTagsRef.current = [];
+        pendingTagNavigationRef.current = true;
+        setSelectedTags([]);
+
         router.replace(`${pathname}?${params.toString()}`);
         setPriceState({ range: currentPriceRange, value: [MIN_LISTING_PRICE, MAX_LISTING_PRICE] });
     }
