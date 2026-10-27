@@ -2,10 +2,34 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   buildListingSearchHref,
+  normalizeListingTags,
+  toggleListingTag,
   updateListingFilterParams,
 } from "@/lib/listing-filter-params";
 
 describe("listing filter URL parameter updates", () => {
+  it("accumulates and removes checkbox selections synchronously", () => {
+    let selected: string[] = [];
+    selected = toggleListingTag(selected, "Garden", true);
+    selected = toggleListingTag(selected, "Garage", true);
+    selected = toggleListingTag(selected, "garden", true);
+
+    expect(selected).toEqual(["garden", "garage"]);
+
+    selected = toggleListingTag(selected, "GARAGE", false);
+    expect(selected).toEqual(["garden"]);
+  });
+
+  it("normalizes tag casing, removes duplicates, and rejects unsupported values", () => {
+    expect(
+      normalizeListingTags([" Garden ", "DOORMAN", "garden", "Fireplace"]),
+    ).toEqual(["garden", "fireplace"]);
+
+    expect(
+      toggleListingTag(["garden", "doorman"], "Garage", true),
+    ).toEqual(["garden", "garage"]);
+  });
+
   it("accumulates multiple selected tags and removes duplicates", () => {
     let params = new URLSearchParams("sort=price-low");
     params = updateListingFilterParams(params, {
@@ -14,7 +38,7 @@ describe("listing filter URL parameter updates", () => {
     });
     params = updateListingFilterParams(params, {
       type: "tags",
-      tags: ["garden", "Garage", "garden"],
+      tags: ["garden", "Garage", "garden", " DOORMAN "],
     });
 
     expect(params.getAll("tag")).toEqual(["garden", "garage"]);
