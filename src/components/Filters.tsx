@@ -66,9 +66,6 @@ export const Filters = () => {
   const pathname = usePathname();
   const router = useRouter();
 
-  const currentSearchQuery = searchParams.get("query");
-  const currentPriceRange = searchParams.get("price");
-
   const [selectedTags, setSelectedTags] = useState<string[]>(() =>
     searchParams.getAll("tag"),
   );
@@ -79,6 +76,11 @@ export const Filters = () => {
   const filterParamsRef = useRef(new URLSearchParams(searchParamsString));
   const pendingNavigationRef = useRef(false);
   const pendingParamsStringRef = useRef(searchParamsString);
+
+  // Read display values from the latest intended parameters, not an intermediate
+  // useSearchParams snapshot from a navigation that is still settling.
+  const currentSearchQuery = filterParamsRef.current.get("query");
+  const currentPriceRange = filterParamsRef.current.get("price");
 
   const navigatePendingFilters = useDebouncedCallback(() => {
     const params = filterParamsRef.current;
