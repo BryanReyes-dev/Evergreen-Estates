@@ -15,6 +15,8 @@ import {
 } from "@/lib/listing-constants";
 import {
   buildListingSearchHref,
+  normalizeListingTags,
+  toggleListingTag,
   updateListingFilterParams,
   type ListingFilterParamUpdate,
 } from "@/lib/listing-filter-params";
@@ -67,7 +69,7 @@ export const Filters = () => {
   const router = useRouter();
 
   const [selectedTags, setSelectedTags] = useState<string[]>(() =>
-    searchParams.getAll("tag"),
+    normalizeListingTags(searchParams.getAll("tag")),
   );
   const selectedTagsRef = useRef(selectedTags);
 
@@ -100,7 +102,9 @@ export const Filters = () => {
         navigatePendingFilters.cancel();
         pendingNavigationRef.current = false;
         filterParamsRef.current = new URLSearchParams(searchParamsString);
-        selectedTagsRef.current = filterParamsRef.current.getAll("tag");
+        selectedTagsRef.current = normalizeListingTags(
+          filterParamsRef.current.getAll("tag"),
+        );
       } else {
         navigatePendingFilters();
       }
@@ -110,7 +114,7 @@ export const Filters = () => {
     const urlParams = new URLSearchParams(searchParamsString);
     filterParamsRef.current = urlParams;
     pendingParamsStringRef.current = searchParamsString;
-    const urlTags = urlParams.getAll("tag");
+    const urlTags = normalizeListingTags(urlParams.getAll("tag"));
     selectedTagsRef.current = urlTags;
     setSelectedTags(urlTags);
   }, [navigatePendingFilters, searchParamsString]);
@@ -126,7 +130,7 @@ export const Filters = () => {
       pendingParamsStringRef.current = urlParams.toString();
       pendingNavigationRef.current = false;
 
-      const urlTags = urlParams.getAll("tag");
+      const urlTags = normalizeListingTags(urlParams.getAll("tag"));
       selectedTagsRef.current = urlTags;
       setSelectedTags(urlTags);
     };
@@ -186,13 +190,11 @@ export const Filters = () => {
   };
 
   const handleTagToggle = (tagText: string, isChecked: boolean) => {
-    const normalizedTag = tagText.toLowerCase();
-    const currentTags = selectedTagsRef.current;
-    const nextTags = isChecked
-      ? currentTags.includes(normalizedTag)
-        ? currentTags
-        : [...currentTags, normalizedTag]
-      : currentTags.filter((tag) => tag !== normalizedTag);
+    const nextTags = toggleListingTag(
+      selectedTagsRef.current,
+      tagText,
+      isChecked,
+    );
 
     selectedTagsRef.current = nextTags;
     setSelectedTags(nextTags);
