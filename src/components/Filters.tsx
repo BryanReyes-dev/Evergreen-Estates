@@ -238,7 +238,7 @@ export const Filters = () => {
               <Checkbox
                 className="h-5 w-5"
                 checked={selectedTags.includes(tag.toLowerCase())}
-                onCheckedChange={(checked) => handleTagToggle(tag, checked)}
+                onCheckedChange={(checked) => handleTagToggle(tag, checked === true)}
                 id={tagId}
                 aria-labelledby={`${tagId}-label`}
               />
