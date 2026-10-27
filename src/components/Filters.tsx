@@ -83,8 +83,9 @@ export const Filters =() => {
         setSelectedTags(urlTags);
     }, [searchParams]);
     const router = useRouter();
-
-
+    // Update the URL synchronously for tag toggles, then refresh results once
+    // rapid taps settle. This avoids overlapping App Router navigations racing.
+    const refreshTagResults = useDebouncedCallback(() => router.refresh(), 120);
 
     const [priceState, setPriceState] = useState(() => ({
         range: currentPriceRange,
@@ -158,7 +159,8 @@ export const Filters =() => {
         params.delete("tag");
         nextTags.forEach((tag) => params.append("tag", tag));
 
-        router.replace(`${pathname}?${params.toString()}`);
+        window.history.replaceState(window.history.state, "", `${pathname}?${params.toString()}`);
+        refreshTagResults();
     };
 
     const handleClearFilters = () => {
@@ -171,7 +173,8 @@ export const Filters =() => {
         selectedTagsRef.current = [];
         setSelectedTags([]);
 
-        router.replace(`${pathname}?${params.toString()}`);
+        window.history.replaceState(window.history.state, "", `${pathname}?${params.toString()}`);
+        refreshTagResults();
         setPriceState({ range: currentPriceRange, value: [MIN_LISTING_PRICE, MAX_LISTING_PRICE] });
     }
 
