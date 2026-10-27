@@ -160,15 +160,12 @@ export const Filters = () => {
     value: parsePriceRange(currentPriceRange),
   }));
 
-  // Reflect URL changes such as browser back/forward while allowing the slider
-  // to respond immediately during a drag.
-  if (priceState.range !== currentPriceRange) {
-    setPriceState({
-      range: currentPriceRange,
-      value: parsePriceRange(currentPriceRange),
-    });
-  }
-  const value = priceState.value;
+  // Keep render pure: when the URL changes (including browser back/forward),
+  // derive the slider's display value from the URL until the user moves it again.
+  const value =
+    priceState.range === currentPriceRange
+      ? priceState.value
+      : parsePriceRange(currentPriceRange);
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("en-US", {
@@ -177,11 +174,17 @@ export const Filters = () => {
       maximumFractionDigits: 0,
     }).format(price);
 
-  const handlePriceChange = (newValue: number[]) => {
-    setPriceState({ range: currentPriceRange, value: newValue });
+  const handlePriceChange = (newValue: number | readonly number[]) => {
+    // This is a range slider (two thumbs), so its value must contain both ends.
+    // Base UI's shared callback type also permits a scalar for single-value sliders.
+    if (typeof newValue === "number" || newValue.length !== 2) return;
+
+    const range = [newValue[0], newValue[1]];
+    const nextPriceRange = `${range[0]}-${range[1]}`;
+    setPriceState({ range: nextPriceRange, value: range });
     applyFilterUpdate({
       type: "price",
-      price: `${newValue[0]}-${newValue[1]}`,
+      price: nextPriceRange,
     });
   };
 
@@ -206,7 +209,7 @@ export const Filters = () => {
     setSelectedTags([]);
     applyFilterUpdate({ type: "clear" });
     setPriceState({
-      range: currentPriceRange,
+      range: null,
       value: [MIN_LISTING_PRICE, MAX_LISTING_PRICE],
     });
   };
