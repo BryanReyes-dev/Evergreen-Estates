@@ -22,10 +22,13 @@ describe("listing filter URL parameter updates", () => {
   });
 
   it("removes only the unchecked tag and preserves other filters", () => {
-    const params = updateListingFilterParams(
-      new URLSearchParams("tag=garden&tag=garage&query=duplex&price=100000-500000&sort=newest"),
-      { type: "tags", tags: ["garden"] },
+    const initial = new URLSearchParams(
+      "tag=garden&tag=garage&query=duplex&price=100000-500000&sort=newest",
     );
+    const params = updateListingFilterParams(initial, {
+      type: "tags",
+      tags: ["garden"],
+    });
 
     expect(params.getAll("tag")).toEqual(["garden"]);
     expect(params.get("query")).toBe("duplex");
@@ -46,7 +49,9 @@ describe("listing filter URL parameter updates", () => {
 
   it("removes a blank query without dropping tags or price", () => {
     const params = updateListingFilterParams(
-      new URLSearchParams("tag=garden&tag=garage&query=duplex&price=100000-500000"),
+      new URLSearchParams(
+        "tag=garden&tag=garage&query=duplex&price=100000-500000",
+      ),
       { type: "query", query: "   " },
     );
 
@@ -55,7 +60,7 @@ describe("listing filter URL parameter updates", () => {
     expect(params.get("price")).toBe("100000-500000");
   });
 
-  it("preserves tags and search while changing the price", () => {
+  it("preserves tags and search while changing or resetting the price", () => {
     const params = updateListingFilterParams(
       new URLSearchParams("tag=garden&tag=garage&query=duplex"),
       { type: "price", price: "200000-600000" },
@@ -74,9 +79,11 @@ describe("listing filter URL parameter updates", () => {
     expect(reset.get("query")).toBe("duplex");
   });
 
-  it("clears only the three search filters and keeps unrelated URL state", () => {
+  it("clears search filters but preserves unrelated URL state", () => {
     const params = updateListingFilterParams(
-      new URLSearchParams("tag=garden&tag=garage&query=duplex&price=100000-500000&sort=price-low"),
+      new URLSearchParams(
+        "tag=garden&tag=garage&query=duplex&price=100000-500000&sort=price-low",
+      ),
       { type: "clear" },
     );
 
@@ -87,9 +94,9 @@ describe("listing filter URL parameter updates", () => {
   });
 
   it("builds a clean path when no query parameters remain", () => {
-    expect(
-      buildListingSearchHref("/search", new URLSearchParams()),
-    ).toBe("/search");
+    expect(buildListingSearchHref("/search", new URLSearchParams())).toBe(
+      "/search",
+    );
     expect(
       buildListingSearchHref(
         "/search",
