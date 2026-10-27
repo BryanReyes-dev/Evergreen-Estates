@@ -62,16 +62,16 @@ describe("GET /api/v1/listings — public listing search", () => {
     expect(mocks.getFilteredListings).not.toHaveBeenCalled();
   });
 
-  it("passes parsed price, trimmed search, and repeated tag filters to the read query", async () => {
+  it("passes parsed price, trimmed search, and repeated supported tag filters to the read query", async () => {
     const response = await GET(
-      new Request(URL + "?price=100000-500000&query=%20Duplex%20&tag=garden&tag=doorman"),
+      new Request(URL + "?price=100000-500000&query=%20Duplex%20&tag=garden&tag=garage"),
     );
 
     expect(response.status).toBe(200);
     expect(await bodyOf(response)).toEqual({ data: [] });
     expect(mocks.getFilteredListings).toHaveBeenCalledWith({
       price: [100000, 500000],
-      tags: ["garden", "doorman"],
+      tags: ["garden", "garage"],
       search: "Duplex",
     });
   });
