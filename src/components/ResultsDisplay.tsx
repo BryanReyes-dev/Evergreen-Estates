@@ -22,13 +22,21 @@ export const ResultsDisplay = async ({
       ? (price as [number, number])
       : [MIN_LISTING_PRICE, MAX_LISTING_PRICE] as [number, number];
 
+  const rawTagParams = Array.isArray(searchParams.tag)
+    ? searchParams.tag
+    : searchParams.tag
+      ? [searchParams.tag]
+      : [];
+  // Accept both repeated params (?tag=garden&tag=garage) and legacy
+  // comma-separated params (?tag=garden%2C+garage).
+  const parsedTags = rawTagParams
+    .flatMap((tag) => tag.split(","))
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
   const filters = {
     price: validPrice,
-    tags: Array.isArray(searchParams.tag)
-      ? searchParams.tag
-      : searchParams.tag
-        ? [searchParams.tag]
-        : [],
+    tags: parsedTags,
     search: searchParams.query?.trim() || "",
   };
 
@@ -51,7 +59,7 @@ export const ResultsDisplay = async ({
           No homes match these filters. Try a wider price range or clear one of the selected tags.
         </p>
         <p className="mt-3 break-words font-mono text-xs text-white/80">
-          Debug — raw tag params received by the server: {JSON.stringify(filters.tags)}
+          Debug — raw tag params: {JSON.stringify(rawTagParams)}; parsed tags: {JSON.stringify(filters.tags)}
         </p>
       </div>
     );
