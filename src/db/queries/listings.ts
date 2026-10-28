@@ -145,7 +145,15 @@ export async function getListingById(
 
 export async function getFilteredListings(
   filters: Filters,
-  onQueryDebug?: (query: { sql: string; params: unknown[]; resultCount: number }) => void,
+  onQueryDebug?: (query: {
+    stage: "unsupported-tags" | "query-result";
+    rawTags: string[];
+    selectedTags: string[];
+    rejectedTags: string[];
+    sql?: string;
+    params?: unknown[];
+    resultCount: number;
+  }) => void,
 ): Promise<Houselisting[]> {
   const db = getDrizzleDb();
   const conditions: SQL[] = [
@@ -178,11 +186,22 @@ export async function getFilteredListings(
 
   if (filters.tags && filters.tags.length > 0) {
     const supportedTags = new Set(SUPPORTED_LISTING_TAG_VALUES);
-    const selectedTags = filters.tags
-      .map((tag) => tag.trim().toLowerCase())
-      .filter((tag) => supportedTags.has(tag));
-    // Never let an unsupported URL filter silently broaden the result set.
-    if (selectedTags.length !== filters.tags.length || selectedTags.length === 0) {
+    const rawTags = [...filters.tags];
+    const normalizedTags = rawTags.map((tag) => tag.trim().toLowerCase());
+    const selectedTags = normalizedTags.filter((tag) => supportedTags.has(tag));
+    const rejectedTags = normalizedTags.filter((tag) => !supportedTags.has(tag));
+
+    // Emit diagnostics before the early return too: otherwise a single comma-
+    // joined tag value looks exactly like an ordinary empty result to the UI.
+    if (rejectedTags.length > 0 || selectedTags.length === 0) {
+      onQueryDebug?.({
+        stage: "unsupported-tags",
+        rawTags,
+        selectedTags,
+        rejectedTags,
+        resultCount: 0,
+      });
+      // Never let an unsupported URL filter silently broaden the result set.
       return [];
     }
     conditions.push(arrayContains(listings.tags, selectedTags));
@@ -216,7 +235,17 @@ export async function getFilteredListings(
 
     const sql = query.toSQL();
     const rows = await query;
-    onQueryDebug?.({ ...sql, resultCount: rows.length });
+    onQueryDebug?.({
+      stage: "query-result",
+      rawTags: filters.tags ? [...filters.tags] : [],
+      selectedTags: filters.tags
+        ? filters.tags.map((tag) => tag.trim().toLowerCase())
+        : [],
+      rejectedTags: [],
+      sql: sql.sql,
+      params: sql.params,
+      resultCount: rows.length,
+    });
 
     return await Promise.all(
       rows.map(async (row): Promise<Houselisting> => ({
