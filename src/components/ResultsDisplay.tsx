@@ -58,9 +58,6 @@ export const ResultsDisplay = async ({
         <p>
           No homes match these filters. Try a wider price range or clear one of the selected tags.
         </p>
-        <p className="mt-3 break-words font-mono text-xs text-white/80">
-          Debug — raw tag params: {JSON.stringify(rawTagParams)}; parsed tags: {JSON.stringify(filters.tags)}
-        </p>
       </div>
     );
   }
