@@ -46,9 +46,14 @@ export const ResultsDisplay = async ({
 
   if (sortedListings.length === 0) {
     return (
-      <p aria-live="polite" className="mx-auto w-full max-w-3xl px-4 py-8 text-sm text-white/65">
-        No homes match these filters. Try a wider price range or clear one of the selected tags.
-      </p>
+      <div aria-live="polite" className="mx-auto w-full max-w-3xl px-4 py-8 text-sm text-white/65">
+        <p>
+          No homes match these filters. Try a wider price range or clear one of the selected tags.
+        </p>
+        <p className="mt-3 break-words font-mono text-xs text-white/80">
+          Debug — raw tag params received by the server: {JSON.stringify(filters.tags)}
+        </p>
+      </div>
     );
   }
 
