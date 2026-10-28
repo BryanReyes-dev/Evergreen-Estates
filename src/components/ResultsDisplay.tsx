@@ -57,14 +57,14 @@ export const ResultsDisplay = async ({
 
   if (sortedListings.length === 0) {
     return (
-      <p aria-live="polite" className="mx-auto w-full max-w-3xl px-4 py-8 text-sm text-white/65">
-        No homes match these filters. Try a wider price range or clear one of the selected tags.
+      <div aria-live="polite" className="mx-auto w-full max-w-3xl px-4 py-8 text-sm text-white/65">
+        <p>No homes match these filters. Try a wider price range or clear one of the selected tags.</p>
         {showFilterDebug && debugInfo.query ? (
           <pre className="mt-4 overflow-x-auto whitespace-pre-wrap break-words rounded bg-black/20 p-3 text-xs text-white/80">
             {JSON.stringify(debugInfo.query, null, 2)}
           </pre>
         ) : null}
-      </p>
+      </div>
     );
   }
 
