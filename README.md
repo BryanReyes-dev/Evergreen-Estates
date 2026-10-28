@@ -36,7 +36,6 @@ A quick look at the current interface across desktop and mobile, including the p
 - Supabase Storage listing media for images, GIFs, and videos, plus WebVTT video captions; private objects are delivered through signed URLs.
 - Server-rendered pages with focused Client Components for interactive behavior.
 
-The capabilities above are visible in the current source. They should not be interpreted as proof that every browser workflow, authentication email, database permission, or Netlify production behavior has passed a fresh end-to-end check.
 
 ### Stack
 
