@@ -32,18 +32,19 @@ export const ResultsDisplay = async ({
     search: searchParams.query?.trim() || "",
   };
 
-  const debugToken = process.env.LISTING_FILTER_DEBUG_TOKEN;
-  const showFilterDebug = Boolean(debugToken && searchParams.debug === debugToken);
-  const debugInfo: { query?: { sql: string; params: unknown[] } } = {};
-  const listings = await getFilteredListings(
-    filters,
-    showFilterDebug
-      ? (query) => {
-          debugInfo.query = query;
-          console.error("[listing-filter-debug]", JSON.stringify(query));
-        }
-      : undefined,
-  );
+  const listings = await getFilteredListings(filters, (query) => {
+    if (query.resultCount === 0) {
+      console.error(
+        "[listing-filter-debug]",
+        JSON.stringify({
+          sql: query.sql,
+          params: query.params,
+          resultCount: query.resultCount,
+          filters,
+        }),
+      );
+    }
+  });
   const rawSort = searchParams.sort;
   const sort: DefaultListingSort =
     rawSort === "price-low" || rawSort === "price-high" || rawSort === "newest"
@@ -57,14 +58,9 @@ export const ResultsDisplay = async ({
 
   if (sortedListings.length === 0) {
     return (
-      <div aria-live="polite" className="mx-auto w-full max-w-3xl px-4 py-8 text-sm text-white/65">
-        <p>No homes match these filters. Try a wider price range or clear one of the selected tags.</p>
-        {showFilterDebug && debugInfo.query ? (
-          <pre className="mt-4 overflow-x-auto whitespace-pre-wrap break-words rounded bg-black/20 p-3 text-xs text-white/80">
-            {JSON.stringify(debugInfo.query, null, 2)}
-          </pre>
-        ) : null}
-      </div>
+      <p aria-live="polite" className="mx-auto w-full max-w-3xl px-4 py-8 text-sm text-white/65">
+        No homes match these filters. Try a wider price range or clear one of the selected tags.
+      </p>
     );
   }
 
