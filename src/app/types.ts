@@ -62,5 +62,4 @@ export interface SearchParams {
   price?: string;
   tag?: string | string[];
   sort?: string;
-  debug?: string;
 }
