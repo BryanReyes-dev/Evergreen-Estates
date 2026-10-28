@@ -37,6 +37,10 @@ export const ResultsDisplay = async ({
       console.error(
         "[listing-filter-debug]",
         JSON.stringify({
+          stage: query.stage,
+          rawTags: query.rawTags,
+          selectedTags: query.selectedTags,
+          rejectedTags: query.rejectedTags,
           sql: query.sql,
           params: query.params,
           resultCount: query.resultCount,
