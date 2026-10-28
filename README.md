@@ -4,6 +4,38 @@ Evergreen Estates is a full-stack real-estate marketplace built with Next.js, Ty
 
 **Links:** [Live demo](https://evergreen-estates.netlify.app/) · [GitHub repository](https://github.com/BryanReyes-dev/Evergreen-Estates) · [Figma design](https://www.figma.com/design/SY5C36osUoFZLUtlRC3RDg/Evergreen-Estates?node-id=0-1&p=f&t=dISV54YArH5wU4rl-0)
 
+## Table of Contents
+
+- [Screenshots](#screenshots)
+  - [Home screen](#home-screen)
+  - [Search filters](#search-filters)
+  - [Loading experience](#loading-experience)
+- [Overview & Tech Stack](#overview-tech-stack)
+  - [Features in source](#features-in-source)
+  - [Stack](#stack)
+- [Development](#development)
+  - [Requirements and setup](#requirements-and-setup)
+  - [Architecture and security boundaries](#architecture-and-security-boundaries)
+  - [Schema migrations](#schema-migrations)
+- [Testing](#testing)
+  - [One command for the complete test suite](#one-command-for-the-complete-test-suite)
+  - [Suite categories](#suite-categories)
+  - [Quality checks outside the test suite](#quality-checks-outside-the-test-suite)
+  - [Focused test suites](#focused-test-suites)
+- [Production](#production)
+  - [Netlify build configuration](#netlify-build-configuration)
+  - [Environment variables](#environment-variables)
+  - [Temporary demo accounts and automated expiry](#temporary-demo-accounts-and-automated-expiry)
+  - [Database and fixture safety](#database-and-fixture-safety)
+- [Future Improvements](#future-improvements)
+  - [Priority 0 — audit follow-ups before a broader launch](#priority-0-audit-follow-ups-before-a-broader-launch)
+  - [Security hardening and penetration testing](#security-hardening-and-penetration-testing)
+  - [Administration and privileged support access](#administration-and-privileged-support-access)
+  - [AI integration ideas](#ai-integration-ideas)
+  - [Product, performance and UX improvements](#product-performance-and-ux-improvements)
+  - [Reliability, observability and release practice](#reliability-observability-and-release-practice)
+
+
 ## Screenshots
 
 A quick look at the current interface across desktop and mobile, including the property search filters and loading experience.
