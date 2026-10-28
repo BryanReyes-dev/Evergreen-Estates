@@ -145,7 +145,7 @@ export async function getListingById(
 
 export async function getFilteredListings(
   filters: Filters,
-  onQueryDebug?: (query: { sql: string; params: unknown[] }) => void,
+  onQueryDebug?: (query: { sql: string; params: unknown[]; resultCount: number }) => void,
 ): Promise<Houselisting[]> {
   const db = getDrizzleDb();
   const conditions: SQL[] = [
@@ -214,8 +214,9 @@ export async function getFilteredListings(
       )
       .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-    onQueryDebug?.(query.toSQL());
+    const sql = query.toSQL();
     const rows = await query;
+    onQueryDebug?.({ ...sql, resultCount: rows.length });
 
     return await Promise.all(
       rows.map(async (row): Promise<Houselisting> => ({
