@@ -117,6 +117,18 @@ describe("listing filter URL parameter updates", () => {
     expect(params.get("sort")).toBe("price-low");
   });
 
+  it("resets pagination when filters change", () => {
+    const params = updateListingFilterParams(
+      new URLSearchParams("page=4&tag=garden&sort=price-low"),
+      { type: "query", query: "duplex" },
+    );
+
+    expect(params.has("page")).toBe(false);
+    expect(params.get("query")).toBe("duplex");
+    expect(params.get("tag")).toBe("garden");
+    expect(params.get("sort")).toBe("price-low");
+  });
+
   it("builds a clean path when no query parameters remain", () => {
     expect(buildListingSearchHref("/search", new URLSearchParams())).toBe(
       "/search",
