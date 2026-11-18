@@ -278,7 +278,7 @@ There is no first-class admin console or admin-role workflow identified in the c
 
 ### Product, performance and UX improvements
 
-- **Paginate search and seller listings.** getFilteredListings currently fetches all matching listings and the UI sorts results in memory. Add server-side pagination/cursor-based navigation, stable allowed sort orders, query limits and relevant indexes.
+- **Listing pagination:** Public search and the listings API now use server-side offset pagination (12 results per search page by default), stable allow-listed sorting, bounded page sizes, and total-count metadata. Public seller pages remain unpaginated while the database limits each seller to three listings. Consider cursor pagination and indexes if the catalog grows substantially.
 - **Reduce Storage request fan-out.** Listing results resolve signed media URLs per listing, including a Storage folder lookup per listing. Batch/cache where safe, avoid repeated scans/signing, define signed-URL expiry behavior, and measure performance under realistic data sizes.
 - **Improve media delivery.** Consider image resizing/compression, thumbnail generation, video poster frames/transcoding and clear storage-retention/quota policies. Keep the bucket private and preserve authenticated upload capabilities and signed-URL delivery.
 - **Add discovery features as user needs justify them.** Possible follow-ups include map/geocoding search, listing comparison, saved-search alerts, inquiry/contact tracking, notifications, price-history integrations and richer seller lead management. Integrate external property data only with appropriate licensing, freshness labels and source attribution.
