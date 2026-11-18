@@ -1,5 +1,3 @@
-"use server";
-
 import Link from "next/link";
 
 import { getFilteredListings } from "@/db/queries/listings";
