@@ -18,7 +18,7 @@ function createAppDatabase() {
   }
 
   // Supabase's shared transaction pooler requires prepared statements
-  // to be disabled. Keep each server instance's connection pool small.
+  // to be disabled. Keep each server instance's connection Mpool small.
   const client = postgres(connectionString, {
     prepare: false,
     max: 1,
@@ -29,6 +29,7 @@ function createAppDatabase() {
   return drizzle(client, { schema });
 }
 
+//derving types for the database client and transaction from the return type of createAppDatabase
 type AppDatabase = ReturnType<typeof createAppDatabase>;
 type AppTransaction = Parameters<
   Parameters<AppDatabase["transaction"]>[0]

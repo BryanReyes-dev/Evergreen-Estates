@@ -12,11 +12,10 @@ type SavedListingIdsResult = { savedListingIds: string[] };
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function errorResponse(code: string, message: string, status: number, diagnostics?: object) {
+function errorResponse(code: string, message: string, status: number) {
   return NextResponse.json(
     {
       error: { code, message },
-      ...(diagnostics ? { diagnostics } : {}),
     },
     { status },
   );
@@ -147,11 +146,11 @@ export async function PATCH(request: Request) {
             listingId,
             databaseContext: result.databaseContext,
           });
+
           return errorResponse(
             "LISTING_LOOKUP_MISMATCH",
-            "This property is visible in the listing catalog, but the save service cannot find it. Check the diagnostics returned with this error.",
+            "We couldn't save this home right now. Please try again later.",
             503,
-            result.databaseContext ?? undefined,
           );
         }
       } catch (diagnosticError) {

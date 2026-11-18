@@ -17,7 +17,10 @@ const USER_ID = "22222222-2222-4222-8222-222222222222";
 const LISTING_ID = "11111111-1111-4111-8111-111111111111";
 const URL = "http://localhost/api/v1/users/me/saved-listings";
 
-type ApiBody = { error?: string | { code?: string; message?: string }; data?: unknown; diagnostics?: Record<string, unknown> };
+type ApiBody = {
+  error?: string | { code?: string; message?: string };
+  data?: unknown;
+};
 async function bodyOf(response: Response): Promise<ApiBody> {
   return response.json() as Promise<ApiBody>;
 }
@@ -196,7 +199,7 @@ describe("PATCH /api/v1/users/me/saved-listings — successful save transition",
     expect(response.status).toBe(503);
     const responseBody = await bodyOf(response);
     expect(errorCode(responseBody)).toBe("LISTING_LOOKUP_MISMATCH");
-    expect(responseBody.diagnostics).toEqual(databaseContext);
+    expect(responseBody).not.toHaveProperty("diagnostics");
     expect(readSelect).toHaveBeenCalledOnce();
     expect(update).not.toHaveBeenCalled();
   });

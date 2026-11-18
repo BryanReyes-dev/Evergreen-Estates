@@ -120,10 +120,7 @@ export const sellerProfiles = pgTable(
     contactEmail: text("contact_email"),
     contactPhone: text("contact_phone"),
 
-    preferredContactMethod: text("preferred_contact_method")
-      .notNull(),
-
-
+    preferredContactMethod: text("preferred_contact_method").notNull(),
     isPublished: boolean("is_published").notNull().default(false),
 
     createdAt: timestamp("created_at", {

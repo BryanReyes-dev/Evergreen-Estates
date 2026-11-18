@@ -1,8 +1,8 @@
 {
-  "name": "Evergreen Estates",
-  "version": "0.1.0",
+  "name": "evergreen-estates",
+  "version": "1.1.0",
   "private": true,
-  "scripts": {
+   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -51,10 +51,10 @@
     "framer-motion": "^12.23.24",
     "liquid-gooey": "^0.2.1",
     "lucide-react": "^1.38.0",
-    "next": "^16.0.4",
+    "next": "^16.4.3",
     "postgres": "^3.4.9",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "react-range": "^1.10.0",
     "tailwind-merge": "^3.6.0",
     "tus-js-client": "^4.3.1",
@@ -62,15 +62,15 @@
     "use-debounce": "^10.1.1"
   },
   "devDependencies": {
-    "@svgr/webpack": "^8.1.0",
+    "@svgr/webpack": "^5.4.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.22",
     "babel-plugin-react-compiler": "1.0.0",
-    "drizzle-kit": "^0.31.11",
+    "drizzle-kit": "^0.18.1",
     "postcss": "^8.5.6",
-    "shadcn": "^4.15.0",
+    "shadcn": "^1.0.0",
     "tailwindcss": "^3.3.4",
     "typescript": "^5",
     "vite-plus": "1.4.0"
@@ -78,16 +78,7 @@
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0"
   },
-  "devEngines": {
-    "runtime": {
-      "name": "node",
-      "version": "24.22.1",
-      "onFail": "download"
-    },
-    "packageManager": {
-      "name": "npm",
-      "version": "11.19.1",
-      "onFail": "download"
-    }
+  "allowScripts": {
+    "esbuild@0.15.18": true
   }
 }
