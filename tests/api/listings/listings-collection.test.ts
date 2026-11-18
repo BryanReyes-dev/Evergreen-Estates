@@ -100,6 +100,15 @@ describe("GET /api/v1/listings — public paginated listing search", () => {
   });
 
   it("passes filters, pagination, and sort options to the read query", async () => {
+    const expectedPagination = {
+      ...EMPTY_PAGINATION,
+      pageSize: 24,
+    };
+    mocks.getFilteredListings.mockResolvedValue({
+      listings: [],
+      pagination: expectedPagination,
+    });
+
     const response = await GET(
       new Request(
         URL + "?price=100000-500000&query=%20Duplex%20&tag=garden&tag=garage&page=2&pageSize=24&sort=price-high",
@@ -109,7 +118,7 @@ describe("GET /api/v1/listings — public paginated listing search", () => {
     expect(response.status).toBe(200);
     expect(await bodyOf(response)).toEqual({
       data: [],
-      pagination: EMPTY_PAGINATION,
+      pagination: expectedPagination,
     });
     expect(mocks.getFilteredListings).toHaveBeenCalledWith(
       {
@@ -144,6 +153,18 @@ describe("GET /api/v1/listings — public paginated listing search", () => {
       data: rows,
       pagination,
     });
+    expect(mocks.getFilteredListings).toHaveBeenCalledWith(
+      {
+        price: null,
+        tags: null,
+        search: null,
+      },
+      {
+        page: 1,
+        pageSize: 12,
+        sort: "newest",
+      },
+    );
   });
 });
 
