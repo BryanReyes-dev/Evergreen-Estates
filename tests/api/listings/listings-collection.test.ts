@@ -38,7 +38,18 @@ function jsonRequest(url: string, body: unknown, method = "POST") {
   return new Request(url, init);
 }
 
-type ApiBody = { error?: string | { code?: string; message?: string; fields?: string[] }; data?: unknown };
+type ApiBody = {
+  error?: string | { code?: string; message?: string; fields?: string[] };
+  data?: unknown;
+  pagination?: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+  };
+};
 async function bodyOf(response: Response): Promise<ApiBody> {
   return response.json() as Promise<ApiBody>;
 }
@@ -46,13 +57,25 @@ function errorCode(body: ApiBody): string | undefined {
   return typeof body.error === "string" ? body.error : body.error?.code;
 }
 
+const EMPTY_PAGINATION = {
+  page: 1,
+  pageSize: 12,
+  totalItems: 0,
+  totalPages: 0,
+  hasPreviousPage: false,
+  hasNextPage: false,
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.getFilteredListings.mockResolvedValue([]);
+  mocks.getFilteredListings.mockResolvedValue({
+    listings: [],
+    pagination: EMPTY_PAGINATION,
+  });
   mocks.getAuthenticatedUserId.mockResolvedValue(USER_ID);
 });
 
-describe("GET /api/v1/listings — public listing search", () => {
+describe("GET /api/v1/listings — public paginated listing search", () => {
   it("rejects malformed price ranges before querying listings", async () => {
     const response = await GET(new Request(URL + "?price=500000"));
     const body = await bodyOf(response);
@@ -62,28 +85,65 @@ describe("GET /api/v1/listings — public listing search", () => {
     expect(mocks.getFilteredListings).not.toHaveBeenCalled();
   });
 
-  it("passes parsed price, trimmed search, and repeated supported tag filters to the read query", async () => {
+  it("rejects invalid page, page size, and sort values", async () => {
+    const invalidPage = await GET(new Request(URL + "?page=0"));
+    const invalidPageSize = await GET(new Request(URL + "?pageSize=49"));
+    const invalidSort = await GET(new Request(URL + "?sort=oldest"));
+
+    expect(invalidPage.status).toBe(400);
+    expect(errorCode(await bodyOf(invalidPage))).toBe("INVALID_PAGE");
+    expect(invalidPageSize.status).toBe(400);
+    expect(errorCode(await bodyOf(invalidPageSize))).toBe("INVALID_PAGE_SIZE");
+    expect(invalidSort.status).toBe(400);
+    expect(errorCode(await bodyOf(invalidSort))).toBe("INVALID_SORT");
+    expect(mocks.getFilteredListings).not.toHaveBeenCalled();
+  });
+
+  it("passes filters, pagination, and sort options to the read query", async () => {
     const response = await GET(
-      new Request(URL + "?price=100000-500000&query=%20Duplex%20&tag=garden&tag=garage"),
+      new Request(
+        URL + "?price=100000-500000&query=%20Duplex%20&tag=garden&tag=garage&page=2&pageSize=24&sort=price-high",
+      ),
     );
 
     expect(response.status).toBe(200);
-    expect(await bodyOf(response)).toEqual({ data: [] });
-    expect(mocks.getFilteredListings).toHaveBeenCalledWith({
-      price: [100000, 500000],
-      tags: ["garden", "garage"],
-      search: "Duplex",
+    expect(await bodyOf(response)).toEqual({
+      data: [],
+      pagination: EMPTY_PAGINATION,
     });
+    expect(mocks.getFilteredListings).toHaveBeenCalledWith(
+      {
+        price: [100000, 500000],
+        tags: ["garden", "garage"],
+        search: "Duplex",
+      },
+      {
+        page: 2,
+        pageSize: 24,
+        sort: "price-high",
+      },
+    );
   });
 
-  it("returns the read query's listing collection in the data envelope", async () => {
+  it("returns listing data and pagination metadata in separate response fields", async () => {
     const rows = [{ id: "listing-1", title: "Sample property" }];
-    mocks.getFilteredListings.mockResolvedValue(rows);
+    const pagination = {
+      page: 2,
+      pageSize: 12,
+      totalItems: 13,
+      totalPages: 2,
+      hasPreviousPage: true,
+      hasNextPage: false,
+    };
+    mocks.getFilteredListings.mockResolvedValue({ listings: rows, pagination });
 
     const response = await GET(new Request(URL));
 
     expect(response.status).toBe(200);
-    expect(await bodyOf(response)).toEqual({ data: rows });
+    expect(await bodyOf(response)).toEqual({
+      data: rows,
+      pagination,
+    });
   });
 });
 
