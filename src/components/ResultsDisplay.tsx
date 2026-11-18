@@ -77,7 +77,9 @@ export const ResultsDisplay = async ({
   const sort = isListingSortValue(searchParams.sort)
     ? searchParams.sort
     : defaultSort;
-  const requestedPage = parseListingPageParam(searchParams.page ?? null) ?? 1;
+  const pageValue =
+    typeof searchParams.page === "string" ? searchParams.page : null;
+  const requestedPage = parseListingPageParam(pageValue) ?? 1;
   const result = await getFilteredListings(filters, {
     page: requestedPage,
     pageSize: DEFAULT_LISTING_PAGE_SIZE,
