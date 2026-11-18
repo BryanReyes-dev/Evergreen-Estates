@@ -49,6 +49,8 @@ export function updateListingFilterParams(
   update: ListingFilterParamUpdate,
 ): URLSearchParams {
   const next = new URLSearchParams(current.toString());
+  // A changed filter starts a new result set at its first page.
+  next.delete("page");
 
   switch (update.type) {
     case "tags": {
