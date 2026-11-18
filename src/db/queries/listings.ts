@@ -1,6 +1,9 @@
 import {
   and,
   arrayContains,
+  asc,
+  count,
+  desc,
   eq,
   gte,
   ilike,
@@ -19,8 +22,15 @@ import {
 } from "@/lib/listing-constants";
 import getMediaUrls from "@/db/supabase/util/GetMediaUrls";
 import { getListingMediaPreviews, getUserAvatarUrl } from "@/db/supabase/storage-admin";
+import {
+  DEFAULT_LISTING_PAGE_SIZE,
+  isListingSortValue,
+  MAX_LISTING_PAGE_SIZE,
+  type ListingPaginationInfo,
+  type ListingPaginationOptions,
+} from "@/lib/listing-pagination";
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export type PaginatedListingsResult = {\n  listings: Houselisting[];\n  pagination: ListingPaginationInfo;\n};\n\nconst UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 
 export async function getListingById(
@@ -145,8 +155,21 @@ export async function getListingById(
 
 export async function getFilteredListings(
   filters: Filters,
-): Promise<Houselisting[]> {
+  options: ListingPaginationOptions = {},
+): Promise<PaginatedListingsResult> {
   const db = getDrizzleDb();
+  const requestedPage =
+    Number.isSafeInteger(options.page) && (options.page ?? 0) >= 1
+      ? options.page!
+      : 1;
+  const pageSize =
+    Number.isSafeInteger(options.pageSize) &&
+    (options.pageSize ?? 0) >= 1 &&
+    (options.pageSize ?? 0) <= MAX_LISTING_PAGE_SIZE
+      ? options.pageSize!
+      : DEFAULT_LISTING_PAGE_SIZE;
+  const sort = isListingSortValue(options.sort) ? options.sort : "newest";
+
   const conditions: SQL[] = [
     gte(listings.price, String(MIN_LISTING_PRICE)),
     lte(listings.price, String(MAX_LISTING_PRICE)),
@@ -182,13 +205,24 @@ export async function getFilteredListings(
       .filter((tag) => supportedTags.has(tag));
     // Never let an unsupported URL filter silently broaden the result set.
     if (selectedTags.length !== filters.tags.length || selectedTags.length === 0) {
-      return [];
+      return {
+        listings: [],
+        pagination: {
+          page: 1,
+          pageSize,
+          totalItems: 0,
+          totalPages: 0,
+          hasPreviousPage: false,
+          hasNextPage: false,
+        },
+      };
     }
     conditions.push(arrayContains(listings.tags, selectedTags));
   }
 
   try {
-    const rows = await db
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const baseQuery = db
       .select({
         id: listings.id,
         sellerUserId: listings.sellerUserId,
@@ -211,9 +245,39 @@ export async function getFilteredListings(
           eq(sellerProfiles.isPublished, true),
         ),
       )
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
+      .where(where);
 
-    return await Promise.all(
+    const countQuery = await db
+      .select({ total: count() })
+      .from(listings)
+      .innerJoin(
+        sellerProfiles,
+        and(
+          eq(listings.sellerUserId, sellerProfiles.userId),
+          eq(sellerProfiles.isPublished, true),
+        ),
+      )
+      .where(where);
+
+    const totalItems = Number(countQuery[0]?.total ?? 0);
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const page = totalPages === 0
+      ? 1
+      : Math.min(requestedPage, totalPages);
+
+    const orderedQuery = baseQuery.orderBy(
+      ...(sort === "price-low"
+        ? [asc(listings.price), asc(listings.id)]
+        : sort === "price-high"
+          ? [desc(listings.price), asc(listings.id)]
+          : [desc(listings.createdAt), asc(listings.id)]),
+    );
+
+    const rows = await orderedQuery
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+
+    const mappedListings = await Promise.all(
       rows.map(async (row): Promise<Houselisting> => ({
         id: row.id,
         sellerUserId: row.sellerUserId,
@@ -230,6 +294,18 @@ export async function getFilteredListings(
         reviews: [],
       })),
     );
+
+    return {
+      listings: mappedListings,
+      pagination: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+        hasPreviousPage: page > 1,
+        hasNextPage: page < totalPages,
+      },
+    };
   } catch (error) {
     console.error("Error fetching filtered listings with Drizzle:", error);
     throw error;
