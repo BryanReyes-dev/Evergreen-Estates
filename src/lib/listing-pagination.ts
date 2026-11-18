@@ -21,7 +21,7 @@ export type ListingPaginationInfo = {
 
 export function parseListingPageParam(value: string | null): number | null {
   if (value === null) return 1;
-  if (!/^[1-9]\\d*$/.test(value)) return null;
+  if (!/^[1-9]\d*$/.test(value)) return null;
 
   const page = Number(value);
   return Number.isSafeInteger(page) && page <= MAX_LISTING_PAGE_NUMBER
@@ -31,7 +31,7 @@ export function parseListingPageParam(value: string | null): number | null {
 
 export function parseListingPageSizeParam(value: string | null): number | null {
   if (value === null) return DEFAULT_LISTING_PAGE_SIZE;
-  if (!/^[1-9]\\d*$/.test(value)) return null;
+  if (!/^[1-9]\d*$/.test(value)) return null;
 
   const pageSize = Number(value);
   return Number.isSafeInteger(pageSize) &&
