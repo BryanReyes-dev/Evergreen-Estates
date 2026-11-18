@@ -30,7 +30,12 @@ import {
   type ListingPaginationOptions,
 } from "@/lib/listing-pagination";
 
-export type PaginatedListingsResult = {\n  listings: Houselisting[];\n  pagination: ListingPaginationInfo;\n};\n\nconst UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export type PaginatedListingsResult = {
+  listings: Houselisting[];
+  pagination: ListingPaginationInfo;
+};
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 
 export async function getListingById(
