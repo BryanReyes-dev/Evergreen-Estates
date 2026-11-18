@@ -5,71 +5,129 @@ import { withAppUserTransaction } from "@/db/drizzle/app-client";
 import { listings, sellerProfiles } from "@/db/schema";
 import { MAX_LISTING_PRICE, MIN_LISTING_PRICE, SUPPORTED_LISTING_TAG_VALUES } from "@/lib/listing-constants";
 import { getAuthenticatedUserId } from "@/lib/api/get-authenticated-user-id";
+import {
+  DEFAULT_LISTING_PAGE_SIZE,
+  isListingSortValue,
+  MAX_LISTING_PAGE_SIZE,
+  parseListingPageParam,
+  parseListingPageSizeParam,
+} from "@/lib/listing-pagination";
 
 
-// Get all listings with optional filters
+// GET /api/v1/listings — paginated public listing search.
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
 
-    const { searchParams } = new URL(request.url);
+  let price: ListingFilters["price"] = null;
+  const rawPrice = searchParams.get("price");
 
-    let price: ListingFilters["price"] = null;
-
-    const rawPrice = searchParams.get("price");
-
-    if (rawPrice !== null) {
+  if (rawPrice !== null) {
     const parts = rawPrice.split("-");
-
     if (parts.length !== 2 || parts.some((part) => part.trim() === "")) {
-        return Response.json(
+      return Response.json(
         {
-            error: {
+          error: {
             code: "INVALID_PRICE_RANGE",
             message: "Use price=min-max.",
-            },
+          },
         },
         { status: 400 },
-        );
+      );
     }
 
     const [minPrice, maxPrice] = parts.map(Number);
-
     if (
-        !Number.isFinite(minPrice) ||
-        !Number.isFinite(maxPrice) ||
-        minPrice < MIN_LISTING_PRICE ||
-        maxPrice > MAX_LISTING_PRICE ||
-        maxPrice < minPrice
+      !Number.isFinite(minPrice) ||
+      !Number.isFinite(maxPrice) ||
+      minPrice < MIN_LISTING_PRICE ||
+      maxPrice > MAX_LISTING_PRICE ||
+      maxPrice < minPrice
     ) {
-        return Response.json(
+      return Response.json(
         {
-            error: {
+          error: {
             code: "INVALID_PRICE_RANGE",
             message: "Choose a price range between $10,000 and $10,000,000.",
-            },
+          },
         },
         { status: 400 },
-        );
+      );
     }
 
     price = [minPrice, maxPrice];
-    }
+  }
 
-    
-    const search = searchParams.get("query")?.trim() || null;
+  const page = parseListingPageParam(searchParams.get("page"));
+  if (page === null) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_PAGE",
+          message: "Page must be a whole number between 1 and 10,000.",
+        },
+      },
+      { status: 400 },
+    );
+  }
 
-    const tags = searchParams
-        .getAll("tag")
-        .map((tag) => tag.trim())
-        .filter(Boolean);
+  const pageSize = parseListingPageSizeParam(searchParams.get("pageSize"));
+  if (pageSize === null) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_PAGE_SIZE",
+          message: `Page size must be a whole number between 1 and ${MAX_LISTING_PAGE_SIZE}.`,
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  const rawSort = searchParams.get("sort");
+  const sort = rawSort === null
+    ? "newest"
+    : isListingSortValue(rawSort)
+      ? rawSort
+      : null;
+  if (sort === null) {
+    return Response.json(
+      {
+        error: {
+          code: "INVALID_SORT",
+          message: "Sort must be newest, price-low, or price-high.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  const search = searchParams.get("query")?.trim() || null;
+  const tags = searchParams
+    .getAll("tag")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
 
   try {
-    const listings = await getFilteredListings({
-      price: price,
-      tags: tags.length > 0 ? tags : null,
-      search: search,
-    });
+    const result = await getFilteredListings(
+      {
+        price,
+        tags: tags.length > 0 ? tags : null,
+        search,
+      },
+      {
+        page,
+        pageSize: pageSize ?? DEFAULT_LISTING_PAGE_SIZE,
+        sort,
+      },
+    );
 
-    return Response.json({ data: listings }, { status: 200 });
+    return Response.json(
+      {
+        data: result.listings,
+        pagination: result.pagination,
+      },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("GET /api/v1/listings failed:", error);
 
