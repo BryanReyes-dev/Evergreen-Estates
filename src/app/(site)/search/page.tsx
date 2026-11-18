@@ -19,6 +19,7 @@ interface SearchParams {
   price?: string;
   tag?: string | string[];
   sort?: string;
+  page?: string;
 }
 
 export const dynamic = "force-dynamic";
